@@ -1,0 +1,541 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" />
+    @*   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script> *@
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+
+    <title>@ViewData["Title"] - JUBA-OFFICIAL</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="~/css/SGStyleSheet.css" />
+    <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/solid.js" integrity="sha384-tzzSw1/Vo+0N5UhStP3bvwWPq+uvzCMfrN1fEFe+xBmv1C/AtVX5K0uZtmcHitFZ" crossorigin="anonymous"></script>
+    <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/fontawesome.js" integrity="sha384-6OIrr52G08NpOFSZdxxz1xdNSndlD4vdcf/q2myIUVO0VsqaGHJsB0RaBE01VTOY" crossorigin="anonymous"></script>
+
+    <!-- jQuery -->
+    @*   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script> *@
+
+    <!-- DataTables CSS -->
+    @* <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" /> *@
+
+    <!-- DataTables JS -->
+    @* <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script> *@
+
+
+    <style>
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .sidebar {
+            position: relative;
+        }
+
+
+
+        .navbar2-top {
+            background-color: #f8f9fa;
+            padding: 0px 0;
+        }
+
+
+
+            .navbar2-top .container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+
+
+            .navbar2-top .left-section {
+                font-weight: bold;
+            }
+
+
+
+            .navbar2-top .right-section {
+                text-align: right;
+                flex-grow: 1;
+            }
+
+
+
+            .navbar2-top .left-section a {
+                color: #0056b3;
+            }
+
+
+
+        a {
+            text-decoration: none !important;
+        }
+
+
+
+        .user-info {
+            color: #0056b3;
+            font-size: 16px;
+            font-weight: normal;
+        }
+
+
+
+        /* Full height container setup */
+        .main-container {
+            height: calc(100vh - 140px);
+            max-width: 100%;
+            padding: 0;
+        }
+
+
+
+        .content-row {
+            height: 100%;
+            margin: 0;
+        }
+
+
+
+        /* Banner container - full height and width */
+        .banner-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+
+
+        /* Banner image - stretches to fill entire container */
+        .banner-image {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: fill;
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+
+
+        /* Content area adjustments */
+        .content-area {
+            padding: 0 !important;
+            margin: 0;
+            height: 100%;
+            position: relative;
+        }
+
+
+
+        /* Sidebar adjustments */
+        .sidebar {
+            height: calc(100vh - 140px);
+            overflow-y: auto;
+            background: white;
+            z-index: 2;
+            position: relative;
+        }
+
+
+
+        /* Responsive adjustments */
+        @@media (max-width: 768px) {
+            .banner-container {
+                height: calc(100vh - 120px);
+            }
+
+            .sidebar {
+                height: calc(100vh - 120px);
+            }
+
+            .main-container {
+                height: calc(100vh - 120px);
+            }
+        }
+
+
+
+        @@media (max-width: 576px) {
+            .banner-container {
+                height: calc(100vh - 100px);
+            }
+
+            .sidebar {
+                height: calc(100vh - 100px);
+            }
+
+            .main-container {
+                height: calc(100vh - 100px);
+            }
+        }
+
+
+
+        /* Hide content by default to show banner */
+        .page-content {
+            display: none;
+        }
+
+    </style>
+
+
+
+</head>
+
+<body>
+
+
+
+    <!-- First Top Bar -->
+
+    <nav class="navbar navbar-expand-lg navbar1-top navbar-top">
+
+        <div class="container">
+
+            <!-- Brand / Title -->
+
+            <a class="navbar-brand" href="#">
+
+                <span class="navbar-text text-white"
+                      style="font-family: Verdana; font-size: 18px; font-weight: bold; margin-left: -180px;">
+
+                    PMS (JUBA)
+
+                </span>
+
+            </a>
+
+
+
+            <!-- Push right -->
+
+            <div class="ms-auto d-flex align-items-center">
+
+                <!-- User Dropdown -->
+                <div class="dropdown mr-3">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle user-profile-btn" type="button" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="font-family: Verdana; font-size: 14px; font-weight: 600; border-radius: 25px; padding: 8px 16px; transition: all 0.3s ease;">
+                        <i class="fas fa-user-circle mr-2" style="font-size: 16px;"></i>
+                        <span class="user-name">@* @Context.Session.GetString("UserName") *@</span>
+                        <i class="fas fa-chevron-down ml-1" style="font-size: 12px; transition: transform 0.3s ease;"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right user-dropdown-menu" aria-labelledby="userDropdown" style="min-width: 280px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-radius: 12px; padding: 0; margin-top: 8px;">
+                        <!-- User Info Header -->
+                        <div class="user-info-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
+                            <div class="user-avatar" style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <h6 class="mb-1" style="font-weight: 600; font-size: 16px;">@* @Context.Session.GetString("UserName") *@</h6>
+                            <small class="text-light" id="userDetails" style="opacity: 0.9;">Loading user details...</small>
+                        </div>
+
+                        <!-- Menu Items -->
+                        <div class="dropdown-menu-items" style="padding: 8px 0;">
+                            <a class="dropdown-item user-menu-item" asp-controller="UserProfile" asp-action="UpdatePassword" style="padding: 12px 20px; color: #333; transition: all 0.3s ease; border: none;">
+                                <div class="d-flex align-items-center">
+                                    <div class="menu-icon" style="width: 40px; height: 40px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                        <i class="fas fa-key text-white" style="font-size: 14px;"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 14px;">Update Password</div>
+                                        <small class="text-muted">Change your account password</small>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <div class="dropdown-divider" style="margin: 8px 0;"></div>
+
+                            <a class="dropdown-item user-menu-item text-danger" asp-controller="Login" asp-action="Logout" onclick="return confirm('Are you sure you want to log out?');" style="padding: 12px 20px; transition: all 0.3s ease; border: none;">
+                                <div class="d-flex align-items-center">
+                                    <div class="menu-icon" style="width: 40px; height: 40px; background: linear-gradient(135deg, #ff4757, #c44569); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                        <i class="fas fa-sign-out-alt text-white" style="font-size: 14px;"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 14px;">Logout</div>
+                                        <small class="text-muted">Sign out of your account</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+
+
+    <!-- Second Top Bar -->
+
+    <nav class="navbar navbar-expand-lg navbar2-top">
+
+        <div class="container">
+
+            <!-- Left-aligned text -->
+
+            <div class="left-section">
+
+                <a asp-controller="Home" asp-action="Index">Back Main Menu</a>
+
+            </div>
+
+            <!-- Right-aligned text -->
+
+            <div class="right-section">
+
+                <span class="user-info">
+
+                    Logged in as
+
+                </span>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+
+
+    <!-- Third Top Bar -->
+
+    <nav class="navbar navbar-expand-lg navbar3-top">
+
+        <div class="container">
+
+            <span class="navbar-text text-white"></span>
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="container-fluid main-container">
+
+        <div class="row content-row">
+
+
+
+            <!-- Left Sidebar -->
+
+            <div class="col-md-3 col-lg-2 p-3 sidebar" style="background-color:#011F41">
+
+                <h4>PMS Home</h4>
+
+
+
+                <ul class="nav flex-column">
+
+                    <li class="nav-item">
+
+                        <a class="nav-link" href="">
+
+                            <i class="fas fa-users-cog" style="color: #28a745; font-size: 14px;"></i>
+
+
+                            Customers
+                        </a>
+
+                    </li>
+
+
+
+
+                    <li class="nav-item">
+
+                        <a class="nav-link" href="//">
+
+                            <i class="fas fa-user-graduate" style="color: #28a745; font-size: 14px;"></i>
+
+                         Payments 
+
+                        </a>
+
+                    </li>
+
+
+
+                    <li class="nav-item">
+
+                        <a class="nav-link" href="/">
+
+                            <i class="fas fa-receipt" style="color: #28a745; font-size: 14px;"></i>
+
+                         Inventory
+
+                        </a>
+
+                    </li>
+
+
+
+                    <li class="nav-item">
+
+                        <a class="nav-link" href="/">
+
+                            <i class="fas fa-clipboard-list" style="color: #28a745; font-size: 14px;"></i>
+
+                            Dashboard
+
+                        </a>
+
+                    </li>
+
+
+
+
+
+                    <li class="nav-item">
+
+                        <a class="nav-link" href="/UsersManagement/Index">
+
+                            <i class="fas fa-users-cog" style="color: #28a745; font-size: 14px;"></i>
+
+                            Administration
+
+                        </a>
+
+                    </li>
+
+
+
+
+                    
+
+                </ul>
+
+            </div>
+
+
+
+            <!-- Right Content Area -->
+
+            <div class="col-md-9 col-lg-10 content-area">
+
+                <!-- Full Screen Banner Section -->
+
+                <div class="banner-container">
+
+                    @* <img src="~/images/banner.png" alt="Property Management System" class="banner-image"> *@
+
+                </div>
+
+
+
+                <!-- Hidden page content -->
+
+                <div class="page-content">
+
+                    @RenderBody()
+
+                </div>
+
+            </div>
+
+
+
+        </div>
+
+    </div>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Enhanced User Dropdown Scripts -->
+    <script>
+        $(document).ready(function() {
+            // Load user details when dropdown is opened
+            $('#userDropdown').on('click', function() {
+                if ($('#userDetails').text() === 'Loading user details...') {
+                    $.ajax({
+                        url: '@Url.Action("GetUserDetails", "UserProfile")',
+                        type: 'GET',
+                        success: function(response) {
+                            if (response.success) {
+                                var userData = response.data;
+                                var roleText = userData.role ? userData.role.split(',').join(', ') : 'User';
+                                var detailsHtml = '<div style="font-size: 12px; line-height: 1.4;">' +
+                                    '<div><i class="fas fa-id-badge mr-1"></i>' + (userData.employeeId || 'N/A') + '</div>' +
+                                    '<div><i class="fas fa-user-tag mr-1"></i>' + roleText + '</div>' +
+                                    '</div>';
+                                $('#userDetails').html(detailsHtml);
+                            } else {
+                                $('#userDetails').html('<small class="text-light">User Account</small>');
+                            }
+                        },
+                        error: function() {
+                            $('#userDetails').html('<small class="text-light">User Account</small>');
+                        }
+                    });
+                }
+            });
+
+            // Enhanced dropdown animations
+            $('.user-profile-btn').hover(
+                function() {
+                    $(this).css('transform', 'translateY(-2px)');
+                    $(this).find('.fa-chevron-down').css('transform', 'rotate(180deg)');
+                },
+                function() {
+                    $(this).css('transform', 'translateY(0)');
+                    $(this).find('.fa-chevron-down').css('transform', 'rotate(0deg)');
+                }
+            );
+
+            // Menu item hover effects
+            $('.user-menu-item').hover(
+                function() {
+                    $(this).css('background-color', '#f8f9fa');
+                    $(this).css('transform', 'translateX(5px)');
+                },
+                function() {
+                    $(this).css('background-color', 'transparent');
+                    $(this).css('transform', 'translateX(0)');
+                }
+            );
+
+            // Dropdown show/hide animation
+            $('.dropdown').on('show.bs.dropdown', function () {
+                $('.user-dropdown-menu').css('opacity', '0').css('transform', 'translateY(-10px)');
+            });
+
+            $('.dropdown').on('shown.bs.dropdown', function () {
+                $('.user-dropdown-menu').animate({
+                    opacity: 1
+                }, 200).css('transform', 'translateY(0)');
+            });
+        });
+    </script>
+
+    @RenderSection("Scripts", required: false)
+
+</body>
+
+</html>
