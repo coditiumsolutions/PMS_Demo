@@ -1,0 +1,202 @@
+@model PMS.Models.User
+
+@{
+    ViewData["Title"] = "Edit User";
+}
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-user-edit me-2"></i>Edit User
+            </h2>
+            <a asp-action="Users" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Users
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i>User Information
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        @ViewBag.Error
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                <form asp-action="EditUser" method="post">
+                    <input type="hidden" asp-for="UserID" />
+                    <input type="hidden" asp-for="PasswordHash" />
+                    <input type="hidden" asp-for="CreatedAt" />
+
+                    <div class="row">
+                        <!-- Personal Information -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Personal Information
+                            </h6>
+
+                            <div class="mb-3">
+                                <label class="form-label">User ID</label>
+                                <input type="text" class="form-control" value="@Model.UserID" disabled />
+                                <small class="text-muted">User ID cannot be changed</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="FullName" class="form-label">Full Name *</label>
+                                <input asp-for="FullName" class="form-control" placeholder="Enter full name" required />
+                                <span asp-validation-for="FullName" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Email" class="form-label">Email Address *</label>
+                                <input asp-for="Email" type="email" class="form-control" placeholder="user@example.com" required />
+                                <span asp-validation-for="Email" class="text-danger"></span>
+                                <small class="text-muted">This is used for login</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Created Date</label>
+                                <input type="text" class="form-control" value="@Model.CreatedAt.ToString("MMMM dd, yyyy hh:mm tt")" disabled />
+                            </div>
+                        </div>
+
+                        <!-- Role & Status -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-shield-alt me-2"></i>Role & Status
+                            </h6>
+
+                            <div class="mb-3">
+                                <label asp-for="RoleID" class="form-label">User Role *</label>
+                                <select asp-for="RoleID" class="form-select" required id="roleSelect">
+                                    <option value="">Select Role</option>
+                                    @if (ViewBag.Roles != null)
+                                    {
+                                        @foreach (var role in ViewBag.Roles)
+                                        {
+                                            <option value="@role.RoleID" data-permissions="@role.Permissions">
+                                                @role.RoleName
+                                            </option>
+                                        }
+                                    }
+                                </select>
+                                <span asp-validation-for="RoleID" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Role Permissions</label>
+                                <div id="permissionsDisplay" class="p-3 bg-light rounded" style="min-height: 100px;">
+                                    @if (!string.IsNullOrEmpty(Model.Role?.Permissions))
+                                    {
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var permission in Model.Role.Permissions.Split(','))
+                                            {
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-check-circle me-1"></i>@permission.Trim()
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Select a role to view permissions</small>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                                    <label asp-for="IsActive" class="form-check-label">
+                                        Active User
+                                        <small class="text-muted d-block">Inactive users cannot login</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-key me-2"></i>
+                        <strong>Password Reset:</strong> To change the user's password, use the "Reset Password" feature after saving changes.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-save me-2"></i>Save Changes
+                                </button>
+                                <a asp-action="Users" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- User Statistics -->
+        <div class="card mt-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>User Statistics
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">Total Sessions</small>
+                        <p class="fw-bold">@Model.UserSessions?.Count ?? 0</p>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Total Activities</small>
+                        <p class="fw-bold">@Model.ActivityLogs?.Count ?? 0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+            // Display role permissions
+            $('#roleSelect').on('change', function() {
+                var selectedOption = $(this).find('option:selected');
+                var permissions = selectedOption.data('permissions');
+                var permissionsDiv = $('#permissionsDisplay');
+                
+                if (permissions) {
+                    var permissionsList = permissions.split(',');
+                    var html = '<div class="d-flex flex-wrap gap-1">';
+                    permissionsList.forEach(function(permission) {
+                        html += '<span class="badge bg-primary">' +
+                                '<i class="fas fa-check-circle me-1"></i>' + 
+                                permission.trim() + 
+                                '</span>';
+                    });
+                    html += '</div>';
+                    permissionsDiv.html(html);
+                } else {
+                    permissionsDiv.html('<small class="text-muted">No permissions assigned to this role</small>');
+                }
+            });
+        });
+    </script>
+}
+

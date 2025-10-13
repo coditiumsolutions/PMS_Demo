@@ -1,0 +1,44 @@
+﻿Style Direction:
+Modern finance dashboard — clean, minimal, professional look with soft gradients and balanced whitespace. Use a calm purple palette with subtle elevation and clear typography.
+
+Color Palette:
+
+{
+  "primary": "#9C6ADE",            // Soft Purple - brand/highlight color
+  "primaryLight": "#C9B3FF",       // Light variation for hover/gradients
+  "primaryBackground": "#F9F8FC",  // Dashboard background
+  "surface": "#FFFFFF",            // Cards, sidebar, panels
+  "textPrimary": "#1E1E2D",        // Headings and key stats
+  "textSecondary": "#6B7280",      // Labels and secondary info
+  "accent": "#E879F9",             // Accent or positive indicator
+  "border": "#E5E7EB"              // Light divider/border color
+}
+
+
+Typography:
+
+Font: Inter, Poppins, or SF Pro Display
+
+Headings: Semi-bold
+
+Body: Regular / 400
+
+Use consistent spacing and rounded corners (border-radius: 12px).
+
+UI Mood:
+
+Bright and positive tone — subtle gradients, shadows, and motion for feedback.
+
+Graphs should use the purple gradient as the main line color and maintain high contrast against white cards.
+
+Sidebar and top navigation should feel airy, not heavy.
+
+Prefer light mode with plenty of whitespace.
+
+Visual Behavior:
+
+Hover states: slightly deepen purple or add soft shadow.
+
+Active menu item: purple background with white text.
+
+Transitions: smooth and short (0.2s ease-in-out).

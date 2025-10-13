@@ -1,0 +1,380 @@
+@{
+    ViewData["Title"] = "Record Payment";
+    var customers = ViewBag.Customers as List<PMS.Models.Customer>;
+    var schedules = ViewBag.PaymentSchedules as List<PMS.Models.PaymentSchedule>;
+    var preSelectedCustomerId = ViewBag.PreSelectedCustomerId as string;
+    var preSelectedScheduleId = ViewBag.PreSelectedScheduleId as string;
+    var schedule = ViewBag.Schedule as PMS.Models.PaymentSchedule;
+}
+
+<!-- Banner with purple gradient -->
+<div class="custom-banner mb-4" style="margin-top: 20px;">
+    <div style="background: linear-gradient(135deg, #9C6ADE 0%, #E879F9 100%); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-white mb-1" style="font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    <i class="fas fa-money-bill-wave me-2"></i>Record Payment
+                </h2>
+                <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.95rem;">
+                    Record customer payment transactions
+                </p>
+            </div>
+            <div>
+                <a asp-action="CustomerPayments" class="btn btn-light">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Payments
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        
+        <!-- Pre-selected Schedule Info -->
+        @if (schedule != null)
+        {
+            <div class="card mb-4 border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+                    <h6 class="mb-0 text-white">
+                        <i class="fas fa-calendar-alt me-2"></i>Installment #@schedule.InstallmentNo - @schedule.PaymentDescription
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <small class="text-muted">Plan Name</small>
+                            <p class="fw-bold mb-0">@schedule.PaymentPlan?.PlanName</p>
+                            <small class="text-muted">@schedule.PlanID</small>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Due Date</small>
+                            <p class="fw-bold mb-0 @(schedule.DueDate < DateTime.Now ? "text-danger" : "text-success")">
+                                @schedule.DueDate.ToString("MMM dd, yyyy")
+                            </p>
+                            @if (schedule.DueDate < DateTime.Now)
+                            {
+                                <small class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Overdue by @((DateTime.Now - schedule.DueDate).Days) days</small>
+                            }
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Amount Due</small>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @schedule.Amount.ToString("N2")</p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Surcharge Rate</small>
+                            <p class="fw-bold mb-0">
+                                @if (schedule.SurchargeApplied && schedule.DueDate < DateTime.Now)
+                                {
+                                    <span class="text-warning">@((schedule.SurchargeRate * 100).ToString("N1"))%</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Payment Form -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-receipt me-2"></i>Payment Details
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                <form asp-action="RecordPayment" method="post" id="paymentForm">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row g-3">
+                        <!-- Customer Selection -->
+                        <div class="col-md-6">
+                            <label for="customerId" class="form-label fw-semibold">
+                                <i class="fas fa-user me-1" style="color: #9C6ADE;"></i>Customer *
+                            </label>
+                            <select name="customerId" id="customerId" class="form-select" required>
+                                <option value="">Select Customer</option>
+                                @if (customers != null)
+                                {
+                                    foreach (var customer in customers)
+                                    {
+                                        if (customer.CustomerID == preSelectedCustomerId)
+                                        {
+                                            <option value="@customer.CustomerID" data-plan="@customer.PlanID" selected>
+                                                @customer.FullName - @customer.CustomerID
+                                            </option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@customer.CustomerID" data-plan="@customer.PlanID">
+                                                @customer.FullName - @customer.CustomerID
+                                            </option>
+                                        }
+                                    }
+                                }
+                            </select>
+                            <small class="text-muted">Select the customer making the payment</small>
+                        </div>
+
+                        <!-- Schedule/Installment Selection -->
+                        <div class="col-md-6">
+                            <label for="scheduleId" class="form-label fw-semibold">
+                                <i class="fas fa-calendar-check me-1" style="color: #9C6ADE;"></i>Installment/Schedule *
+                            </label>
+                            <select name="scheduleId" id="scheduleId" class="form-select" required>
+                                <option value="">Select Installment</option>
+                                @if (schedules != null)
+                                {
+                                    foreach (var sched in schedules.OrderBy(s => s.InstallmentNo))
+                                    {
+                                        if (sched.ScheduleID == preSelectedScheduleId)
+                                        {
+                                            <option value="@sched.ScheduleID" 
+                                                    data-amount="@sched.Amount"
+                                                    data-description="@sched.PaymentDescription"
+                                                    data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
+                                                    data-plan="@sched.PlanID"
+                                                    selected>
+                                                [@sched.PaymentPlan?.PlanName] - Installment #@sched.InstallmentNo - SSP @sched.Amount.ToString("N2")
+                                            </option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@sched.ScheduleID" 
+                                                    data-amount="@sched.Amount"
+                                                    data-description="@sched.PaymentDescription"
+                                                    data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
+                                                    data-plan="@sched.PlanID">
+                                                [@sched.PaymentPlan?.PlanName] - Installment #@sched.InstallmentNo - SSP @sched.Amount.ToString("N2")
+                                            </option>
+                                        }
+                                    }
+                                }
+                            </select>
+                            <small class="text-muted">Select the installment being paid</small>
+                        </div>
+
+                        <!-- Amount -->
+                        <div class="col-md-6">
+                            <label for="amount" class="form-label fw-semibold">
+                                <i class="fas fa-coins me-1" style="color: #9C6ADE;"></i>Amount Received (SSP) *
+                            </label>
+                            <input type="number" name="amount" id="amount" step="0.01" class="form-control" 
+                                   placeholder="Enter amount received" 
+                                   value="@schedule?.Amount" required />
+                            <small class="text-muted" id="amountHint">Enter the payment amount</small>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="col-md-6">
+                            <label for="method" class="form-label fw-semibold">
+                                <i class="fas fa-credit-card me-1" style="color: #9C6ADE;"></i>Payment Method *
+                            </label>
+                            <select name="method" id="method" class="form-select" required>
+                                <option value="">Select Payment Method</option>
+                                <option value="Cash">💵 Cash</option>
+                                <option value="Bank Transfer">🏦 Bank Transfer</option>
+                                <option value="Cheque">📝 Cheque</option>
+                                <option value="Online">💳 Online Payment</option>
+                                <option value="Mobile Money">📱 Mobile Money</option>
+                            </select>
+                        </div>
+
+                        <!-- Reference Number -->
+                        <div class="col-md-6">
+                            <label for="referenceNo" class="form-label fw-semibold">
+                                <i class="fas fa-hashtag me-1" style="color: #9C6ADE;"></i>Reference Number
+                            </label>
+                            <input type="text" name="referenceNo" id="referenceNo" class="form-control" 
+                                   placeholder="Transaction/Receipt/Cheque Number" />
+                            <small class="text-muted" id="refHint">Enter transaction reference number</small>
+                        </div>
+
+                        <!-- Payment Status -->
+                        <div class="col-md-6">
+                            <label for="status" class="form-label fw-semibold">
+                                <i class="fas fa-check-circle me-1" style="color: #9C6ADE;"></i>Payment Status *
+                            </label>
+                            <select name="status" id="status" class="form-select" required>
+                                <option value="Completed" selected>✅ Completed</option>
+                                <option value="Pending">⏳ Pending Verification</option>
+                                <option value="Processing">🔄 Processing</option>
+                            </select>
+                        </div>
+
+                        <!-- Remarks -->
+                        <div class="col-12">
+                            <label for="remarks" class="form-label fw-semibold">
+                                <i class="fas fa-comment me-1" style="color: #9C6ADE;"></i>Remarks
+                            </label>
+                            <textarea name="remarks" id="remarks" class="form-control" rows="3" 
+                                      placeholder="Enter any additional notes or remarks about this payment"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Selected Installment Info -->
+                    <div id="scheduleInfo" class="alert mt-4" style="background: rgba(156, 106, 222, 0.08); border: 1px solid rgba(156, 106, 222, 0.2); display: none;">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Installment</small>
+                                <strong id="infoDescription">-</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Due Date</small>
+                                <strong id="infoDueDate">-</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Due Amount</small>
+                                <strong id="infoAmount" style="color: #9C6ADE;">-</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3" style="background: rgba(156, 106, 222, 0.08); border: 1px solid rgba(156, 106, 222, 0.2);">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Payment will be recorded with the selected status. Ensure all details are correct before submitting.
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-lg" style="background: linear-gradient(135deg, #9C6ADE 0%, #E879F9 100%); color: white; border: none;">
+                            <i class="fas fa-check me-2"></i>Record Payment
+                        </button>
+                        <a asp-action="CustomerPayments" class="btn btn-lg btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Late Payment Warning -->
+        @if (schedule != null && schedule.SurchargeApplied && schedule.DueDate < DateTime.Now)
+        {
+            var daysLate = (DateTime.Now - schedule.DueDate).Days;
+            var surchargeAmount = schedule.Amount * schedule.SurchargeRate;
+            var totalWithSurcharge = schedule.Amount + surchargeAmount;
+
+            <div class="card mt-4 border-0 shadow-sm" style="border-left: 4px solid #f59e0b !important;">
+                <div class="card-header" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <h6 class="mb-0 text-white">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Late Payment Surcharge Applied
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <small class="text-muted">Days Overdue</small>
+                            <p class="fw-bold text-danger mb-0">@daysLate days</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Surcharge (@((schedule.SurchargeRate * 100).ToString("N1"))%)</small>
+                            <p class="fw-bold text-warning mb-0">SSP @surchargeAmount.ToString("N2")</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Total Amount Due</small>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @totalWithSurcharge.ToString("N2")</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+            // Update reference placeholder based on payment method
+            $('#method').on('change', function() {
+                var method = $(this).val();
+                var refInput = $('#referenceNo');
+                var refHint = $('#refHint');
+                
+                if (method === 'Cash') {
+                    refInput.attr('placeholder', 'Receipt Number (optional)');
+                    refHint.text('Enter receipt number if available');
+                } else if (method === 'Bank Transfer') {
+                    refInput.attr('placeholder', 'Transaction Reference Number');
+                    refHint.text('Enter bank transaction reference');
+                } else if (method === 'Cheque') {
+                    refInput.attr('placeholder', 'Cheque Number');
+                    refHint.text('Enter cheque number');
+                } else if (method === 'Online') {
+                    refInput.attr('placeholder', 'Online Transaction ID');
+                    refHint.text('Enter online payment transaction ID');
+                } else if (method === 'Mobile Money') {
+                    refInput.attr('placeholder', 'Mobile Money Transaction ID');
+                    refHint.text('Enter mobile money transaction ID');
+                }
+            });
+
+            // Update schedule info when schedule is selected
+            $('#scheduleId').on('change', function() {
+                var selected = $(this).find('option:selected');
+                var amount = selected.data('amount');
+                var description = selected.data('description');
+                var dueDate = selected.data('duedate');
+
+                if ($(this).val()) {
+                    $('#scheduleInfo').show();
+                    $('#infoDescription').text(description || '-');
+                    $('#infoDueDate').text(dueDate || '-');
+                    $('#infoAmount').text('SSP ' + (amount ? parseFloat(amount).toFixed(2) : '-'));
+                    $('#amount').val(amount);
+                    $('#amountHint').text('Due amount: SSP ' + parseFloat(amount).toFixed(2));
+                } else {
+                    $('#scheduleInfo').hide();
+                    $('#amount').val('');
+                    $('#amountHint').text('Enter the payment amount');
+                }
+            });
+
+            // Filter schedules based on selected customer's plan
+            $('#customerId').on('change', function() {
+                var selectedPlan = $(this).find('option:selected').data('plan');
+                
+                $('#scheduleId option').each(function() {
+                    var schedulePlan = $(this).data('plan');
+                    
+                    if ($(this).val() === '') {
+                        $(this).show();
+                    } else if (selectedPlan && schedulePlan === selectedPlan) {
+                        $(this).show();
+                    } else if (!selectedPlan) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+                
+                // Reset schedule selection
+                $('#scheduleId').val('');
+                $('#scheduleInfo').hide();
+            });
+
+            // Trigger change if pre-selected
+            @if (!string.IsNullOrEmpty(preSelectedScheduleId))
+            {
+                <text>
+                $('#scheduleId').trigger('change');
+                </text>
+            }
+        });
+    </script>
+}

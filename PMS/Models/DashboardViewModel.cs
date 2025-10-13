@@ -1,0 +1,23 @@
+using PMS.Models;
+
+namespace PMS.Models
+{
+    public class DashboardViewModel
+    {
+        public int TotalCustomers { get; set; }
+        public int TotalProjects { get; set; }
+        public int TotalProperties { get; set; }
+        public int AvailableProperties { get; set; }
+        public int AllottedProperties { get; set; }
+        public decimal TotalPayments { get; set; }
+        public List<Customer> RecentCustomers { get; set; } = new List<Customer>();
+        public List<Payment> RecentPayments { get; set; } = new List<Payment>();
+        public List<Allotment> PendingAllotments { get; set; } = new List<Allotment>();
+        
+        // Chart Data
+        public Dictionary<string, int> PropertyStatusData { get; set; } = new Dictionary<string, int>();
+        public Dictionary<string, decimal> MonthlyPaymentsData { get; set; } = new Dictionary<string, decimal>();
+        public Dictionary<string, int> PaymentStatusData { get; set; } = new Dictionary<string, int>();
+        public Dictionary<string, int> CustomerTrendData { get; set; } = new Dictionary<string, int>();
+    }
+}

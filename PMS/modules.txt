@@ -1,0 +1,72 @@
+﻿Design a professional, modern real estate website UI for "JUBA Smart City".
+Use a premium green and gold color palette inspired by the brand logo:
+
+Primary: rich emerald green #0B9444
+Accent: royal gold #D4AF37
+Text: dark gray #333333
+Background: white #FFFFFF with subtle gradients or soft gold tints.
+
+The UI should look luxurious, trustworthy, and elegant — blending modern minimalism with high-end real estate vibes.
+
+===========================================
+PAYMENT SYSTEM ARCHITECTURE
+===========================================
+
+1. PAYMENT PLANS (Batches)
+   - Master payment plan/batch assigned to customers
+   - Example: Batch 10001, Total Price: 1000 SSP
+   - Contains: Plan Name, Total Amount, Duration (months), Frequency
+   - Used for: Defining the overall payment structure for properties
+   - One plan can be assigned to multiple customers
+
+2. PAYMENT SCHEDULES (Installments)
+   - Child records of Payment Plans
+   - Defines all installments/payments due over X months
+   - Example: Installment #1, Amount: 100 SSP, Due Date: Jan 15, 2025
+   - Contains: Installment Number, Due Date, Amount, Surcharge Rate
+   - Used for: Tracking what payments are due and when
+   - System can automatically check if payments are overdue
+
+3. PAYMENTS (Actual Receipts)
+   - Records of actual payments received from customers
+   - Child of Payment Schedule (links to specific installments)
+   - Example: Payment for Installment #1, Amount: 100 SSP, Date: Jan 10, 2025
+   - Contains: Payment Date, Amount, Method, Reference Number, Status
+   - Used for: Recording actual money received
+   - Multiple payments can be made against one schedule/installment
+
+Flow: Payment Plan (Batch) → Payment Schedules (Installments) → Payments (Receipts)
+
+===========================================
+SIDEBAR MENU STRUCTURE
+===========================================
+
+- Dashboard
+- Customers
+- Projects
+- Properties
+- Payment Plans (Batches Management - Parent)
+  └── Click to view → Payment Schedules (Child Installments with CRUD)
+- Payment Schedules (All Installments across all Plans)
+- Customer Payments (Payment Receipts & Transactions)
+- User Management (Admin only)
+- Configuration Settings (Admin only)
+
+===========================================
+CONFIGURATION SETTINGS
+===========================================
+
+Purpose: Dictionary/Collection of system variables used throughout PMS
+
+Categories:
+- Years: Available years for date selections
+- Cities: South Sudan cities (Juba, Wau, Malakal, etc.)
+- Countries: Countries list (default: South Sudan)
+- Blocks: Property block identifiers (A, B, C, etc.)
+- PropertyTypes: Residential, Commercial, Industrial, etc.
+- ProjectTypes: Housing, Commercial Complex, Mixed-Use, etc.
+- PaymentMethods: Cash, Bank Transfer, Cheque, Online, Mobile Money
+- Sizes: Property sizes (5 Marla, 10 Marla, 1 Kanal, etc.)
+- Status: Various status options for workflows
+
+Usage: Dropdowns, filters, validation, and standardization across the system

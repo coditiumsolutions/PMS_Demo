@@ -2356,8 +2356,8 @@
     margin-right: 3rem !important;
   }
 
-  .ms-sm-auto {
-    margin-right: auto !important;
+.ms-sm-auto {
+    margin-left: 10px;
   }
 
   .p-sm-0 {

@@ -1,0 +1,77 @@
+@model PMS.Models.Project
+
+@{
+    ViewData["Title"] = "Create Project";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-plus-circle me-2"></i>Create New Project</h2>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="ProjectName" class="form-label">Project Name *</label>
+                                <input asp-for="ProjectName" class="form-control" placeholder="Enter project name" required />
+                                <span asp-validation-for="ProjectName" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Type" class="form-label">Project Type *</label>
+                                <select asp-for="Type" class="form-select" required>
+                                    <option value="">Select Project Type</option>
+                                    <option value="Residential">Residential</option>
+                                    <option value="Commercial">Commercial</option>
+                                    <option value="Mixed">Mixed</option>
+                                    <option value="Industrial">Industrial</option>
+                                </select>
+                                <span asp-validation-for="Type" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Location" class="form-label">Location *</label>
+                                <input asp-for="Location" class="form-control" placeholder="Enter project location" required />
+                                <span asp-validation-for="Location" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="Description" class="form-label">Description</label>
+                                <textarea asp-for="Description" class="form-control" rows="6" 
+                                          placeholder="Enter project description and details"></textarea>
+                                <span asp-validation-for="Description" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-save me-2"></i>Create Project
+                                </button>
+                                <a asp-action="Index" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

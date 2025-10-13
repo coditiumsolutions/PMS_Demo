@@ -1,21 +1,116 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PMS.Data;
 using PMS.Models;
 
 namespace PMS.Controllers
 {
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly PMSDbContext _context;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, PMSDbContext context)
         {
             _logger = logger;
+            _context = context;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View();
+            var today = DateTime.Now.Date;
+            
+            // Get property status distribution
+            var propertyStatusData = await _context.Properties
+                .GroupBy(p => p.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            // Get last 6 months payment data
+            var sixMonthsAgo = DateTime.Now.AddMonths(-6);
+            var monthlyPayments = await _context.Payments
+                .Where(p => p.PaymentDate >= sixMonthsAgo && p.Status == "Completed")
+                .GroupBy(p => new { p.PaymentDate.Year, p.PaymentDate.Month })
+                .Select(g => new { 
+                    Year = g.Key.Year, 
+                    Month = g.Key.Month, 
+                    Total = g.Sum(p => p.Amount) 
+                })
+                .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                .ToListAsync();
+
+            // Get payment status counts
+            var schedules = await _context.PaymentSchedules
+                .Include(s => s.Payments)
+                .ToListAsync();
+            
+            var overdue = schedules.Count(s => s.DueDate < today && 
+                (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
+            var dueThisWeek = schedules.Count(s => s.DueDate >= today && s.DueDate <= today.AddDays(7) &&
+                (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
+            var upcoming = schedules.Count(s => s.DueDate > today.AddDays(7) &&
+                (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
+            var paid = schedules.Count(s => s.Payments != null && 
+                s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) >= s.Amount);
+
+            // Get customer registration trend
+            var customerTrend = await _context.Customers
+                .Where(c => c.CreatedAt >= sixMonthsAgo)
+                .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
+                .Select(g => new { 
+                    Year = g.Key.Year, 
+                    Month = g.Key.Month, 
+                    Count = g.Count() 
+                })
+                .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                .ToListAsync();
+
+            var dashboardData = new DashboardViewModel
+            {
+                TotalCustomers = await _context.Customers.CountAsync(),
+                TotalProjects = await _context.Projects.CountAsync(),
+                TotalProperties = await _context.Properties.CountAsync(),
+                AvailableProperties = await _context.Properties.CountAsync(p => p.Status == "Available"),
+                AllottedProperties = await _context.Properties.CountAsync(p => p.Status == "Allotted"),
+                TotalPayments = await _context.Payments.AnyAsync() ? await _context.Payments.SumAsync(p => p.Amount) : 0,
+                RecentCustomers = await _context.Customers
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Take(5)
+                    .ToListAsync(),
+                RecentPayments = await _context.Payments
+                    .Include(p => p.PaymentSchedule)
+                        .ThenInclude(ps => ps.PaymentPlan)
+                    .OrderByDescending(p => p.PaymentDate)
+                    .Take(5)
+                    .ToListAsync(),
+                PendingAllotments = await _context.Allotments
+                    .Include(a => a.Customer)
+                    .Include(a => a.Property)
+                    .Where(a => a.WorkFlowStatus == "Pending")
+                    .Take(5)
+                    .ToListAsync(),
+                
+                // Chart Data
+                PropertyStatusData = propertyStatusData.ToDictionary(x => x.Status ?? "Unknown", x => x.Count),
+                MonthlyPaymentsData = monthlyPayments.ToDictionary(
+                    x => new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), 
+                    x => x.Total),
+                PaymentStatusData = new Dictionary<string, int>
+                {
+                    { "Overdue", overdue },
+                    { "Due This Week", dueThisWeek },
+                    { "Upcoming", upcoming },
+                    { "Paid", paid }
+                },
+                CustomerTrendData = customerTrend.ToDictionary(
+                    x => new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), 
+                    x => x.Count)
+            };
+
+            return View(dashboardData);
         }
 
         public IActionResult Privacy()

@@ -1,0 +1,148 @@
+===========================================================
+PROPERTY INQUIRY API - SIMPLE USAGE GUIDE
+===========================================================
+
+API ENDPOINT (GET Request)
+URL: http://172.20.229.3:8099/api/InquiryApi/Submit
+
+===========================================================
+PARAMETERS
+===========================================================
+
+REQUIRED:
+- fullName       (string)  - Customer's full name
+- phoneNumber    (string)  - Contact number
+
+OPTIONAL:
+- emailAddress   (string)  - Email address
+- type           (string)  - Inquiry type (e.g., "Residential Plot", "Commercial")
+- message        (string)  - Customer's message
+
+===========================================================
+EXAMPLE URL
+===========================================================
+
+http://172.20.229.3:8099/api/InquiryApi/Submit?fullName=John Doe&phoneNumber=+211-912-345-678&emailAddress=john@example.com&type=Residential Plot&message=I am interested in a property
+
+===========================================================
+HTML FORM EXAMPLE
+===========================================================
+
+<form action="http://172.20.229.3:8099/api/InquiryApi/Submit" method="GET">
+    <input type="text" name="fullName" placeholder="Full Name" required>
+    <input type="tel" name="phoneNumber" placeholder="Phone Number" required>
+    <input type="email" name="emailAddress" placeholder="Email Address">
+    <select name="type">
+        <option value="">Select Type</option>
+        <option value="Residential Plot">Residential Plot</option>
+        <option value="Commercial Property">Commercial Property</option>
+        <option value="General Inquiry">General Inquiry</option>
+    </select>
+    <textarea name="message" placeholder="Your Message"></textarea>
+    <button type="submit">Submit Inquiry</button>
+</form>
+
+===========================================================
+JAVASCRIPT EXAMPLE
+===========================================================
+
+<script>
+function submitInquiry() {
+    const fullName = document.getElementById('fullName').value;
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    const emailAddress = document.getElementById('emailAddress').value;
+    const type = document.getElementById('type').value;
+    const message = document.getElementById('message').value;
+    
+    const url = 'http://172.20.229.3:8099/api/InquiryApi/Submit?' +
+                'fullName=' + encodeURIComponent(fullName) +
+                '&phoneNumber=' + encodeURIComponent(phoneNumber) +
+                '&emailAddress=' + encodeURIComponent(emailAddress) +
+                '&type=' + encodeURIComponent(type) +
+                '&message=' + encodeURIComponent(message);
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+            }
+        });
+}
+</script>
+
+===========================================================
+JQUERY EXAMPLE
+===========================================================
+
+$.get('http://172.20.229.3:8099/api/InquiryApi/Submit', {
+    fullName: 'John Doe',
+    phoneNumber: '+211-912-345-678',
+    emailAddress: 'john@example.com',
+    type: 'Residential Plot',
+    message: 'I am interested in a property'
+}, function(response) {
+    if (response.success) {
+        alert(response.message);
+    }
+});
+
+===========================================================
+PHP EXAMPLE
+===========================================================
+
+<?php
+$url = 'http://172.20.229.3:8099/api/InquiryApi/Submit?' . http_build_query([
+    'fullName' => $_POST['fullName'],
+    'phoneNumber' => $_POST['phoneNumber'],
+    'emailAddress' => $_POST['emailAddress'],
+    'type' => $_POST['type'],
+    'message' => $_POST['message']
+]);
+
+$response = file_get_contents($url);
+$result = json_decode($response, true);
+
+if ($result['success']) {
+    echo $result['message'];
+}
+?>
+
+===========================================================
+RESPONSE FORMAT
+===========================================================
+
+SUCCESS:
+{
+  "success": true,
+  "message": "Thank you! Your inquiry has been submitted successfully...",
+  "inquiryId": 123
+}
+
+ERROR:
+{
+  "success": false,
+  "message": "Full name is required"
+}
+
+===========================================================
+TEST IN BROWSER
+===========================================================
+
+Simply paste this URL in your browser:
+
+http://172.20.229.3:8099/api/InquiryApi/Submit?fullName=Test User&phoneNumber=0123456789&emailAddress=test@example.com&type=Test&message=This is a test
+
+Then check: http://172.20.229.3:8099/SalesInquiry/Index
+
+===========================================================
+NOTES
+===========================================================
+
+- Automatically captures IP address and timestamp
+- Saved with Status = "New"
+- Visible in Sales Inquiry dashboard immediately
+- No authentication required (public endpoint)
+- Use URL encoding for special characters
+
+===========================================================

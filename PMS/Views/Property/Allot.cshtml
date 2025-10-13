@@ -1,0 +1,184 @@
+@{
+    ViewData["Title"] = "Allot Property";
+    var property = ViewBag.Property as PMS.Models.Property;
+}
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-hand-holding me-2"></i>Allot Property
+            </h2>
+            <a asp-action="Details" asp-route-id="@property?.PropertyID" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Property
+            </a>
+        </div>
+
+        <!-- Property Info -->
+        @if (property != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-gold) 100%);">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-home me-2"></i>Property Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <small class="text-muted">Property ID</small>
+                            <p><code>@property.PropertyID</code></p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Plot No</small>
+                            <p class="fw-bold">@property.PlotNo</p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Block</small>
+                            <p class="fw-bold">@property.Block</p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Size</small>
+                            <p class="fw-bold">@property.Size</p>
+                        </div>
+                    </div>
+                    @if (property.Project != null)
+                    {
+                        <hr>
+                        <small class="text-muted">Project</small>
+                        <p class="mb-0">
+                            <i class="fas fa-building me-2"></i>
+                            <strong>@property.Project.ProjectName</strong> - @property.Project.Location
+                        </p>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Allotment Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Allotment Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="Allot" method="post">
+                    <input type="hidden" name="propertyId" value="@property?.PropertyID" />
+
+                    <div class="mb-3">
+                        <label for="customerId" class="form-label">Select Customer *</label>
+                        <select name="customerId" id="customerId" class="form-select" required>
+                            <option value="">Select Customer</option>
+                            @if (ViewBag.Customers != null)
+                            {
+                                @foreach (var customer in ViewBag.Customers)
+                                {
+                                    <option value="@customer.CustomerID" 
+                                            data-name="@customer.FullName"
+                                            data-email="@customer.Email"
+                                            data-phone="@customer.Phone">
+                                        @customer.FullName - @customer.CustomerID
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Customer Preview -->
+                    <div id="customerPreview" class="mb-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <strong id="customerName"></strong>
+                            <br>
+                            <small><i class="fas fa-envelope me-2"></i><span id="customerEmail"></span></small>
+                            <br>
+                            <small><i class="fas fa-phone me-2"></i><span id="customerPhone"></span></small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="allotmentType" class="form-label">Allotment Type *</label>
+                        <select name="allotmentType" id="allotmentType" class="form-select" required>
+                            <option value="">Select Type</option>
+                            <option value="Direct">Direct Allotment</option>
+                            <option value="Balloting">Balloting</option>
+                            <option value="Transfer">Transfer</option>
+                            <option value="Special">Special Allotment</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Comments</label>
+                        <textarea name="comments" id="comments" class="form-control" rows="4" 
+                                  placeholder="Enter any comments or notes about this allotment"></textarea>
+                    </div>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Once allotted, the property status will be changed to "Allotted" and the workflow will be set to "Pending" approval.
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-success me-2">
+                            <i class="fas fa-check me-2"></i>Allot Property
+                        </button>
+                        <a asp-action="Details" asp-route-id="@property?.PropertyID" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    code {
+        background: var(--light-green);
+        color: var(--primary-green);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Show customer preview when selected
+            $('#customerId').on('change', function() {
+                var selectedOption = $(this).find('option:selected');
+                var name = selectedOption.data('name');
+                var email = selectedOption.data('email');
+                var phone = selectedOption.data('phone');
+                
+                if (name) {
+                    $('#customerName').text(name);
+                    $('#customerEmail').text(email || 'N/A');
+                    $('#customerPhone').text(phone || 'N/A');
+                    $('#customerPreview').slideDown();
+                } else {
+                    $('#customerPreview').slideUp();
+                }
+            });
+
+            // Form validation
+            $('form').on('submit', function(e) {
+                var customerId = $('#customerId').val();
+                var allotmentType = $('#allotmentType').val();
+                
+                if (!customerId || !allotmentType) {
+                    e.preventDefault();
+                    alert('Please select both customer and allotment type.');
+                    return false;
+                }
+                
+                return confirm('Are you sure you want to allot this property to the selected customer?');
+            });
+        });
+    </script>
+}
+

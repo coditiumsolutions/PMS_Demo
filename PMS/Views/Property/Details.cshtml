@@ -1,0 +1,473 @@
+@model PMS.Models.Property
+
+@{
+    ViewData["Title"] = "Property Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-home me-2"></i>Property Details
+    </h2>
+    <div>
+        @if (Model.Status == "Available")
+        {
+            <a asp-action="Allot" asp-route-id="@Model.PropertyID" class="btn btn-success me-2">
+                <i class="fas fa-hand-holding me-2"></i>Allot Property
+            </a>
+        }
+        <a asp-action="Edit" asp-route-id="@Model.PropertyID" class="btn btn-primary me-2">
+            <i class="fas fa-edit me-2"></i>Edit
+        </a>
+        <a asp-action="Index" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-2"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Property Information -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-building me-2"></i>Property Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-id-badge me-2"></i>Property ID</label>
+                            <p><code>@Model.PropertyID</code></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-toggle-on me-2"></i>Status</label>
+                            <p>
+                                <span class="badge @(Model.Status == "Available" ? "bg-success" : Model.Status == "Allotted" ? "bg-warning" : "bg-danger")">
+                                    @Model.Status
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-map-marker-alt me-2"></i>Plot No</label>
+                            <p>@Model.PlotNo</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-road me-2"></i>Street</label>
+                            <p>@(Model.Street ?? "N/A")</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-th-large me-2"></i>Block</label>
+                            <p>@Model.Block</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-tag me-2"></i>Plot Type</label>
+                            <p>@Model.PlotType</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-home me-2"></i>Property Type</label>
+                            <p>@Model.PropertyType</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-ruler-combined me-2"></i>Size</label>
+                            <p>@Model.Size</p>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.AdditionalInfo))
+                    {
+                        <div class="col-md-12 mb-3">
+                            <div class="detail-field">
+                                <label><i class="fas fa-info-circle me-2"></i>Additional Information</label>
+                                <p>@Model.AdditionalInfo</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Allotments -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Allotment History
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Allotments != null && Model.Allotments.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Allotment ID</th>
+                                    <th>Customer</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var allotment in Model.Allotments.OrderByDescending(a => a.AllotmentDate))
+                                {
+                                    <tr>
+                                        <td><code>@allotment.AllotmentID</code></td>
+                                        <td>
+                                            @if (allotment.Customer != null)
+                                            {
+                                                <strong>@allotment.Customer.FullName</strong>
+                                                <br>
+                                                <small class="text-muted">@allotment.Customer.CustomerID</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/A</span>
+                                            }
+                                        </td>
+                                        <td>@allotment.AllottmentType</td>
+                                        <td>@allotment.AllotmentDate.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            <span class="badge bg-primary">@allotment.WorkFlowStatus</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                        <p>No allotments found for this property.</p>
+                        @if (Model.Status == "Available")
+                        {
+                            <a asp-action="Allot" asp-route-id="@Model.PropertyID" class="btn btn-success">
+                                <i class="fas fa-hand-holding me-2"></i>Allot Property
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Possessions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-key me-2"></i>Possession History
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Possessions != null && Model.Possessions.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Possession ID</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var possession in Model.Possessions.OrderByDescending(p => p.PossessionDate))
+                                {
+                                    <tr>
+                                        <td><code>@possession.PossessionID</code></td>
+                                        <td>
+                                            @if (possession.Customer != null)
+                                            {
+                                                <strong>@possession.Customer.FullName</strong>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/A</span>
+                                            }
+                                        </td>
+                                        <td>@possession.PossessionDate.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            <span class="badge bg-success">@possession.WorkFlowStatus</span>
+                                        </td>
+                                        <td>@(possession.Remarks ?? "N/A")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                        <p>No possession records found.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Transfers -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-exchange-alt me-2"></i>Transfer History
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Transfers != null && Model.Transfers.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>From Customer</th>
+                                    <th>To Customer</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transfer in Model.Transfers.OrderByDescending(t => t.CreatedAt))
+                                {
+                                    <tr>
+                                        <td><code>@transfer.TransferID</code></td>
+                                        <td>
+                                            @if (transfer.FromCustomer != null)
+                                            {
+                                                <span>@transfer.FromCustomer.FullName</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/A</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (transfer.ToCustomer != null)
+                                            {
+                                                <span>@transfer.ToCustomer.FullName</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/A</span>
+                                            }
+                                        </td>
+                                        <td>@transfer.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            <span class="badge @(transfer.Status == "Approved" ? "bg-success" : "bg-warning")">
+                                                @transfer.Status
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                        <p>No transfer records found.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Stats -->
+        <div class="card mb-4 stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-check fa-3x mb-3" style="color: var(--primary-green);"></i>
+                <h6 class="text-muted mb-2">Created On</h6>
+                <h4 class="mb-0">@Model.CreatedAt.ToString("MMMM dd, yyyy")</h4>
+                <small class="text-muted">@((DateTime.Now - Model.CreatedAt).Days) days ago</small>
+            </div>
+        </div>
+
+        <!-- Project Info -->
+        @if (Model.Project != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>Project
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="detail-field mb-3">
+                        <label><i class="fas fa-tag me-2"></i>Project Name</label>
+                        <p>@Model.Project.ProjectName</p>
+                    </div>
+                    <div class="detail-field mb-3">
+                        <label><i class="fas fa-building me-2"></i>Type</label>
+                        <p>@Model.Project.Type</p>
+                    </div>
+                    <div class="detail-field mb-3">
+                        <label><i class="fas fa-map-marker-alt me-2"></i>Location</label>
+                        <p>@Model.Project.Location</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Project.Description))
+                    {
+                        <div class="detail-field">
+                            <label><i class="fas fa-info-circle me-2"></i>Description</label>
+                            <p>@Model.Project.Description</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Property Stats -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Property Statistics
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="stat-item">
+                    <i class="fas fa-users text-primary"></i>
+                    <span class="stat-label">Total Allotments:</span>
+                    <strong>@(Model.Allotments?.Count ?? 0)</strong>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-key text-success"></i>
+                    <span class="stat-label">Possessions:</span>
+                    <strong>@(Model.Possessions?.Count ?? 0)</strong>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-exchange-alt text-warning"></i>
+                    <span class="stat-label">Transfers:</span>
+                    <strong>@(Model.Transfers?.Count ?? 0)</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Owner -->
+        @if (Model.Allotments != null && Model.Allotments.Any())
+        {
+            var currentAllotment = Model.Allotments.OrderByDescending(a => a.AllotmentDate).FirstOrDefault();
+            if (currentAllotment?.Customer != null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-user me-2"></i>Current Owner
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-user-circle fa-4x" style="color: var(--primary-green);"></i>
+                        </div>
+                        <div class="detail-field mb-3">
+                            <label><i class="fas fa-user me-2"></i>Name</label>
+                            <p>@currentAllotment.Customer.FullName</p>
+                        </div>
+                        <div class="detail-field mb-3">
+                            <label><i class="fas fa-id-card me-2"></i>Customer ID</label>
+                            <p><code>@currentAllotment.Customer.CustomerID</code></p>
+                        </div>
+                        <div class="detail-field mb-3">
+                            <label><i class="fas fa-phone me-2"></i>Phone</label>
+                            <p>@currentAllotment.Customer.Phone</p>
+                        </div>
+                        <a asp-controller="Customer" asp-action="Details" asp-route-id="@currentAllotment.Customer.CustomerID" 
+                           class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fas fa-eye me-2"></i>View Customer Details
+                        </a>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .detail-field {
+        padding: 12px;
+        background: linear-gradient(135deg, #f8f9fa 0%, var(--gold-tint) 100%);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .detail-field:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(11, 148, 68, 0.1);
+    }
+
+    .detail-field label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #666;
+        font-weight: 600;
+    }
+
+    .detail-field p {
+        font-size: 15px;
+        color: var(--text-dark);
+        margin-bottom: 0;
+        font-weight: 500;
+    }
+
+    code {
+        background: var(--light-green);
+        color: var(--primary-green);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .stats-card {
+        background: linear-gradient(135deg, var(--bg-white) 0%, var(--gold-tint) 100%);
+        border: 2px solid var(--accent-gold);
+    }
+
+    .stat-item {
+        padding: 12px;
+        background: var(--light-green);
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .stat-item i {
+        font-size: 20px;
+    }
+
+    .stat-label {
+        flex: 1;
+        font-size: 14px;
+        color: var(--text-dark);
+    }
+
+    .stat-item strong {
+        color: var(--primary-green);
+        font-size: 18px;
+    }
+</style>
+

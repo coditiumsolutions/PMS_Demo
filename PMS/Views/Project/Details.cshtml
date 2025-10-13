@@ -1,0 +1,160 @@
+@model PMS.Models.Project
+
+@{
+    ViewData["Title"] = "Project Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-building me-2"></i>Project Details</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.ProjectID" class="btn btn-outline-primary me-2">
+            <i class="fas fa-edit me-2"></i>Edit Project
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Project Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Project ID:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-secondary">@Model.ProjectID</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Project Name:</dt>
+                            <dd class="col-sm-8">
+                                <strong>@Model.ProjectName</strong>
+                            </dd>
+
+                            <dt class="col-sm-4">Type:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-info">@Model.Type</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Location:</dt>
+                            <dd class="col-sm-8">@Model.Location</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Created Date:</dt>
+                            <dd class="col-sm-8">@Model.CreatedAt.ToString("MMM dd, yyyy")</dd>
+
+                            <dt class="col-sm-4">Total Properties:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-success">@(Model.Properties?.Count ?? 0) Properties</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Payment Plans:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-primary">@(Model.PaymentPlans?.Count ?? 0) Plans</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Balloting Records:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-warning">@(Model.Ballotings?.Count ?? 0) Ballotings</span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <hr>
+                    <h6>Description:</h6>
+                    <p class="text-muted">@Model.Description</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="@Url.Action("Create", "Property", new { projectId = Model.ProjectID })" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus me-2"></i>Add Property
+                    </a>
+                    <a href="@Url.Action("Index", "Property", new { projectId = Model.ProjectID })" class="btn btn-info btn-sm">
+                        <i class="fas fa-home me-2"></i>View Properties
+                    </a>
+                    <a href="@Url.Action("ConductBalloting", "Project", new { id = Model.ProjectID })" class="btn btn-warning btn-sm">
+                        <i class="fas fa-vote-yea me-2"></i>Conduct Balloting
+                    </a>
+                    <a href="@Url.Action("Create", "PaymentPlan", new { projectId = Model.ProjectID })" class="btn btn-primary btn-sm">
+                        <i class="fas fa-credit-card me-2"></i>Create Payment Plan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Properties?.Any() == true)
+{
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Properties in this Project</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Property ID</th>
+                                    <th>Plot No</th>
+                                    <th>Block</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var property in Model.Properties.Take(10))
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-secondary">@property.PropertyID</span>
+                                        </td>
+                                        <td>@property.PlotNo</td>
+                                        <td>@property.Block</td>
+                                        <td>@property.PropertyType</td>
+                                        <td>@property.Size</td>
+                                        <td>
+                                            <span class="badge @(property.Status == "Available" ? "bg-success" : "bg-primary")">
+                                                @property.Status
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        @if (Model.Properties.Count > 10)
+                        {
+                            <div class="text-center">
+                                <a href="@Url.Action("Index", "Property", new { projectId = Model.ProjectID })" class="btn btn-outline-primary btn-sm">
+                                    View All @Model.Properties.Count Properties
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,250 @@
+@model IEnumerable<PMS.Models.PaymentPlan>
+
+@{
+    ViewData["Title"] = "Payment Plans (Batches)";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plans (Batches)
+    </h2>
+    <a asp-action="CreatePaymentPlan" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create New Plan
+    </a>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@Model.Count()</div>
+            <div class="stats-label">Total Plans</div>
+            <i class="fas fa-clipboard-list fa-2x mt-2" style="color: var(--primary-green);"></i>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@Model.Sum(p => p.Customers?.Count ?? 0)</div>
+            <div class="stats-label">Total Customers</div>
+            <i class="fas fa-users fa-2x mt-2" style="color: var(--primary-green);"></i>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number" data-format-number="@Model.Sum(p => p.TotalAmount)">@Model.Sum(p => p.TotalAmount).ToString("N0")</div>
+            <div class="stats-label">Total Value (SSP)</div>
+            <i class="fas fa-money-bill-wave fa-2x mt-2" style="color: var(--accent-gold);"></i>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@Model.Sum(p => p.PaymentSchedules?.Count ?? 0)</div>
+            <div class="stats-label">Total Schedules</div>
+            <i class="fas fa-calendar-alt fa-2x mt-2" style="color: var(--primary-green);"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Plans Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>All Payment Plans
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="plansTable">
+                <thead>
+                    <tr>
+                        <th>Plan ID</th>
+                        <th>Plan Name</th>
+                        <th>Project</th>
+                        <th>Total Amount</th>
+                        <th>Duration</th>
+                        <th>Frequency</th>
+                        <th>Customers</th>
+                        <th>Schedules</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plan in Model.OrderBy(p => p.PlanName))
+                    {
+                        <tr>
+                            <td><code>@plan.PlanID</code></td>
+                            <td>
+                                <strong>@plan.PlanName</strong>
+                                @if (!string.IsNullOrEmpty(plan.Description))
+                                {
+                                    <br><small class="text-muted">@(plan.Description.Length > 50 ? plan.Description.Substring(0, 50) + "..." : plan.Description)</small>
+                                }
+                            </td>
+                            <td>
+                                @if (plan.Project != null)
+                                {
+                                    <span class="badge bg-info">@plan.Project.ProjectName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                <strong style="color: var(--primary-green);">
+                                    <span data-format-number="@plan.TotalAmount">@plan.TotalAmount.ToString("N0")</span> SSP
+                                </strong>
+                            </td>
+                            <td>
+                                <i class="far fa-calendar me-1"></i>
+                                @plan.DurationMonths Months
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">@plan.Frequency</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-users me-1"></i>
+                                    @(plan.Customers?.Count ?? 0)
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge @(plan.PaymentSchedules?.Any() == true ? "bg-success" : "bg-warning")">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    @(plan.PaymentSchedules?.Count ?? 0)
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a asp-action="PaymentSchedule" asp-route-planId="@plan.PlanID" 
+                                       class="btn btn-sm btn-outline-primary" title="View Schedules">
+                                        <i class="fas fa-calendar-check"></i>
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-info" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#planModal@(plan.PlanID)"
+                                            title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Plan Details Modal -->
+                        <div class="modal fade" id="planModal@(plan.PlanID)" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-gold) 100%);">
+                                        <h5 class="modal-title text-white">
+                                            <i class="fas fa-file-invoice-dollar me-2"></i>@plan.PlanName
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Plan ID</label>
+                                                <p><code>@plan.PlanID</code></p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Created Date</label>
+                                                <p>@plan.CreatedAt.ToString("MMM dd, yyyy")</p>
+                                            </div>
+                                            <div class="col-12 mb-3">
+                                                <label class="text-muted small">Plan Name</label>
+                                                <p><strong>@plan.PlanName</strong></p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Total Amount</label>
+                                                <p><strong style="color: var(--primary-green);">@plan.TotalAmount.ToString("N2") SSP</strong></p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Duration</label>
+                                                <p>@plan.DurationMonths Months</p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Frequency</label>
+                                                <p>@plan.Frequency</p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Project</label>
+                                                <p>@(plan.Project?.ProjectName ?? "N/A")</p>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(plan.Description))
+                                            {
+                                                <div class="col-12 mb-3">
+                                                    <label class="text-muted small">Description</label>
+                                                    <p>@plan.Description</p>
+                                                </div>
+                                            }
+                                            <div class="col-12">
+                                                <label class="text-muted small">Statistics</label>
+                                                <div class="row">
+                                                    <div class="col-4 text-center">
+                                                        <div class="p-3 bg-light rounded">
+                                                            <h4 class="mb-1" style="color: var(--primary-green);">@(plan.Customers?.Count ?? 0)</h4>
+                                                            <small class="text-muted">Customers</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-4 text-center">
+                                                        <div class="p-3 bg-light rounded">
+                                                            <h4 class="mb-1" style="color: var(--primary-green);">@(plan.PaymentSchedules?.Count ?? 0)</h4>
+                                                            <small class="text-muted">Schedules</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-4 text-center">
+                                                        <div class="p-3 bg-light rounded">
+                                                            @{
+                                                                var scheduleCount = plan.PaymentSchedules?.Count ?? 0;
+                                                                var avgAmount = scheduleCount > 0 ? (plan.TotalAmount / scheduleCount) : 0;
+                                                            }
+                                                            <h4 class="mb-1" style="color: var(--accent-gold);">@avgAmount.ToString("N0")</h4>
+                                                            <small class="text-muted">Avg/Install</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <a asp-action="PaymentSchedule" asp-route-planId="@plan.PlanID" class="btn btn-primary">
+                                            <i class="fas fa-calendar-check me-2"></i>View Schedules
+                                        </a>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    code {
+        background: var(--light-green);
+        color: var(--primary-green);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#plansTable').DataTable({
+                "pageLength": 25,
+                "order": [[ 1, "asc" ]],
+                "columnDefs": [
+                    { "orderable": false, "targets": 8 }
+                ]
+            });
+        });
+    </script>
+}
+

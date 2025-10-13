@@ -1,0 +1,248 @@
+@model PMS.Models.User
+
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i>
+                    User Profile
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="row mb-4">
+                    <div class="col-md-12 text-center mb-4">
+                        <div class="profile-icon mb-3">
+                            <i class="fas fa-user-circle" style="font-size: 100px; color: var(--primary-green);"></i>
+                        </div>
+                        <h3 class="mb-1">@Model.FullName</h3>
+                        <p class="text-muted">@Model.Role?.RoleName</p>
+                        <span class="badge @(Model.IsActive ? "bg-success" : "bg-danger")">
+                            @(Model.IsActive ? "Active" : "Inactive")
+                        </span>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="profile-field">
+                            <label class="text-muted small">
+                                <i class="fas fa-id-card me-2"></i>User ID
+                            </label>
+                            <p class="fw-bold mb-0">@Model.UserID</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="profile-field">
+                            <label class="text-muted small">
+                                <i class="fas fa-envelope me-2"></i>Email Address
+                            </label>
+                            <p class="fw-bold mb-0">@Model.Email</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="profile-field">
+                            <label class="text-muted small">
+                                <i class="fas fa-user-tag me-2"></i>Role
+                            </label>
+                            <p class="fw-bold mb-0">@Model.Role?.RoleName</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="profile-field">
+                            <label class="text-muted small">
+                                <i class="fas fa-calendar-alt me-2"></i>Member Since
+                            </label>
+                            <p class="fw-bold mb-0">@Model.CreatedAt.ToString("MMMM dd, yyyy")</p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">
+                            <i class="fas fa-shield-alt me-2"></i>Role Permissions
+                        </h5>
+                        @if (!string.IsNullOrEmpty(Model.Role?.Permissions))
+                        {
+                            <div class="permissions-list">
+                                @foreach (var permission in Model.Role.Permissions.Split(','))
+                                {
+                                    <span class="badge bg-primary me-2 mb-2">
+                                        <i class="fas fa-check-circle me-1"></i>@permission.Trim()
+                                    </span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No specific permissions assigned.</p>
+                        }
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row">
+                    <div class="col-md-12 text-center">
+                        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                        <button type="button" class="btn btn-primary" onclick="alert('Change password feature coming soon!')">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (Model.ActivityLogs != null && Model.ActivityLogs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Action</th>
+                                    <th>Type</th>
+                                    <th>Reference ID</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in Model.ActivityLogs.OrderByDescending(l => l.CreatedAt).Take(10))
+                                {
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-circle-notch me-2" style="font-size: 8px;"></i>
+                                            @log.Action
+                                        </td>
+                                        <td>@log.RefType</td>
+                                        <td><code>@log.RefID</code></td>
+                                        <td class="text-muted small">@log.CreatedAt.ToString("MMM dd, yyyy hh:mm tt")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                        <p>No recent activity to display.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="card mt-4 mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-desktop me-2"></i>
+                    Active Sessions
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (Model.UserSessions != null && Model.UserSessions.Any(s => s.LogoutTime == null))
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Session ID</th>
+                                    <th>Login Time</th>
+                                    <th>IP Address</th>
+                                    <th>Device</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var session in Model.UserSessions.Where(s => s.LogoutTime == null).OrderByDescending(s => s.LoginTime))
+                                {
+                                    <tr>
+                                        <td><code>@session.SessionID</code></td>
+                                        <td>@session.LoginTime.ToString("MMM dd, yyyy hh:mm tt")</td>
+                                        <td>@session.IPAddress</td>
+                                        <td class="small">@(session.DeviceInfo?.Length > 50 ? session.DeviceInfo.Substring(0, 50) + "..." : session.DeviceInfo)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-power-off fa-3x mb-3 d-block"></i>
+                        <p>No active sessions.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-field {
+        padding: 15px;
+        background: linear-gradient(135deg, #f8f9fa 0%, var(--gold-tint) 100%);
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .profile-field:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(11, 148, 68, 0.1);
+    }
+
+    .profile-field label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .profile-field p {
+        font-size: 16px;
+        color: var(--text-dark);
+    }
+
+    .permissions-list {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .profile-icon i {
+        text-shadow: 2px 2px 4px rgba(11, 148, 68, 0.2);
+    }
+
+    code {
+        background: var(--light-green);
+        color: var(--primary-green);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+</style>
+

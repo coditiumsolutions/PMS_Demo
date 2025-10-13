@@ -1,0 +1,287 @@
+@model IEnumerable<PMS.Models.Configuration>
+
+@{
+    ViewData["Title"] = "Configuration Settings";
+    var categories = Model.GroupBy(c => c.Category ?? "General").OrderBy(g => g.Key);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-cogs me-2"></i>System Configuration
+    </h2>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+        <i class="fas fa-plus me-2"></i>Add Configuration
+    </button>
+</div>
+
+<!-- Configuration Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@Model.Count()</div>
+            <div class="stats-label">Total Configs</div>
+            <i class="fas fa-list fa-2x mt-2" style="color: var(--primary);"></i>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@categories.Count()</div>
+            <div class="stats-label">Categories</div>
+            <i class="fas fa-folder fa-2x mt-2" style="color: var(--primary);"></i>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@Model.Count(c => c.Category == "Cities")</div>
+            <div class="stats-label">Cities</div>
+            <i class="fas fa-city fa-2x mt-2" style="color: var(--primary);"></i>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">@Model.Count(c => c.Category == "Countries")</div>
+            <div class="stats-label">Countries</div>
+            <i class="fas fa-globe fa-2x mt-2" style="color: var(--primary);"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration by Category -->
+@foreach (var categoryGroup in categories)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="fas fa-folder-open me-2"></i>@categoryGroup.Key
+                <span class="badge bg-primary ms-2">@categoryGroup.Count()</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="25%">Key</th>
+                            <th width="35%">Value</th>
+                            <th width="25%">Description</th>
+                            <th width="10%">Updated</th>
+                            <th width="5%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var config in categoryGroup.OrderBy(c => c.ConfigKey))
+                        {
+                            <tr>
+                                <td>
+                                    <code>@config.ConfigKey</code>
+                                </td>
+                                <td>
+                                    <strong>@config.ConfigValue</strong>
+                                </td>
+                                <td>
+                                    <small class="text-muted">@(config.Description ?? "N/A")</small>
+                                </td>
+                                <td>
+                                    @if (config.UpdatedAt.HasValue)
+                                    {
+                                        <small class="text-muted">@config.UpdatedAt.Value.ToString("MMM dd, yyyy")</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">-</small>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editModal@(config.ConfigKey.Replace(" ", ""))"
+                                                title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteConfig('@config.ConfigKey')"
+                                                title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Modal -->
+                            <div class="modal fade" id="editModal@(config.ConfigKey.Replace(" ", ""))" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header" style="background: var(--primary);">
+                                            <h6 class="modal-title text-white">
+                                                <i class="fas fa-edit me-2"></i>Edit Configuration
+                                            </h6>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form asp-action="Edit" method="post">
+                                            <div class="modal-body">
+                                                <input type="hidden" name="ConfigKey" value="@config.ConfigKey" />
+                                                <input type="hidden" name="CreatedAt" value="@config.CreatedAt" />
+
+                                                <div class="mb-3">
+                                                    <label class="form-label">Configuration Key</label>
+                                                    <input type="text" class="form-control" value="@config.ConfigKey" disabled />
+                                                    <small class="text-muted">Key cannot be changed</small>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="Category" class="form-label">Category</label>
+                                                    <select name="Category" class="form-select">
+                                                        <option value="">Select Category</option>
+                                                        <option value="Years" selected="@(config.Category == "Years")">Years</option>
+                                                        <option value="Cities" selected="@(config.Category == "Cities")">Cities</option>
+                                                        <option value="Countries" selected="@(config.Category == "Countries")">Countries</option>
+                                                        <option value="Blocks" selected="@(config.Category == "Blocks")">Blocks</option>
+                                                        <option value="PropertyTypes" selected="@(config.Category == "PropertyTypes")">Property Types</option>
+                                                        <option value="ProjectTypes" selected="@(config.Category == "ProjectTypes")">Project Types</option>
+                                                        <option value="PaymentMethods" selected="@(config.Category == "PaymentMethods")">Payment Methods</option>
+                                                        <option value="Sizes" selected="@(config.Category == "Sizes")">Sizes</option>
+                                                        <option value="General" selected="@(config.Category == "General")">General</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="ConfigValue" class="form-label">Value *</label>
+                                                    <textarea name="ConfigValue" class="form-control" rows="3" required>@config.ConfigValue</textarea>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="Description" class="form-label">Description</label>
+                                                    <input type="text" name="Description" class="form-control" value="@config.Description" />
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-save me-2"></i>Save Changes
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-cogs fa-4x mb-3 text-muted"></i>
+            <h5 class="text-muted">No Configurations Found</h5>
+            <p class="text-muted">Add system configuration settings to get started.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+                <i class="fas fa-plus me-2"></i>Add First Configuration
+            </button>
+        </div>
+    </div>
+}
+
+<!-- Add Configuration Modal -->
+<div class="modal fade" id="addConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--primary);">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-plus me-2"></i>Add Configuration
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="ConfigKey" class="form-label">Configuration Key *</label>
+                        <input type="text" name="ConfigKey" id="ConfigKey" class="form-control" 
+                               placeholder="e.g., city_juba" required />
+                        <small class="text-muted">Use lowercase with underscores (e.g., city_juba)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Category" class="form-label">Category *</label>
+                        <select name="Category" id="Category" class="form-select" required>
+                            <option value="">Select Category</option>
+                            <option value="Years">Years</option>
+                            <option value="Cities">Cities</option>
+                            <option value="Countries">Countries</option>
+                            <option value="Blocks">Blocks</option>
+                            <option value="PropertyTypes">Property Types</option>
+                            <option value="ProjectTypes">Project Types</option>
+                            <option value="PaymentMethods">Payment Methods</option>
+                            <option value="Sizes">Property Sizes</option>
+                            <option value="Status">Status Options</option>
+                            <option value="General">General</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ConfigValue" class="form-label">Value *</label>
+                        <textarea name="ConfigValue" id="ConfigValue" class="form-control" rows="3" 
+                                  placeholder="Enter configuration value" required></textarea>
+                        <small class="text-muted">For multiple values, separate with commas</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Description" class="form-label">Description</label>
+                        <input type="text" name="Description" id="Description" class="form-control" 
+                               placeholder="Optional description" />
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Common Examples:</strong><br>
+                        • Cities: Juba, Wau, Malakal<br>
+                        • Countries: South Sudan<br>
+                        • Years: 2024, 2025, 2026<br>
+                        • Property Types: Residential, Commercial
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Add Configuration
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Form (Hidden) -->
+<form id="deleteForm" asp-action="Delete" method="post" style="display: none;">
+    <input type="hidden" id="deleteConfigKey" name="id" />
+</form>
+
+<style>
+    code {
+        background: rgba(156, 106, 222, 0.1);
+        color: var(--primary);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function deleteConfig(configKey) {
+            if (confirm('Are you sure you want to delete this configuration?\n\nKey: ' + configKey)) {
+                document.getElementById('deleteConfigKey').value = configKey;
+                document.getElementById('deleteForm').submit();
+            }
+        }
+    </script>
+}
+
