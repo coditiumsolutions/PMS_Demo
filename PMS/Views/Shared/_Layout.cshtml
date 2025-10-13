@@ -946,7 +946,7 @@
                         </li>
                         
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() != "Schedules" ? "active" : "")" 
+                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && (ViewContext.RouteData.Values["Action"]?.ToString() == "PaymentPlans" || ViewContext.RouteData.Values["Action"]?.ToString() == "CreatePaymentPlan") ? "active" : "")" 
                                asp-controller="Payment" asp-action="PaymentPlans">
                                 <i class="fas fa-file-invoice-dollar"></i>
                                 Payment Plans

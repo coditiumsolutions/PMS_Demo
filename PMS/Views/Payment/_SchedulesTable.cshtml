@@ -148,7 +148,7 @@
                     </tr>
 
                     <!-- Detail Modal -->
-                    <div class="modal fade" id="detailModal@(schedule.ScheduleID)" tabindex="-1">
+                    <div class="modal fade" id="detailModal@(schedule.ScheduleID)" tabindex="-1" data-bs-backdrop="false">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header" style="background: var(--primary-green);">
@@ -253,6 +253,21 @@
         border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
+    }
+
+    /* Payment Schedule Modals - No Backdrop */
+    .modal[data-bs-backdrop="false"] {
+        background: transparent !important;
+    }
+
+    .modal[data-bs-backdrop="false"] .modal-dialog {
+        position: relative;
+        z-index: 1055;
+    }
+
+    .modal[data-bs-backdrop="false"] .modal-content {
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        border: none;
     }
 </style>
 
