@@ -41,7 +41,7 @@ CREATE TABLE UserSessions (
 -- REGISTRATION & CUSTOMERS
 -- ===========================================================
 CREATE TABLE Registration (
-    RegID CHAR(10) PRIMARY KEY,
+    RegID NVARCHAR(10) PRIMARY KEY,  -- Note: Using NVARCHAR for consistency
     FullName NVARCHAR(150),
     CNIC NVARCHAR(50),
     Phone NVARCHAR(50),
@@ -76,7 +76,7 @@ CREATE TABLE PaymentSchedule (
 
 CREATE TABLE Customers (
     CustomerID CHAR(10) PRIMARY KEY,
-    RegID CHAR(10) FOREIGN KEY REFERENCES Registration(RegID),
+    RegID NVARCHAR(10) NULL FOREIGN KEY REFERENCES Registration(RegID) ON DELETE SET NULL, -- NULLABLE: Customer can be created with or without registration
     PlanID CHAR(10) FOREIGN KEY REFERENCES PaymentPlan(PlanID),
 
     -- Personal Info
@@ -298,6 +298,27 @@ CREATE TABLE Configuration (
     UpdatedBy CHAR(10) NULL
 );
 GO
+
+
+-- ===========================================================
+-- Sales inuiry via website form
+-- ===========================================================
+ CREATE TABLE PropertyInquiry (
+     InquiryID INT IDENTITY(1,1) PRIMARY KEY,
+     FullName NVARCHAR(150) NOT NULL,
+     PhoneNumber NVARCHAR(50) NOT NULL,
+     EmailAddress NVARCHAR(150),
+     InquiryType NVARCHAR(100),
+     Message NVARCHAR(MAX),
+     SubmittedAt DATETIME DEFAULT GETDATE(),
+     IPAddress NVARCHAR(50),
+     Status NVARCHAR(50) DEFAULT 'New',
+     AssignedTo NVARCHAR(100),
+     FollowUpDate DATETIME NULL,
+     Notes NVARCHAR(MAX),
+     IsContacted BIT DEFAULT 0,
+     CreatedAt DATETIME DEFAULT GETDATE()
+ );
 
 -- Add foreign key constraint separately (after table creation)
 ALTER TABLE Configuration

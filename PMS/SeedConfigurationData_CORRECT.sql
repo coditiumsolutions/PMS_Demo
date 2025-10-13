@@ -1,0 +1,107 @@
+-- ============================================
+-- SEED CONFIGURATION DATA (CORRECT PATTERN)
+-- Key-Value Dictionary: 1 Row Per Category
+-- ConfigValue contains comma-separated values
+-- ============================================
+
+USE PMS;
+GO
+
+PRINT '=== SEEDING CONFIGURATION DATA (KEY-VALUE PATTERN) ==='
+
+-- ============================================
+-- Insert Configurations (1 row per category)
+-- ============================================
+
+INSERT INTO Configuration (ConfigKey, Category, ConfigValue, Description, CreatedAt)
+VALUES
+    -- Years (2020-2035)
+    ('years', 'Years', '2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030,2031,2032,2033,2034,2035', 
+     'Available years for date selections', GETDATE()),
+    
+    -- Cities (South Sudan)
+    ('cities', 'Cities', 'Juba,Wau,Malakal,Yei,Bor,Torit,Yambio,Rumbek,Aweil,Bentiu', 
+     'South Sudan cities', GETDATE()),
+    
+    -- Countries
+    ('countries', 'Countries', 'South Sudan,Sudan,Uganda,Kenya,Ethiopia,Egypt', 
+     'Countries list', GETDATE()),
+    
+    -- Property Sizes
+    ('sizes', 'Sizes', '5 Marla,7 Marla,10 Marla,1 Kanal,2 Kanal,250 sq meters,500 sq meters,1000 sq meters,1500 sq meters,2000 sq meters', 
+     'Property sizes available', GETDATE()),
+    
+    -- Blocks
+    ('blocks', 'Blocks', 'A,B,C,D,E,F,G,H,I,J,K,L', 
+     'Property block identifiers', GETDATE()),
+    
+    -- Property Types
+    ('propertytypes', 'PropertyTypes', 'Residential,Commercial,Industrial,Mixed-Use,Agricultural', 
+     'Types of properties', GETDATE()),
+    
+    -- Project Types
+    ('projecttypes', 'ProjectTypes', 'Housing,Commercial Complex,Mixed-Use Development,Gated Community,Smart City', 
+     'Types of projects', GETDATE()),
+    
+    -- Payment Methods
+    ('paymentmethods', 'PaymentMethods', 'Cash,Bank Transfer,Cheque,Online Payment,Mobile Money', 
+     'Available payment methods', GETDATE()),
+    
+    -- Plot Types
+    ('plottypes', 'PlotTypes', 'Corner,Park Facing,Main Road,Inner Plot,Commercial Boulevard', 
+     'Types of plot locations', GETDATE()),
+    
+    -- Customer Status
+    ('customerstatus', 'Status', 'Active,Inactive,Suspended,Cancelled', 
+     'Customer status options', GETDATE()),
+    
+    -- Property Status
+    ('propertystatus', 'PropertyStatus', 'Available,Allotted,Reserved,Blocked', 
+     'Property status options', GETDATE()),
+    
+    -- Workflow Status
+    ('workflowstatus', 'WorkflowStatus', 'Pending,Pending Approval,Approved,Rejected,Completed,Cancelled', 
+     'Workflow status options', GETDATE()),
+    
+    -- Payment Status
+    ('paymentstatus', 'PaymentStatus', 'Pending,Completed,Failed,Refunded,Cancelled', 
+     'Payment status options', GETDATE()),
+    
+    -- Nominee Relations
+    ('nomineerelations', 'NomineeRelations', 'Father,Mother,Son,Daughter,Spouse,Brother,Sister,Other', 
+     'Nominee relationship options', GETDATE()),
+    
+    -- Allotment Types
+    ('allotmenttypes', 'AllotmentTypes', 'Regular,Transfer,Balloting,Special', 
+     'Types of allotments', GETDATE()),
+    
+    -- Sub Projects
+    ('subprojects', 'SubProjects', 'Phase 1,Phase 2,Phase 3,Block A Extension,Block B Extension,Commercial Zone,Residential Zone', 
+     'Sub-project names within main projects', GETDATE());
+
+GO
+
+-- ============================================
+-- VERIFY DATA
+-- ============================================
+PRINT ''
+PRINT '=== CONFIGURATION DATA SEEDED SUCCESSFULLY ==='
+PRINT ''
+
+SELECT 
+    ConfigKey,
+    Category,
+    LEFT(ConfigValue, 60) + '...' as ConfigValue_Preview,
+    Description
+FROM Configuration
+ORDER BY Category, ConfigKey;
+
+PRINT ''
+PRINT 'Total Configuration Rows: ' + CAST((SELECT COUNT(*) FROM Configuration) AS VARCHAR);
+PRINT ''
+PRINT '=== USAGE EXAMPLE IN CODE ==='
+PRINT 'var cities = configValue.Split('','').ToList();'
+PRINT 'foreach (var city in cities) { <option>@city</option> }'
+
+GO
+

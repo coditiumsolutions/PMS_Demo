@@ -4,10 +4,19 @@
     ViewData["Title"] = "Customer Details";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-        <i class="fas fa-user me-2"></i>Customer Details
-    </h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center gap-4">
+        <!-- <h2 class="mb-0">
+            <i class="fas fa-user me-2"></i>Customer Details
+        </h2> -->
+        <div class="d-flex align-items-center gap-3 ms-4">
+            <div class="badge bg-light text-dark px-3 py-2" style="font-size: 14px;">
+                <i class="fas fa-calendar-check me-2" style="color: #6f42c1;"></i>
+                <strong>Member Since:</strong> @Model.CreatedAt.ToString("MMMM yyyy")
+                <span class="text-muted ms-2">(@((DateTime.Now - Model.CreatedAt).Days) days)</span>
+            </div>
+        </div>
+    </div>
     <div>
         <a asp-action="Edit" asp-route-id="@Model.CustomerID" class="btn btn-primary me-2">
             <i class="fas fa-edit me-2"></i>Edit
@@ -19,23 +28,55 @@
 </div>
 
 <div class="row">
-    <!-- Personal Information -->
-    <div class="col-lg-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-user-circle me-2"></i>Personal Information
-                </h5>
+    <!-- Main Content with Tabs -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header p-0">
+                <ul class="nav nav-tabs customer-tabs" id="customerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                            <i class="fas fa-user-circle me-2"></i>Personal Info
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact" type="button" role="tab" aria-controls="contact" aria-selected="false">
+                            <i class="fas fa-address-book me-2"></i>Contact Info
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="nominee-tab" data-bs-toggle="tab" data-bs-target="#nominee" type="button" role="tab" aria-controls="nominee" aria-selected="false">
+                            <i class="fas fa-user-shield me-2"></i>Nominee
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="registration-tab" data-bs-toggle="tab" data-bs-target="#registration" type="button" role="tab" aria-controls="registration" aria-selected="false">
+                            <i class="fas fa-file-contract me-2"></i>Registration & Plan
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="allotments-tab" data-bs-toggle="tab" data-bs-target="#allotments" type="button" role="tab" aria-controls="allotments" aria-selected="false">
+                            <i class="fas fa-building me-2"></i>Allotments
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab" aria-controls="activity" aria-selected="false">
+                            <i class="fas fa-history me-2"></i>Activity
+                        </button>
+                    </li>
+                </ul>
             </div>
             <div class="card-body">
+                <div class="tab-content" id="customerTabContent">
+                    <!-- Personal Information Tab -->
+                    <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-id-badge me-2"></i>Customer ID</label>
                             <p><code>@Model.CustomerID</code></p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-toggle-on me-2"></i>Status</label>
                             <p>
@@ -45,134 +86,237 @@
                             </p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-user me-2"></i>Full Name</label>
                             <p>@Model.FullName</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-user-friends me-2"></i>Father Name</label>
                             <p>@Model.FatherName</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-id-card me-2"></i>CNIC</label>
                             <p>@Model.CNIC</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-passport me-2"></i>Passport No</label>
                             <p>@(Model.PassportNo ?? "N/A")</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-birthday-cake me-2"></i>Date of Birth</label>
                             <p>@(Model.DOB?.ToString("MMMM dd, yyyy") ?? "N/A")</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-venus-mars me-2"></i>Gender</label>
                             <p>@Model.Gender</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+                    </div>
 
-        <!-- Contact Information -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-address-book me-2"></i>Contact Information
-                </h5>
-            </div>
-            <div class="card-body">
+                    <!-- Contact Information Tab -->
+                    <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-phone me-2"></i>Phone</label>
                             <p>@Model.Phone</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-envelope me-2"></i>Email</label>
                             <p>@Model.Email</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-city me-2"></i>City</label>
                             <p>@Model.City</p>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-globe me-2"></i>Country</label>
                             <p>@Model.Country</p>
                         </div>
                     </div>
-                    <div class="col-md-12 mb-3">
+                    <div class="col-md-12 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-map-marker-alt me-2"></i>Mailing Address</label>
                             <p>@Model.MailingAddress</p>
                         </div>
                     </div>
-                    <div class="col-md-12 mb-3">
+                    <div class="col-md-12 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-home me-2"></i>Permanent Address</label>
                             <p>@Model.PermanentAddress</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+                    </div>
 
-        <!-- Nominee Information -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-user-shield me-2"></i>Nominee Information
-                </h5>
-            </div>
-            <div class="card-body">
+                    <!-- Nominee Information Tab -->
+                    <div class="tab-pane fade" id="nominee" role="tabpanel" aria-labelledby="nominee-tab">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-user me-2"></i>Nominee Name</label>
                             <p>@(Model.NomineeName ?? "N/A")</p>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-id-card me-2"></i>Nominee ID</label>
                             <p>@(Model.NomineeID ?? "N/A")</p>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-heart me-2"></i>Relation</label>
                             <p>@(Model.NomineeRelation ?? "N/A")</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+                    </div>
 
-        <!-- Property Allotments -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-building me-2"></i>Property Allotments
-                </h5>
-            </div>
-            <div class="card-body">
+                    <!-- Registration & Plan Tab -->
+                    <div class="tab-pane fade" id="registration" role="tabpanel" aria-labelledby="registration-tab">
+                        <div class="row">
+                            <!-- Registration Information -->
+                            @if (Model.Registration != null)
+                            {
+                                <div class="col-md-12 mb-3">
+                                    <h6 class="mb-3"><i class="fas fa-file-alt me-2"></i>Registration Information</h6>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-tag me-2"></i>Registration ID</label>
+                                                <p><code>@Model.Registration.RegID</code></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-calendar me-2"></i>Registered On</label>
+                                                <p>@Model.Registration.CreatedAt.ToString("MMM dd, yyyy")</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-info-circle me-2"></i>Status</label>
+                                                <p>
+                                                    <span class="badge bg-success">@Model.Registration.Status</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Payment Plan Information -->
+                            @if (Model.PaymentPlan != null)
+                            {
+                                <div class="col-md-12 mb-3">
+                                    <h6 class="mb-3"><i class="fas fa-credit-card me-2"></i>Payment Plan</h6>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-tag me-2"></i>Plan Name</label>
+                                                <p>@Model.PaymentPlan.PlanName</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-money-bill-wave me-2"></i>Total Amount</label>
+                                                <p><strong style="color: var(--primary-green); font-size: 1.3rem;">@Model.PaymentPlan.TotalAmount.ToString("N2") SSP</strong></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-clock me-2"></i>Duration</label>
+                                                <p>@Model.PaymentPlan.DurationMonths Months</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-calendar-alt me-2"></i>Frequency</label>
+                                                <p>@Model.PaymentPlan.Frequency</p>
+                                            </div>
+                                        </div>
+                                        @if (Model.PaymentPlan.PaymentSchedules != null && Model.PaymentPlan.PaymentSchedules.Any())
+                                        {
+                                            var totalPaid = Model.PaymentPlan.PaymentSchedules
+                                                .SelectMany(ps => ps.Payments ?? new List<PMS.Models.Payment>())
+                                                .Where(p => p.Status == "Completed")
+                                                .Sum(p => p.Amount);
+                                            var totalDue = Model.PaymentPlan.TotalAmount;
+                                            var percentage = totalDue > 0 ? (totalPaid / totalDue) * 100 : 0;
+
+                                            <div class="col-md-4 mb-2">
+                                                <div class="detail-field">
+                                                    <label><i class="fas fa-chart-line me-2"></i>Payment Progress</label>
+                                                    <div class="progress" style="height: 20px;">
+                                                        <div class="progress-bar" role="progressbar" 
+                                                             style="width: @percentage%; background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-gold) 100%);"
+                                                             aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
+                                                            @percentage.ToString("N1")%
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted mt-1 d-block">
+                                                        @totalPaid.ToString("N2") / @totalDue.ToString("N2") SSP
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Project Information -->
+                            <div class="col-md-12 @(!string.IsNullOrEmpty(Model.AdditionalInfo) ? "mb-3" : "")">
+                                <h6 class="mb-3"><i class="fas fa-project-diagram me-2"></i>Project Details</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <div class="detail-field">
+                                            <label><i class="fas fa-building me-2"></i>Sub Project</label>
+                                            <p>@(Model.SubProject ?? "N/A")</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <div class="detail-field">
+                                            <label><i class="fas fa-ruler-combined me-2"></i>Registered Size</label>
+                                            <p>@(Model.RegisteredSize ?? "N/A")</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Information -->
+                            @if (!string.IsNullOrEmpty(Model.AdditionalInfo))
+                            {
+                                <div class="col-md-12">
+                                    <h6 class="mb-3"><i class="fas fa-sticky-note me-2"></i>Additional Notes</h6>
+                                    <div class="alert alert-info mb-0">
+                                        <p class="mb-0">@Model.AdditionalInfo</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Property Allotments Tab -->
+                    <div class="tab-pane fade" id="allotments" role="tabpanel" aria-labelledby="allotments-tab">
                 @if (Model.Allotments != null && Model.Allotments.Any())
                 {
                     <div class="table-responsive">
@@ -209,22 +353,15 @@
                 }
                 else
                 {
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                        <p>No property allotments found.</p>
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        <p class="mb-0">No property allotments found.</p>
                     </div>
                 }
-            </div>
-        </div>
+                    </div>
 
-        <!-- Customer Activity Logs -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-history me-2"></i>Activity History
-                </h5>
-            </div>
-            <div class="card-body">
+                    <!-- Activity History Tab -->
+                    <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
                 @if (Model.CustomerLogs != null && Model.CustomerLogs.Any())
                 {
                     <div class="table-responsive">
@@ -254,149 +391,63 @@
                 }
                 else
                 {
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                        <p>No activity logs found.</p>
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        <p class="mb-0">No activity logs found.</p>
                     </div>
                 }
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Sidebar -->
-    <div class="col-lg-4">
-        <!-- Quick Stats -->
-        <div class="card mb-4 stats-card">
-            <div class="card-body text-center">
-                <i class="fas fa-calendar-check fa-3x mb-3" style="color: var(--primary-green);"></i>
-                <h6 class="text-muted mb-2">Member Since</h6>
-                <h4 class="mb-0">@Model.CreatedAt.ToString("MMMM yyyy")</h4>
-                <small class="text-muted">@((DateTime.Now - Model.CreatedAt).Days) days ago</small>
-            </div>
-        </div>
-
-        <!-- Registration Info -->
-        @if (Model.Registration != null)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-file-alt me-2"></i>Registration
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="detail-field mb-3">
-                        <label><i class="fas fa-tag me-2"></i>Registration ID</label>
-                        <p><code>@Model.Registration.RegID</code></p>
                     </div>
-                    <div class="detail-field mb-3">
-                        <label><i class="fas fa-calendar me-2"></i>Registered On</label>
-                        <p>@Model.Registration.CreatedAt.ToString("MMM dd, yyyy")</p>
-                    </div>
-                    <div class="detail-field">
-                        <label><i class="fas fa-info-circle me-2"></i>Status</label>
-                        <p>
-                            <span class="badge bg-success">@Model.Registration.Status</span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        }
-
-        <!-- Payment Plan -->
-        @if (Model.PaymentPlan != null)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-credit-card me-2"></i>Payment Plan
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="detail-field mb-3">
-                        <label><i class="fas fa-tag me-2"></i>Plan Name</label>
-                        <p>@Model.PaymentPlan.PlanName</p>
-                    </div>
-                    <div class="detail-field mb-3">
-                        <label><i class="fas fa-money-bill-wave me-2"></i>Total Amount</label>
-                        <p><strong style="color: var(--primary-green); font-size: 1.3rem;">@Model.PaymentPlan.TotalAmount.ToString("N2") SSP</strong></p>
-                    </div>
-                    <div class="detail-field mb-3">
-                        <label><i class="fas fa-clock me-2"></i>Duration</label>
-                        <p>@Model.PaymentPlan.DurationMonths Months</p>
-                    </div>
-                    <div class="detail-field mb-3">
-                        <label><i class="fas fa-calendar-alt me-2"></i>Frequency</label>
-                        <p>@Model.PaymentPlan.Frequency</p>
-                    </div>
-                    @if (Model.PaymentPlan.PaymentSchedules != null && Model.PaymentPlan.PaymentSchedules.Any())
-                    {
-                        var totalPaid = Model.PaymentPlan.PaymentSchedules
-                            .SelectMany(ps => ps.Payments ?? new List<PMS.Models.Payment>())
-                            .Where(p => p.Status == "Completed")
-                            .Sum(p => p.Amount);
-                        var totalDue = Model.PaymentPlan.TotalAmount;
-                        var percentage = totalDue > 0 ? (totalPaid / totalDue) * 100 : 0;
-
-                        <div class="detail-field">
-                            <label><i class="fas fa-chart-line me-2"></i>Payment Progress</label>
-                            <div class="progress" style="height: 25px;">
-                                <div class="progress-bar" role="progressbar" 
-                                     style="width: @percentage%; background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-gold) 100%);"
-                                     aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
-                                    @percentage.ToString("N1")%
-                                </div>
-                            </div>
-                            <small class="text-muted mt-1 d-block">
-                                Paid: @totalPaid.ToString("N2") SSP / @totalDue.ToString("N2") SSP
-                            </small>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-
-        <!-- Project Info -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-project-diagram me-2"></i>Project Details
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="detail-field mb-3">
-                    <label><i class="fas fa-building me-2"></i>Sub Project</label>
-                    <p>@(Model.SubProject ?? "N/A")</p>
-                </div>
-                <div class="detail-field">
-                    <label><i class="fas fa-ruler-combined me-2"></i>Registered Size</label>
-                    <p>@(Model.RegisteredSize ?? "N/A")</p>
                 </div>
             </div>
         </div>
-
-        <!-- Additional Info -->
-        @if (!string.IsNullOrEmpty(Model.AdditionalInfo))
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-sticky-note me-2"></i>Additional Information
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <p class="mb-0">@Model.AdditionalInfo</p>
-                </div>
-            </div>
-        }
     </div>
 </div>
 
 <style>
+    /* Tab Styling */
+    .customer-tabs {
+        border-bottom: 2px solid #6f42c1;
+        background: linear-gradient(135deg, #f8f9fa 0%, #f3f0ff 100%);
+        padding: 0.5rem 1rem 0;
+    }
+
+    .customer-tabs .nav-link {
+        color: #666;
+        font-weight: 600;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.75rem 1.25rem;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+    .customer-tabs .nav-link:hover {
+        color: #6f42c1;
+        background: rgba(111, 66, 193, 0.05);
+        border-bottom-color: #9370db;
+    }
+
+    .customer-tabs .nav-link.active {
+        color: #6f42c1;
+        background: white;
+        border-bottom-color: #6f42c1;
+        font-weight: 700;
+    }
+
+    .customer-tabs .nav-link i {
+        font-size: 13px;
+    }
+
+    /* Tab Content */
+    .tab-content {
+        padding-top: 1rem;
+    }
+
+    /* Detail Fields */
     .detail-field {
-        padding: 12px;
+        padding: 8px 10px;
         background: linear-gradient(135deg, #f8f9fa 0%, var(--gold-tint) 100%);
-        border-radius: 8px;
+        border-radius: 6px;
         transition: all 0.3s ease;
     }
 
@@ -407,8 +458,8 @@
 
     .detail-field label {
         display: block;
-        margin-bottom: 5px;
-        font-size: 11px;
+        margin-bottom: 3px;
+        font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         color: #666;
@@ -416,7 +467,7 @@
     }
 
     .detail-field p {
-        font-size: 15px;
+        font-size: 14px;
         color: var(--text-dark);
         margin-bottom: 0;
         font-weight: 500;
@@ -431,9 +482,24 @@
         font-weight: 600;
     }
 
-    .stats-card {
-        background: linear-gradient(135deg, var(--bg-white) 0%, var(--gold-tint) 100%);
-        border: 2px solid var(--accent-gold);
+    /* Section Headers within Tabs */
+    .tab-pane h6 {
+        color: #6f42c1;
+        font-weight: 700;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e8dcff;
+    }
+
+    /* Responsive Tabs */
+    @@media (max-width: 768px) {
+        .customer-tabs .nav-link {
+            padding: 0.5rem 0.75rem;
+            font-size: 12px;
+        }
+
+        .customer-tabs .nav-link i {
+            display: none;
+        }
     }
 </style>
 

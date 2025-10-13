@@ -17,13 +17,162 @@ namespace PMS.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string projectFilter = "All", string statusFilter = "All", string searchTerm = "")
         {
-            var customers = await _context.Customers
+            // Get all projects for dropdown
+            var projects = await _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .Select(p => new { p.ProjectID, p.ProjectName })
+                .ToListAsync();
+            ViewBag.Projects = projects;
+            ViewBag.ProjectFilter = projectFilter;
+            ViewBag.StatusFilter = statusFilter;
+            ViewBag.SearchTerm = searchTerm;
+
+            // Build query
+            var query = _context.Customers
                 .Include(c => c.Registration)
                 .Include(c => c.PaymentPlan)
+                    .ThenInclude(p => p.Project)
+                .AsQueryable();
+
+            // Apply project filter
+            if (!string.IsNullOrEmpty(projectFilter) && projectFilter != "All")
+            {
+                query = query.Where(c => c.PaymentPlan != null && c.PaymentPlan.ProjectID == projectFilter);
+            }
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "All")
+            {
+                query = query.Where(c => c.Status == statusFilter);
+            }
+
+            // Apply search filter
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                searchTerm = searchTerm.ToLower();
+                query = query.Where(c => 
+                    c.CustomerID.ToLower().Contains(searchTerm) ||
+                    c.FullName.ToLower().Contains(searchTerm) ||
+                    (c.CNIC != null && c.CNIC.ToLower().Contains(searchTerm)) ||
+                    (c.Phone != null && c.Phone.ToLower().Contains(searchTerm)) ||
+                    (c.Email != null && c.Email.ToLower().Contains(searchTerm))
+                );
+            }
+
+            var customers = await query
+                .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
+
             return View(customers);
+        }
+
+        public async Task<IActionResult> ByProject()
+        {
+            // Get project summary with counts only (no customer data)
+            var projectSummary = await _context.Customers
+                .Include(c => c.PaymentPlan)
+                    .ThenInclude(p => p.Project)
+                .Where(c => c.PaymentPlan != null && c.PaymentPlan.Project != null)
+                .GroupBy(c => new { 
+                    ProjectName = c.PaymentPlan.Project.ProjectName,
+                    ProjectID = c.PaymentPlan.Project.ProjectID
+                })
+                .Select(g => new {
+                    ProjectName = g.Key.ProjectName,
+                    ProjectID = g.Key.ProjectID,
+                    TotalCustomers = g.Count(),
+                    SizeCounts = g.GroupBy(c => c.RegisteredSize ?? "Unknown")
+                        .Select(s => new {
+                            Size = s.Key,
+                            Count = s.Count()
+                        })
+                        .OrderBy(s => s.Size)
+                        .ToList()
+                })
+                .OrderBy(g => g.ProjectName)
+                .ToListAsync();
+
+            return View(projectSummary);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GetProjectCustomers(string projectId, string size, int page = 1, int pageSize = 20)
+        {
+            try
+            {
+                var customers = await _context.Customers
+                    .Include(c => c.Registration)
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(p => p.Project)
+                    .Where(c => c.PaymentPlan != null && 
+                               c.PaymentPlan.ProjectID == projectId &&
+                               (string.IsNullOrEmpty(size) || c.RegisteredSize == size))
+                    .OrderBy(c => c.FullName)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(c => new {
+                        customerID = c.CustomerID,
+                        fullName = c.FullName,
+                        fatherName = c.FatherName,
+                        phone = c.Phone,
+                        email = c.Email,
+                        city = c.City,
+                        status = c.Status,
+                        registeredSize = c.RegisteredSize,
+                        createdAt = c.CreatedAt.ToString("MMM dd, yyyy")
+                    })
+                    .ToListAsync();
+
+                var totalCount = await _context.Customers
+                    .Include(c => c.PaymentPlan)
+                    .Where(c => c.PaymentPlan != null && 
+                               c.PaymentPlan.ProjectID == projectId &&
+                               (string.IsNullOrEmpty(size) || c.RegisteredSize == size))
+                    .CountAsync();
+
+                var result = new {
+                    customers,
+                    totalCount,
+                    currentPage = page,
+                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    hasNextPage = page * pageSize < totalCount,
+                    hasPrevPage = page > 1
+                };
+
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GetProjectSizeGroups(string projectId)
+        {
+            try
+            {
+                var sizeGroups = await _context.Customers
+                    .Include(c => c.PaymentPlan)
+                    .Where(c => c.PaymentPlan != null && c.PaymentPlan.ProjectID == projectId)
+                    .GroupBy(c => c.RegisteredSize ?? "Unknown")
+                    .Select(g => new {
+                        size = g.Key,
+                        count = g.Count()
+                    })
+                    .OrderBy(g => g.size)
+                    .ToListAsync();
+
+                return Json(new {
+                    sizeGroups
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
         }
 
         public async Task<IActionResult> Details(string id)
@@ -51,10 +200,80 @@ namespace PMS.Controllers
             return View(customer);
         }
 
+        // POST: Search Registration by RegID (AJAX)
+        [HttpPost]
+        public async Task<IActionResult> SearchRegistration(string regID)
+        {
+            if (string.IsNullOrEmpty(regID))
+            {
+                return Json(new { success = false, message = "Please enter a Registration ID" });
+            }
+
+            var registration = await _context.Registrations
+                .Include(r => r.Customers)
+                .FirstOrDefaultAsync(r => r.RegID == regID);
+
+            if (registration == null)
+            {
+                return Json(new { success = false, message = "Registration not found with ID: " + regID });
+            }
+
+            // Check if registration is already linked to a customer
+            if (registration.Customers != null && registration.Customers.Any())
+            {
+                var existingCustomer = registration.Customers.FirstOrDefault();
+                return Json(new { 
+                    success = false, 
+                    message = $"This registration is already linked to Customer: {existingCustomer?.FullName} ({existingCustomer?.CustomerID})" 
+                });
+            }
+
+            // Return registration data
+            return Json(new
+            {
+                success = true,
+                registration = new
+                {
+                    regID = registration.RegID,
+                    fullName = registration.FullName,
+                    cnic = registration.CNIC,
+                    phone = registration.Phone,
+                    email = registration.Email,
+                    status = registration.Status
+                }
+            });
+        }
+
         public IActionResult Create()
         {
-            ViewBag.Registrations = _context.Registrations.ToList();
+            // No need for ViewBag.Registrations - using AJAX search instead
             ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            
+            // Load configurations (comma-separated values)
+            var citiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "cities");
+            ViewBag.Cities = citiesConfig != null 
+                ? citiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var countriesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "countries");
+            ViewBag.Countries = countriesConfig != null 
+                ? countriesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var sizesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "sizes");
+            ViewBag.Sizes = sizesConfig != null 
+                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var subProjectsConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "subprojects");
+            ViewBag.SubProjects = subProjectsConfig != null 
+                ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
             return View();
         }
 
@@ -80,8 +299,34 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Registrations = _context.Registrations.ToList();
+            // Reload data on validation error
             ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            
+            // Reload configurations (comma-separated values)
+            var citiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "cities");
+            ViewBag.Cities = citiesConfig != null 
+                ? citiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var countriesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "countries");
+            ViewBag.Countries = countriesConfig != null 
+                ? countriesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var sizesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "sizes");
+            ViewBag.Sizes = sizesConfig != null 
+                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var subProjectsConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "subprojects");
+            ViewBag.SubProjects = subProjectsConfig != null 
+                ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
             return View(customer);
         }
 
@@ -100,6 +345,32 @@ namespace PMS.Controllers
 
             ViewBag.Registrations = _context.Registrations.ToList();
             ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            
+            // Load configurations (comma-separated values)
+            var citiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "cities");
+            ViewBag.Cities = citiesConfig != null 
+                ? citiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var countriesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "countries");
+            ViewBag.Countries = countriesConfig != null 
+                ? countriesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var sizesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "sizes");
+            ViewBag.Sizes = sizesConfig != null 
+                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var subProjectsConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "subprojects");
+            ViewBag.SubProjects = subProjectsConfig != null 
+                ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
             return View(customer);
         }
 
@@ -141,6 +412,32 @@ namespace PMS.Controllers
 
             ViewBag.Registrations = _context.Registrations.ToList();
             ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            
+            // Reload configurations (comma-separated values)
+            var citiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "cities");
+            ViewBag.Cities = citiesConfig != null 
+                ? citiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var countriesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "countries");
+            ViewBag.Countries = countriesConfig != null 
+                ? countriesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var sizesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "sizes");
+            ViewBag.Sizes = sizesConfig != null 
+                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
+            var subProjectsConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "subprojects");
+            ViewBag.SubProjects = subProjectsConfig != null 
+                ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string>();
+            
             return View(customer);
         }
 

@@ -1,15 +1,70 @@
 @model IEnumerable<PMS.Models.Customer>
 
 @{
-    ViewData["Title"] = "Customers";
+    ViewData["Title"] = "Search Customers";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-users me-2"></i>Customers</h2>
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>Add New Customer
-    </a>
+    <!-- <h2><i class="fas fa-users me-2"></i>Customers</h2> -->
+    <div class="btn-group" role="group">
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New Customer
+        </a>
+        <a asp-action="ByProject" class="btn btn-outline-primary">
+            <i class="fas fa-layer-group me-2"></i>Customers By Project
+        </a>
+    </div>
 </div>
+
+<!-- Filters -->
+<form method="get" asp-action="Index" class="mb-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Filter by Project</label>
+                    <select name="projectFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
+                        @if (ViewBag.Projects != null)
+                        {
+                            @foreach (var project in ViewBag.Projects)
+                            {
+                                <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
+                                    @project.ProjectName
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Filter by Status</label>
+                    <select name="statusFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
+                        <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
+                        <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Search</label>
+                    <input type="text" name="searchTerm" class="form-control" 
+                           placeholder="Search by ID, Name, CNIC, Phone, Email..." 
+                           value="@ViewBag.SearchTerm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
 
 <div class="card">
     <div class="card-body">
@@ -19,6 +74,7 @@
                     <tr>
                         <th>Customer ID</th>
                         <th>Full Name</th>
+                        <th>Project</th>
                         <th>Email</th>
                         <th>Phone</th>
                         <th>City</th>
@@ -39,6 +95,16 @@
                                 @if (!string.IsNullOrEmpty(customer.FatherName))
                                 {
                                     <br><small class="text-muted">S/O @customer.FatherName</small>
+                                }
+                            </td>
+                            <td>
+                                @if (customer.PaymentPlan?.Project != null)
+                                {
+                                    <span class="badge bg-info">@customer.PaymentPlan.Project.ProjectName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No Project</span>
                                 }
                             </td>
                             <td>@customer.Email</td>
@@ -79,9 +145,9 @@
         $(document).ready(function() {
             $('#customersTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 6, "desc" ]],
+                "order": [[ 7, "desc" ]], // Created Date is now column 7
                 "columnDefs": [
-                    { "orderable": false, "targets": 7 }
+                    { "orderable": false, "targets": 8 } // Actions column is now column 8
                 ]
             });
         });

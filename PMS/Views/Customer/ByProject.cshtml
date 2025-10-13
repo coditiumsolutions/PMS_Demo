@@ -1,0 +1,388 @@
+@model dynamic
+
+@{
+    ViewData["Title"] = "Customers By Project";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- <h2><i class="fas fa-layer-group me-2"></i>Customers By Project</h2> -->
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to All Customers
+    </a>
+</div>
+
+@if (Model != null && Model.Count > 0)
+{
+    <div class="accordion" id="projectsAccordion">
+        @{
+            int projectIndex = 0;
+        }
+        @foreach (var project in Model)
+        {
+            <div class="accordion-item mb-3">
+                <h2 class="accordion-header" id="project-@projectIndex">
+                    <button class="accordion-button @(projectIndex == 0 ? "" : "collapsed")" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#collapse-@projectIndex" 
+                            aria-expanded="@(projectIndex == 0 ? "true" : "false")" 
+                            aria-controls="collapse-@projectIndex"
+                            data-project-id="@project.ProjectID"
+                            onclick="loadProjectSizes('@project.ProjectID', @projectIndex)">
+                        <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-building me-2" style="color: var(--primary);"></i>
+                                <strong>@project.ProjectName</strong>
+                            </div>
+                            <span class="badge bg-primary">@project.TotalCustomers Customers</span>
+                        </div>
+                    </button>
+                </h2>
+                <div id="collapse-@projectIndex" 
+                     class="accordion-collapse collapse @(projectIndex == 0 ? "show" : "")" 
+                     aria-labelledby="project-@projectIndex" 
+                     data-bs-parent="#projectsAccordion">
+                    <div class="accordion-body p-0" id="project-content-@projectIndex">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading project data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            projectIndex++;
+        }
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No Customers Found</h4>
+            <p class="text-muted">There are no customers with assigned projects yet.</p>
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add New Customer
+            </a>
+        </div>
+    </div>
+}
+
+<style>
+    .border-left-primary {
+        border-left: 4px solid var(--primary) !important;
+    }
+
+    .accordion-button {
+        background: linear-gradient(135deg, #f8f9fa 0%, #f3f0ff 100%);
+        border: 1px solid var(--border);
+    }
+
+    .accordion-button:not(.collapsed) {
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+        color: white;
+        box-shadow: none;
+    }
+
+    .accordion-button:not(.collapsed) .fas {
+        color: white !important;
+    }
+
+    .accordion-button:not(.collapsed) .badge {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+    }
+
+    .accordion-item {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .card-body {
+        font-size: 14px;
+    }
+
+    .card-title {
+        font-size: 15px;
+    }
+
+    .badge-sm {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    .btn-group-sm .btn {
+        padding: 2px 6px;
+        font-size: 12px;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        let loadedProjects = new Set();
+
+        $(document).ready(function() {
+            // Auto-expand first project on page load
+            $('#collapse-0').collapse('show');
+            // Load first project data
+            loadProjectSizes($('#project-0 button').data('project-id'), 0);
+            
+            // Add test button for debugging
+            $('body').append('<div id="debug-panel" style="position: fixed; top: 10px; right: 10px; background: #f8f9fa; padding: 10px; border: 1px solid #ccc; z-index: 9999;"><button onclick="testFunction()" class="btn btn-sm btn-warning">Test</button></div>');
+        });
+
+        function testFunction() {
+            console.log('Test function called');
+            
+            // Test basic AJAX call
+            $.ajax({
+                url: '@Url.Action("GetProjectSizeGroups")',
+                type: 'POST',
+                data: { projectId: 'PROJ001' }, // Use a test project ID
+                success: function(data) {
+                    console.log('Test AJAX Success:', data);
+                    alert('AJAX test successful! Check console.');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Test AJAX Error:', { status, error, responseText: xhr.responseText });
+                    alert('AJAX test failed: ' + error);
+                }
+            });
+        }
+
+        function loadProjectSizes(projectId, projectIndex) {
+            if (loadedProjects.has(projectId)) {
+                return; // Already loaded
+            }
+
+            // Directly load size groups from server
+            loadProjectSizesFromServer(projectId, projectIndex);
+        }
+
+        function loadProjectSizesFromServer(projectId, projectIndex) {
+            const contentDiv = $(`#project-content-${projectIndex}`);
+            
+            // Show loading spinner
+            contentDiv.html(`
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading project data...</p>
+                </div>
+            `);
+            
+            $.ajax({
+                url: '@Url.Action("GetProjectSizeGroups")',
+                type: 'POST',
+                data: {
+                    projectId: projectId
+                },
+                success: function(data) {
+                    console.log('Size groups loaded:', data); // Debug log
+                    renderSizeGroups(projectId, projectIndex, data.sizeGroups);
+                    loadedProjects.add(projectId);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading size groups:', error, xhr.responseText); // Debug log
+                    contentDiv.html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Failed to load project data. Error: ${error}
+                        </div>
+                    `);
+                }
+            });
+        }
+
+        function renderSizeGroups(projectId, projectIndex, sizeGroups) {
+            const contentDiv = $(`#project-content-${projectIndex}`);
+            let html = '';
+
+            if (sizeGroups && sizeGroups.length > 0) {
+                sizeGroups.forEach(function(sizeGroup) {
+                    html += `
+                        <div class="card mb-2">
+                            <div class="card-header py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-expand-arrows-alt me-2" style="color: var(--accent);"></i>
+                                        <strong>Size: ${sizeGroup.size}</strong>
+                                    </div>
+                                    <span class="badge bg-success">${sizeGroup.count} Customer${sizeGroup.count === 1 ? '' : 's'}</span>
+                                </div>
+                            </div>
+                            <div class="card-body py-2">
+                                <div id="size-customers-${projectId.replace(/[^a-zA-Z0-9]/g, '_')}-${sizeGroup.size.replace(/[^a-zA-Z0-9]/g, '_')}" class="row">
+                                    <div class="col-12 text-center py-3">
+                                        <button class="btn btn-outline-primary btn-sm" 
+                                                onclick="console.log('Button clicked:', '${projectId}', '${sizeGroup.size}'); loadCustomers('${projectId}', '${sizeGroup.size}', 1, '${projectId.replace(/[^a-zA-Z0-9]/g, '_')}-${sizeGroup.size.replace(/[^a-zA-Z0-9]/g, '_')}')">
+                                            <i class="fas fa-eye me-1"></i>View Customers
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                html = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No customers found for this project.
+                    </div>
+                `;
+            }
+
+            contentDiv.html(html);
+        }
+
+        function loadCustomers(projectId, size, page, containerId) {
+            console.log('loadCustomers called with:', { projectId, size, page, containerId });
+            
+            const containerSelector = `#size-customers-${containerId}`;
+            console.log('Looking for container:', containerSelector);
+            
+            const container = $(containerSelector);
+            console.log('Container found:', container.length > 0);
+            
+            if (container.length === 0) {
+                console.error('Container not found:', containerSelector);
+                return;
+            }
+            
+            // Show loading
+            container.html(`
+                <div class="col-12 text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="ms-2">Loading customers...</span>
+                </div>
+            `);
+
+            console.log('Making AJAX request...');
+            $.ajax({
+                url: '@Url.Action("GetProjectCustomers")',
+                type: 'POST',
+                data: {
+                    projectId: projectId,
+                    size: size,
+                    page: page,
+                    pageSize: 20
+                },
+                success: function(data) {
+                    console.log('AJAX Success:', data);
+                    renderCustomers(data, containerId, page);
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', { status, error, responseText: xhr.responseText });
+                    container.html(`
+                        <div class="col-12">
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Failed to load customers. Error: ${error}<br>
+                                Status: ${status}<br>
+                                Response: ${xhr.responseText}
+                            </div>
+                        </div>
+                    `);
+                }
+            });
+        }
+
+        function renderCustomers(data, containerId, currentPage) {
+            const container = $(`#size-customers-${containerId}`);
+            let html = '';
+
+            if (data.customers && data.customers.length > 0) {
+                data.customers.forEach(function(customer) {
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-primary">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title mb-0">
+                                            <span class="badge bg-secondary me-2">${customer.customerID}</span>
+                                            ${customer.fullName}
+                                        </h6>
+                                        <span class="badge ${customer.status === 'Active' ? 'bg-success' : 'bg-warning'} badge-sm">
+                                            ${customer.status}
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        ${customer.phone ? `<div><i class="fas fa-phone me-1"></i> ${customer.phone}</div>` : ''}
+                                        ${customer.email ? `<div><i class="fas fa-envelope me-1"></i> ${customer.email}</div>` : ''}
+                                        ${customer.city ? `<div><i class="fas fa-map-marker-alt me-1"></i> ${customer.city}</div>` : ''}
+                                    </div>
+                                    <div class="mt-2">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="@Url.Action("Details")/${customer.customerID}" 
+                                               class="btn btn-outline-info btn-sm" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="@Url.Action("Edit")/${customer.customerID}" 
+                                               class="btn btn-outline-primary btn-sm" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="@Url.Action("Delete")/${customer.customerID}" 
+                                               class="btn btn-outline-danger btn-sm" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Add pagination
+                if (data.totalPages > 1) {
+                    // Extract projectId and size from containerId (format: projectId-size)
+                    const parts = containerId.split('-');
+                    const projectId = parts[0];
+                    const size = parts.slice(1).join('-'); // In case size contains hyphens
+                    
+                    html += `
+                        <div class="col-12">
+                            <nav aria-label="Customer pagination">
+                                <ul class="pagination pagination-sm justify-content-center">
+                                    ${data.hasPrevPage ? `
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" onclick="loadCustomers('${projectId}', '${size}', ${currentPage - 1}, '${containerId}')">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </a>
+                                        </li>
+                                    ` : ''}
+                                    <li class="page-item active">
+                                        <span class="page-link">Page ${currentPage} of ${data.totalPages}</span>
+                                    </li>
+                                    ${data.hasNextPage ? `
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" onclick="loadCustomers('${projectId}', '${size}', ${currentPage + 1}, '${containerId}')">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    ` : ''}
+                                </ul>
+                            </nav>
+                        </div>
+                    `;
+                }
+            } else {
+                html = `
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>No customers found for this size.
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.html(html);
+        }
+    </script>
+}

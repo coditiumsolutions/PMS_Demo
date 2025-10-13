@@ -1,0 +1,310 @@
+@model IEnumerable<PMS.Models.Registration>
+
+@{
+    ViewData["Title"] = "Registrations";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- <h2>
+        <i class="fas fa-file-alt me-2"></i>Registration Management
+    </h2> -->
+    <a asp-action="Create" class="btn btn-success">
+        <i class="fas fa-plus me-2"></i>New Registration
+    </a>
+</div>
+
+@* TempData messages are handled in _Layout.cshtml *@
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-primary bg-soft text-primary">
+                            <i class="fas fa-file-alt font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Total Registrations</h6>
+                        <h4 class="mb-0">@ViewBag.TotalRegistrations</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-warning bg-soft text-warning">
+                            <i class="fas fa-clock font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Pending</h6>
+                        <h4 class="mb-0">@ViewBag.PendingRegistrations</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-success bg-soft text-success">
+                            <i class="fas fa-check-circle font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Approved</h6>
+                        <h4 class="mb-0">@ViewBag.ApprovedRegistrations</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-info bg-soft text-info">
+                            <i class="fas fa-user-check font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Converted to Customers</h6>
+                        <h4 class="mb-0">@ViewBag.ConvertedToCustomers</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters and Grid -->
+<div class="card">
+    <div class="card-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+        <h5 class="mb-0 text-white">
+            <i class="fas fa-list me-2"></i>All Registrations
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- Filters -->
+        <form method="get" asp-action="Index" class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Filter by Status</label>
+                    <select name="statusFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
+                        <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
+                        <option value="Approved" selected="@(ViewBag.StatusFilter == "Approved")">Approved</option>
+                        <option value="Rejected" selected="@(ViewBag.StatusFilter == "Rejected")">Rejected</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Search</label>
+                    <input type="text" name="searchTerm" class="form-control" 
+                           placeholder="Search by ID, Name, CNIC, Phone, Email..." 
+                           value="@ViewBag.SearchTerm" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-redo me-2"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <!-- Grid -->
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="registrationsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Registration ID</th>
+                            <th>Full Name</th>
+                            <th>CNIC</th>
+                            <th>Contact</th>
+                            <th>Registration Date</th>
+                            <th>Status</th>
+                            <th>Customer Link</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var registration in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <code>@registration.RegID</code>
+                                </td>
+                                <td>
+                                    <strong>@registration.FullName</strong>
+                                </td>
+                                <td>
+                                    @(registration.CNIC ?? "N/A")
+                                </td>
+                                <td>
+                                    <div>
+                                        <i class="fas fa-phone text-primary me-1"></i>@registration.Phone
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(registration.Email))
+                                    {
+                                        <div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-envelope me-1"></i>@registration.Email
+                                            </small>
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    @registration.CreatedAt.ToString("MMM dd, yyyy")
+                                    <br>
+                                    <small class="text-muted">@registration.CreatedAt.ToString("hh:mm tt")</small>
+                                </td>
+                                <td>
+                                    @if (registration.Status == "Pending")
+                                    {
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>Pending
+                                        </span>
+                                    }
+                                    else if (registration.Status == "Approved")
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Approved
+                                        </span>
+                                    }
+                                    else if (registration.Status == "Rejected")
+                                    {
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle me-1"></i>Rejected
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@registration.Status</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (registration.Customers != null && registration.Customers.Any())
+                                    {
+                                        var customer = registration.Customers.FirstOrDefault();
+                                        <a asp-controller="Customer" asp-action="Details" asp-route-id="@customer.CustomerID" 
+                                           class="btn btn-sm btn-success">
+                                            <i class="fas fa-user me-1"></i>View Customer
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Not converted</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@registration.RegID" 
+                                           class="btn btn-sm btn-outline-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@registration.RegID" 
+                                           class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        @if (registration.Customers == null || !registration.Customers.Any())
+                                        {
+                                            <a asp-action="Delete" asp-route-id="@registration.RegID" 
+                                               class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-4x mb-3 text-muted"></i>
+                <h5 class="text-muted">No Registrations Found</h5>
+                <p class="text-muted">@(ViewBag.SearchTerm != null && ViewBag.SearchTerm != "" ? "Try different search criteria" : "Start by creating a new registration.")</p>
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create First Registration
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .avatar-sm {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bg-soft {
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+    }
+
+    .bg-info.bg-soft {
+        background-color: rgba(13, 202, 240, 0.1) !important;
+    }
+
+    .bg-warning.bg-soft {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+    }
+
+    .bg-success.bg-soft {
+        background-color: rgba(25, 135, 84, 0.1) !important;
+    }
+
+    .font-size-24 {
+        font-size: 24px;
+    }
+
+    code {
+        background: rgba(156, 106, 222, 0.1);
+        color: #9C6ADE;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script>
+        $(document).ready(function () {
+            $('#registrationsTable').DataTable({
+                "pageLength": 25,
+                "order": [[4, "desc"]], // Sort by date descending
+                "columnDefs": [
+                    { "orderable": false, "targets": [6, 7] }
+                ]
+            });
+        });
+    </script>
+}
+

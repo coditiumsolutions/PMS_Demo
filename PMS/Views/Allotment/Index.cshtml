@@ -1,0 +1,394 @@
+@model IEnumerable<PMS.Models.Allotment>
+
+@{
+    ViewData["Title"] = "Allotment Management";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- <h2>
+        <i class="fas fa-hand-holding me-2"></i>Allotment Management
+    </h2> -->
+    <div>
+        <a asp-action="Create" class="btn btn-success me-2">
+            <i class="fas fa-plus me-2"></i>Create Allotment
+        </a>
+        <a asp-action="UnAllot" class="btn btn-outline-warning">
+            <i class="fas fa-undo me-2"></i>Un-Allot Property
+        </a>
+    </div>
+</div>
+
+@* TempData messages are handled in _Layout.cshtml *@
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-primary bg-soft text-primary">
+                            <i class="fas fa-hand-holding font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Total Allotments</h6>
+                        <h4 class="mb-0">@ViewBag.TotalAllotments</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-success bg-soft text-success">
+                            <i class="fas fa-check-circle font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Allotted Properties</h6>
+                        <h4 class="mb-0">@ViewBag.AllottedProperties</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-info bg-soft text-info">
+                            <i class="fas fa-home font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Available Properties</h6>
+                        <h4 class="mb-0">@ViewBag.AvailableProperties</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-sm rounded-circle bg-warning bg-soft text-warning">
+                            <i class="fas fa-clock font-size-24"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Pending Approval</h6>
+                        <h4 class="mb-0">@ViewBag.PendingApproval</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters and Grid -->
+<div class="card mb-4">
+    <div class="card-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+        <h5 class="mb-0 text-white">
+            <i class="fas fa-list me-2"></i>All Allotments
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- Filters -->
+        <form method="get" asp-action="Index" class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Filter by Project</label>
+                    <select name="projectFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
+                        @if (ViewBag.Projects != null)
+                        {
+                            foreach (var project in ViewBag.Projects)
+                            {
+                                <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
+                                    @project.ProjectName
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Filter by Status</label>
+                    <select name="statusFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
+                        <option value="Pending Approval" selected="@(ViewBag.StatusFilter == "Pending Approval")">Pending Approval</option>
+                        <option value="Approved" selected="@(ViewBag.StatusFilter == "Approved")">Approved</option>
+                        <option value="Rejected" selected="@(ViewBag.StatusFilter == "Rejected")">Rejected</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Search</label>
+                    <input type="text" name="searchTerm" class="form-control" 
+                           placeholder="Search by ID, Customer, Property..." 
+                           value="@ViewBag.SearchTerm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <!-- Grid -->
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="allotmentsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Allotment ID</th>
+                            <th>Property</th>
+                            <th>Customer</th>
+                            <th>Project</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var allotment in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <code>@allotment.AllotmentID</code>
+                                </td>
+                                <td>
+                                    @if (allotment.Property != null)
+                                    {
+                                        <strong>@allotment.Property.PlotNo</strong>
+                                        <br>
+                                        <small class="text-muted">Block: @allotment.Property.Block | @allotment.Property.Size</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (allotment.Customer != null)
+                                    {
+                                        <strong>@allotment.Customer.FullName</strong>
+                                        <br>
+                                        <small class="text-muted">@allotment.Customer.CustomerID</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (allotment.Property?.Project != null)
+                                    {
+                                        <span class="badge bg-info">@allotment.Property.Project.ProjectName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">@allotment.AllottmentType</span>
+                                </td>
+                                <td>
+                                    @allotment.AllotmentDate.ToString("MMM dd, yyyy")
+                                    <br>
+                                    <small class="text-muted">@allotment.AllotmentDate.ToString("hh:mm tt")</small>
+                                </td>
+                                <td>
+                                    @if (allotment.WorkFlowStatus == "Approved")
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>@allotment.WorkFlowStatus
+                                        </span>
+                                    }
+                                    else if (allotment.WorkFlowStatus == "Pending Approval")
+                                    {
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>Pending
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@allotment.WorkFlowStatus</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-controller="Property" 
+                                           asp-action="Details" 
+                                           asp-route-id="@allotment.PropertyID" 
+                                           class="btn btn-sm btn-outline-info"
+                                           title="View Property">
+                                            <i class="fas fa-home"></i>
+                                        </a>
+                                        <a asp-controller="Customer" 
+                                           asp-action="Details" 
+                                           asp-route-id="@allotment.CustomerID" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="View Customer">
+                                            <i class="fas fa-user"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-4x mb-3 text-muted"></i>
+                <h5 class="text-muted">No Allotments Found</h5>
+                <p class="text-muted">@(ViewBag.SearchTerm != null && ViewBag.SearchTerm != "" ? "Try different search criteria" : "There are no property allotments matching your filters.")</p>
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create First Allotment
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Chart Section -->
+<div class="card">
+    <div class="card-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+        <h5 class="mb-0 text-white">
+            <i class="fas fa-chart-bar me-2"></i>Property Allocation by Project
+        </h5>
+    </div>
+    <div class="card-body">
+        <canvas id="allocationChart" style="max-height: 400px;"></canvas>
+    </div>
+</div>
+
+<style>
+    .avatar-sm {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bg-soft {
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+    }
+
+    .bg-info.bg-soft {
+        background-color: rgba(13, 202, 240, 0.1) !important;
+    }
+
+    .bg-warning.bg-soft {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+    }
+
+    .bg-success.bg-soft {
+        background-color: rgba(25, 135, 84, 0.1) !important;
+    }
+
+    .font-size-24 {
+        font-size: 24px;
+    }
+
+    code {
+        background: rgba(156, 106, 222, 0.1);
+        color: #9C6ADE;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Chart Data from ViewBag
+        var chartData = @Html.Raw(ViewBag.ChartData);
+
+        // Prepare data for Chart.js
+        var labels = chartData.map(d => d.projectName);
+        var allottedData = chartData.map(d => d.allotted);
+        var notAllottedData = chartData.map(d => d.notAllotted);
+
+        // Create Chart
+        var ctx = document.getElementById('allocationChart').getContext('2d');
+        var allocationChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Allotted',
+                        data: allottedData,
+                        backgroundColor: 'rgba(25, 135, 84, 0.8)',
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Not Allotted (Available)',
+                        data: notAllottedData,
+                        backgroundColor: 'rgba(13, 202, 240, 0.8)',
+                        borderColor: 'rgba(13, 202, 240, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Property Allocation Statistics by Project'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                var index = context.dataIndex;
+                                var total = chartData[index].total;
+                                return 'Total Properties: ' + total;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: false,
+                    },
+                    y: {
+                        stacked: false,
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}
+

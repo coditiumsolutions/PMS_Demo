@@ -6,166 +6,302 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <!-- <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="fas fa-user-plus me-2"></i>Add New Customer</h2>
             <a asp-action="Index" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to List
             </a>
+        </div> -->
+
+        <!-- Registration Search Section -->
+        <div class="card mb-2 registration-search-card" style="border: 2px solid #6f42c1;">
+            <div class="card-header py-1" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-white" style="font-size: 14px;">
+                        <i class="fas fa-search me-2"></i>Search Registration (Optional)
+                    </h6>
+                    <a asp-controller="Registration" asp-action="Create" class="btn btn-sm btn-light" target="_blank">
+                        <i class="fas fa-plus me-1"></i>New Registration
+                    </a>
+                </div>
+            </div>
+            <div class="">
+                <div class="row align-items-end">
+                    <div class="col-md-6" style="padding: 25px;">
+                        <label class="form-label fw-bold mb-1" style="font-size: 13px;">Registration ID</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="regIDInput" class="form-control" placeholder="Enter Registration ID (e.g., REG0000001)" />
+                            <button type="button" id="searchRegBtn" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button type="button" id="clearRegBtn" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">Auto-fills Name, CNIC, Phone, Email</small>
+                    </div>
+                    <div class="col-md-6">
+                        <!-- Success/Error Messages -->
+                        <div id="regSuccessSection" style="display: none;">
+                            <div class="alert alert-success py-1 mb-0">
+                                <small><i class="fas fa-check-circle me-1"></i><span id="regSuccessMessage"></span></small>
+                            </div>
+                        </div>
+                        <div id="regErrorSection" style="display: none;">
+                            <div class="alert alert-danger py-1 mb-0">
+                                <small><i class="fas fa-exclamation-triangle me-1"></i><span id="regErrorMessage"></span></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="card">
+        <!-- Customer Form -->
+        <form asp-action="Create" method="post">
+            <!-- Hidden RegID field for form submission -->
+            <input type="hidden" asp-for="RegID" id="regIDHidden" />
+
+            <div class="card">
+            <div class="card-header p-0">
+                <ul class="nav nav-tabs customer-tabs" id="customerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                            <i class="fas fa-user-circle me-2"></i>Personal Info
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="nominee-tab" data-bs-toggle="tab" data-bs-target="#nominee" type="button" role="tab" aria-controls="nominee" aria-selected="false">
+                            <i class="fas fa-user-shield me-2"></i>Nominee Info
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="registration-tab" data-bs-toggle="tab" data-bs-target="#registration" type="button" role="tab" aria-controls="registration" aria-selected="false">
+                            <i class="fas fa-file-contract me-2"></i>Registration Info
+                        </button>
+                    </li>
+                </ul>
+            </div>
             <div class="card-body">
-                <form asp-action="Create" method="post">
-                    <div class="row">
-                        <!-- Personal Information -->
-                        <div class="col-md-6">
-                            <h5 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Personal Information</h5>
-                            
-                            <div class="mb-3">
-                                <label asp-for="FullName" class="form-label">Full Name *</label>
-                                <input asp-for="FullName" class="form-control" required />
-                                <span asp-validation-for="FullName" class="text-danger"></span>
-                            </div>
+                    <div class="tab-content" id="customerTabContent">
+                        <!-- Personal Info Tab (Personal + Contact) -->
+                        <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                            <div class="row">
+                                <!-- Personal Information -->
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="fas fa-user me-2"></i>Personal Information</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label asp-for="FullName" class="form-label">Full Name *</label>
+                                        <input asp-for="FullName" class="form-control" required />
+                                        <span asp-validation-for="FullName" class="text-danger"></span>
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="FatherName" class="form-label">Father's Name</label>
-                                <input asp-for="FatherName" class="form-control" />
-                            </div>
+                                    <div class="mb-3">
+                                        <label asp-for="FatherName" class="form-label">Father's Name</label>
+                                        <input asp-for="FatherName" class="form-control" />
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="CNIC" class="form-label">CNIC</label>
-                                <input asp-for="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
-                            </div>
+                                    <div class="mb-3">
+                                        <label asp-for="CNIC" class="form-label">CNIC</label>
+                                        <input asp-for="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="DOB" class="form-label">Date of Birth</label>
-                                <input asp-for="DOB" type="date" class="form-control" />
-                            </div>
+                                    <div class="mb-3">
+                                        <label asp-for="PassportNo" class="form-label">Passport Number</label>
+                                        <input asp-for="PassportNo" class="form-control" />
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="Gender" class="form-label">Gender</label>
-                                <select asp-for="Gender" class="form-select">
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                                    <div class="mb-3">
+                                        <label asp-for="DOB" class="form-label">Date of Birth</label>
+                                        <input asp-for="DOB" type="date" class="form-control" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="Gender" class="form-label">Gender</label>
+                                        <select asp-for="Gender" class="form-select">
+                                            <option value="">Select Gender</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Information -->
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="fas fa-phone me-2"></i>Contact Information</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label asp-for="Email" class="form-label">Email Address</label>
+                                        <input asp-for="Email" type="email" class="form-control" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="Phone" class="form-label">Phone Number *</label>
+                                        <input asp-for="Phone" class="form-control" required />
+                                        <span asp-validation-for="Phone" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="City" class="form-label">City</label>
+                                        <select asp-for="City" class="form-select">
+                                            <option value="">Select City</option>
+                                            @if (ViewBag.Cities != null)
+                                            {
+                                                @foreach (var city in ViewBag.Cities)
+                                                {
+                                                    <option value="@city">@city</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="Country" class="form-label">Country</label>
+                                        <select asp-for="Country" class="form-select">
+                                            <option value="">Select Country</option>
+                                            @if (ViewBag.Countries != null)
+                                            {
+                                                @foreach (var country in ViewBag.Countries)
+                                                {
+                                                    <option value="@country">@country</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="MailingAddress" class="form-label">Mailing Address</label>
+                                        <textarea asp-for="MailingAddress" class="form-control" rows="2"></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="PermanentAddress" class="form-label">Permanent Address</label>
+                                        <textarea asp-for="PermanentAddress" class="form-control" rows="2"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Contact Information -->
-                        <div class="col-md-6">
-                            <h5 class="text-primary mb-3"><i class="fas fa-phone me-2"></i>Contact Information</h5>
-                            
-                            <div class="mb-3">
-                                <label asp-for="Email" class="form-label">Email Address</label>
-                                <input asp-for="Email" type="email" class="form-control" />
-                            </div>
+                        <!-- Nominee Info Tab -->
+                        <div class="tab-pane fade" id="nominee" role="tabpanel" aria-labelledby="nominee-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="fas fa-user-friends me-2"></i>Nominee Information</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label asp-for="NomineeName" class="form-label">Nominee Name</label>
+                                        <input asp-for="NomineeName" class="form-control" />
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="Phone" class="form-label">Phone Number *</label>
-                                <input asp-for="Phone" class="form-control" required />
-                                <span asp-validation-for="Phone" class="text-danger"></span>
-                            </div>
+                                    <div class="mb-3">
+                                        <label asp-for="NomineeID" class="form-label">Nominee ID / CNIC</label>
+                                        <input asp-for="NomineeID" class="form-control" />
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="MailingAddress" class="form-label">Mailing Address</label>
-                                <textarea asp-for="MailingAddress" class="form-control" rows="3"></textarea>
+                                    <div class="mb-3">
+                                        <label asp-for="NomineeRelation" class="form-label">Relationship</label>
+                                        <select asp-for="NomineeRelation" class="form-select">
+                                            <option value="">Select Relationship</option>
+                                            <option value="Father">Father</option>
+                                            <option value="Mother">Mother</option>
+                                            <option value="Son">Son</option>
+                                            <option value="Daughter">Daughter</option>
+                                            <option value="Spouse">Spouse</option>
+                                            <option value="Brother">Brother</option>
+                                            <option value="Sister">Sister</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Nominee Information</strong>
+                                        <p class="mb-0 mt-2">Please provide the details of the person who will be the nominee for this customer. This person will have rights in case of any unforeseen circumstances.</p>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
 
-                            <div class="mb-3">
-                                <label asp-for="City" class="form-label">City</label>
-                                <input asp-for="City" class="form-control" />
-                            </div>
+                        <!-- Registration Info Tab -->
+                        <div class="tab-pane fade" id="registration" role="tabpanel" aria-labelledby="registration-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="fas fa-file-alt me-2"></i>Registration Details</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label asp-for="RegID" class="form-label">Registration</label>
+                                        <select asp-for="RegID" class="form-select">
+                                            <option value="">Select Registration</option>
+                                            @if (ViewBag.Registrations != null)
+                                            {
+                                                @foreach (var reg in ViewBag.Registrations)
+                                                {
+                                                    <option value="@reg.RegID">@reg.FullName - @reg.RegID</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
 
-                            <div class="mb-3">
-                                <label asp-for="Country" class="form-label">Country</label>
-                                <input asp-for="Country" class="form-control" value="South Sudan" />
+                                    <div class="mb-3">
+                                        <label asp-for="PlanID" class="form-label">Payment Plan</label>
+                                        <select asp-for="PlanID" class="form-select">
+                                            <option value="">Select Payment Plan</option>
+                                            @if (ViewBag.PaymentPlans != null)
+                                            {
+                                                @foreach (var plan in ViewBag.PaymentPlans)
+                                                {
+                                                    <option value="@plan.PlanID">@plan.PlanName - @plan.TotalAmount.ToString("C")</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="SubProject" class="form-label">Sub Project</label>
+                                        <select asp-for="SubProject" class="form-select">
+                                            <option value="">Select Sub Project</option>
+                                            @if (ViewBag.SubProjects != null)
+                                            {
+                                                @foreach (var subProject in ViewBag.SubProjects)
+                                                {
+                                                    <option value="@subProject">@subProject</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
+                                        <select asp-for="RegisteredSize" class="form-select">
+                                            <option value="">Select Size</option>
+                                            @if (ViewBag.Sizes != null)
+                                            {
+                                                @foreach (var size in ViewBag.Sizes)
+                                                {
+                                                    <option value="@size">@size</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <h6 class="mb-3"><i class="fas fa-sticky-note me-2"></i>Additional Information</h6>
+
+                                    <div class="mb-3">
+                                        <label asp-for="AdditionalInfo" class="form-label">Additional Notes</label>
+                                        <textarea asp-for="AdditionalInfo" class="form-control" rows="6" placeholder="Enter any additional information about the customer..."></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <!-- Project Information -->
-                        <div class="col-md-6">
-                            <h5 class="text-primary mb-3"><i class="fas fa-building me-2"></i>Project Information</h5>
-                            
-                            <div class="mb-3">
-                                <label asp-for="RegID" class="form-label">Registration</label>
-                                <select asp-for="RegID" class="form-select">
-                                    <option value="">Select Registration</option>
-                                    @if (ViewBag.Registrations != null)
-                                    {
-                                        @foreach (var reg in ViewBag.Registrations)
-                                        {
-                                            <option value="@reg.RegID">@reg.FullName - @reg.RegID</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="PlanID" class="form-label">Payment Plan</label>
-                                <select asp-for="PlanID" class="form-select">
-                                    <option value="">Select Payment Plan</option>
-                                    @if (ViewBag.PaymentPlans != null)
-                                    {
-                                        @foreach (var plan in ViewBag.PaymentPlans)
-                                        {
-                                            <option value="@plan.PlanID">@plan.PlanName - @plan.TotalAmount.ToString("C")</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="SubProject" class="form-label">Sub Project</label>
-                                <input asp-for="SubProject" class="form-control" />
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
-                                <input asp-for="RegisteredSize" class="form-control" />
-                            </div>
-                        </div>
-
-                        <!-- Nominee Information -->
-                        <div class="col-md-6">
-                            <h5 class="text-primary mb-3"><i class="fas fa-user-friends me-2"></i>Nominee Information</h5>
-                            
-                            <div class="mb-3">
-                                <label asp-for="NomineeName" class="form-label">Nominee Name</label>
-                                <input asp-for="NomineeName" class="form-control" />
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="NomineeID" class="form-label">Nominee ID</label>
-                                <input asp-for="NomineeID" class="form-control" />
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="NomineeRelation" class="form-label">Relationship</label>
-                                <select asp-for="NomineeRelation" class="form-select">
-                                    <option value="">Select Relationship</option>
-                                    <option value="Father">Father</option>
-                                    <option value="Mother">Mother</option>
-                                    <option value="Son">Son</option>
-                                    <option value="Daughter">Daughter</option>
-                                    <option value="Spouse">Spouse</option>
-                                    <option value="Brother">Brother</option>
-                                    <option value="Sister">Sister</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="AdditionalInfo" class="form-label">Additional Information</label>
-                                <textarea asp-for="AdditionalInfo" class="form-control" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
+                    <!-- Form Actions -->
+                    <div class="row mt-4">
                         <div class="col-12">
                             <hr>
                             <div class="d-flex justify-content-end">
@@ -184,6 +320,168 @@
     </div>
 </div>
 
+<style>
+    /* Compact Card Spacing */
+    .card-body {
+        padding: 8px 12px !important;
+    }
+
+    .card-header {
+        padding: 8px 12px !important;
+    }
+
+    /* Ultra-compact registration search card */
+    .registration-search-card .card-body {
+        padding: 6px 10px !important;
+    }
+
+    .registration-search-card .card-header {
+        padding: 6px 10px !important;
+    }
+
+    /* Remove all margins from registration search elements */
+    .registration-search-card .form-label {
+        margin-bottom: 2px !important;
+    }
+
+    .registration-search-card .input-group {
+        margin-bottom: 2px !important;
+    }
+
+    .registration-search-card small {
+        margin-top: 0 !important;
+    }
+
+    /* Tab Styling */
+    .customer-tabs {
+        border-bottom: 2px solid #6f42c1;
+        background: linear-gradient(135deg, #f8f9fa 0%, #f3f0ff 100%);
+        padding: 0.5rem 1rem 0;
+    }
+
+    .customer-tabs .nav-link {
+        color: #666;
+        font-weight: 600;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.75rem 1.25rem;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+    .customer-tabs .nav-link:hover {
+        color: #6f42c1;
+        background: rgba(111, 66, 193, 0.05);
+        border-bottom-color: #9370db;
+    }
+
+    .customer-tabs .nav-link.active {
+        color: #6f42c1;
+        background: white;
+        border-bottom-color: #6f42c1;
+        font-weight: 700;
+    }
+
+    .customer-tabs .nav-link i {
+        font-size: 13px;
+    }
+
+    /* Tab Content */
+    .tab-content {
+        padding-top: 1rem;
+    }
+
+    /* Section Headers within Tabs */
+    .tab-pane h6 {
+        color: #6f42c1;
+        font-weight: 700;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e8dcff;
+    }
+
+    /* Responsive Tabs */
+    @@media (max-width: 768px) {
+        .customer-tabs .nav-link {
+            padding: 0.5rem 0.75rem;
+            font-size: 12px;
+        }
+
+        .customer-tabs .nav-link i {
+            display: none;
+        }
+    }
+</style>
+
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        // Registration Search and Auto-Fill
+        $('#searchRegBtn').click(function() {
+            var regID = $('#regIDInput').val().trim();
+            
+            if (!regID) {
+                alert('Please enter a Registration ID');
+                return;
+            }
+
+            // Show loading
+            $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Searching...').prop('disabled', true);
+
+            $.post('@Url.Action("SearchRegistration", "Customer")', { regID: regID }, function(response) {
+                if (response.success) {
+                    // Auto-fill the form
+                    $('#regIDHidden').val(response.registration.regID);
+                    $('input[name="FullName"]').val(response.registration.fullName);
+                    $('input[name="CNIC"]').val(response.registration.cnic || '');
+                    $('input[name="Phone"]').val(response.registration.phone);
+                    $('input[name="Email"]').val(response.registration.email || '');
+
+                    // Show success message
+                    $('#regSuccessMessage').text('Registration found! Customer details auto-filled from Registration: ' + response.registration.regID);
+                    $('#regSuccessSection').show();
+                    $('#regErrorSection').hide();
+                    $('#clearRegBtn').show();
+
+                    // Scroll to form
+                    $('html, body').animate({
+                        scrollTop: $('.customer-tabs').offset().top - 100
+                    }, 500);
+                } else {
+                    // Show error
+                    $('#regErrorMessage').text(response.message);
+                    $('#regErrorSection').show();
+                    $('#regSuccessSection').hide();
+                }
+            }).fail(function() {
+                $('#regErrorMessage').text('Error searching for registration. Please try again.');
+                $('#regErrorSection').show();
+                $('#regSuccessSection').hide();
+            }).always(function() {
+                $('#searchRegBtn').html('<i class="fas fa-search me-2"></i>Search').prop('disabled', false);
+            });
+        });
+
+        // Clear Registration
+        $('#clearRegBtn').click(function() {
+            $('#regIDInput').val('');
+            $('#regIDHidden').val('');
+            $('input[name="FullName"]').val('');
+            $('input[name="CNIC"]').val('');
+            $('input[name="Phone"]').val('');
+            $('input[name="Email"]').val('');
+            $('#regSuccessSection').hide();
+            $('#regErrorSection').hide();
+            $(this).hide();
+        });
+
+        // Enter key support for registration search
+        $('#regIDInput').keypress(function(e) {
+            if (e.which == 13) {
+                e.preventDefault();
+                $('#searchRegBtn').click();
+            }
+        });
+    </script>
 }
+

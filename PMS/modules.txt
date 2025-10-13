@@ -1,12 +1,4 @@
 ﻿Design a professional, modern real estate website UI for "JUBA Smart City".
-Use a premium green and gold color palette inspired by the brand logo:
-
-Primary: rich emerald green #0B9444
-Accent: royal gold #D4AF37
-Text: dark gray #333333
-Background: white #FFFFFF with subtle gradients or soft gold tints.
-
-The UI should look luxurious, trustworthy, and elegant — blending modern minimalism with high-end real estate vibes.
 
 ===========================================
 PAYMENT SYSTEM ARCHITECTURE
@@ -37,14 +29,61 @@ PAYMENT SYSTEM ARCHITECTURE
 
 Flow: Payment Plan (Batch) → Payment Schedules (Installments) → Payments (Receipts)
 
+
+
+
+
+===========================================
+CRITICAL BUSINESS RULES: CUSTOMER & PROPERTY RELATIONSHIP
+===========================================
+
+** 1 PROPERTY = 1 CUSTOMER (OR 0 IF NOT ALLOTTED) **
+** 1 CUSTOMER = 0 OR 1 PROPERTY (NEVER MULTIPLE) **
+
+Rules:
+1. A Property can have:
+   - NO customer (Status: Available - not allotted)
+   - ONE customer (Status: Allotted)
+   - NEVER multiple customers/allotments
+
+2. A Customer (Membership) can have:
+   - NO property (when new customer, installments pending)
+   - ONE property (after allotment)
+   - NEVER multiple properties
+
+3. If a customer wants ANOTHER plot:
+   - Create a NEW Customer entry for the same person
+   - Use a NEW RegistrationID
+   - Assign a NEW Payment Plan
+   - Reason: One Registration = One Payment Plan = One Property
+
+4. Database Enforcement:
+   - UNIQUE constraint on Allotment.PropertyID
+   - Each property can only have ONE record in Allotment table
+   - System will reject duplicate allotment attempts
+
+5. Allotment Display:
+   - Property Details → Allotment Tab: Show ONLY 1 allotment (or none)
+   - Never show multiple allotments for same property
+
 ===========================================
 SIDEBAR MENU STRUCTURE
 ===========================================
 
 - Dashboard
+- Registrations
+  ├── Index (Grid of all registrations with filters and statistics)
+  ├── Create (New registration form)
+  ├── Edit (Update registration details)
+  ├── Details (View registration + Update status + Link to customer if converted)
+  └── Delete (Remove registration - only if not linked to customer)
 - Customers
 - Projects
 - Properties
+- Allotment
+  ├── Index (Main page: Grid of all allotments + Chart of Allotted vs Not Allotted per Project)
+  ├── Create (3-step wizard: Search Customer → Select Property → Complete Allotment)
+  └── UnAllot (View and cancel allotments)
 - Payment Plans (Batches Management - Parent)
   └── Click to view → Payment Schedules (Child Installments with CRUD)
 - Payment Schedules (All Installments across all Plans)
@@ -53,20 +92,79 @@ SIDEBAR MENU STRUCTURE
 - Configuration Settings (Admin only)
 
 ===========================================
-CONFIGURATION SETTINGS
+REGISTRATION MODULE WORKFLOW
+===========================================
+
+Registration is the FIRST STEP in the customer onboarding process.
+
+Process Flow:
+1. Registration Created (Status: Pending)
+   - Captures basic info: Name, CNIC, Phone, Email
+   - Admin reviews the registration
+   
+2. Registration Reviewed
+   - Admin changes status to "Approved" or "Rejected"
+   - If Approved → Can proceed to create Customer
+   
+3. Customer Creation
+   - Links to Registration (RegID)
+   - Assigns Payment Plan
+   - Full customer profile created
+   - Registration → Customer (conversion)
+
+Business Rules:
+- One Registration can have multiple Customers (if same person buys multiple plots)
+- Each Customer must link to one Registration
+- Registration cannot be deleted if linked to customer(s)
+- Registration approval is recommended before customer creation
+
+===========================================
+CONFIGURATION SETTINGS (KEY-VALUE DICTIONARY)
 ===========================================
 
 Purpose: Dictionary/Collection of system variables used throughout PMS
 
-Categories:
-- Years: Available years for date selections
-- Cities: South Sudan cities (Juba, Wau, Malakal, etc.)
-- Countries: Countries list (default: South Sudan)
-- Blocks: Property block identifiers (A, B, C, etc.)
-- PropertyTypes: Residential, Commercial, Industrial, etc.
-- ProjectTypes: Housing, Commercial Complex, Mixed-Use, etc.
-- PaymentMethods: Cash, Bank Transfer, Cheque, Online, Mobile Money
-- Sizes: Property sizes (5 Marla, 10 Marla, 1 Kanal, etc.)
-- Status: Various status options for workflows
+** PATTERN: 1 Row Per Category with Comma-Separated Values **
+
+Structure:
+- ConfigKey: Category name (e.g., "Years", "Cities", "Sizes")
+- Category: Same as ConfigKey for organization
+- ConfigValue: Comma-separated list of all values (e.g., "2023,2024,2025,2026")
+- Description: Human-readable description
+
+
+Configuration Categories (16 Total):
+
+┌────────────────────┬────────────────────┬─────────────────────────────────────────────────────────────────────┐
+│ ConfigKey          │ Category           │ ConfigValue (Comma-Separated)                                       │
+├────────────────────┼────────────────────┼─────────────────────────────────────────────────────────────────────┤
+│ allotmenttypes     │ AllotmentTypes     │ Regular,Transfer,Balloting,Special                                  │
+│ blocks             │ Blocks             │ A,B,C,D,E,F,G,H,I,J,K,L                                             │
+│ cities             │ Cities             │ Juba,Wau,Malakal,Yei,Bor,Torit,Yambio,Rumbek,Aweil,Bentiu          │
+│ countries          │ Countries          │ South Sudan,Sudan,Uganda,Kenya,Ethiopia,Egypt                       │
+│ customerstatus     │ CustomerStatus     │ Active,Inactive,Suspended,Cancelled                                 │
+│ nomineerelations   │ NomineeRelations   │ Father,Mother,Son,Daughter,Spouse,Brother,Sister,Other              │
+│ paymentmethods     │ PaymentMethods     │ Cash,Bank Transfer,Cheque,Online Payment,Mobile Money               │
+│ paymentstatus      │ PaymentStatus      │ Pending,Completed,Failed,Refunded,Cancelled                         │
+│ plottypes          │ PlotTypes          │ Corner,Park Facing,Main Road,Inner Plot,Commercial Boulevard        │
+│ projecttypes       │ ProjectTypes       │ Housing,Commercial Complex,Mixed-Use Development,Gated Community,.. │
+│                    │                    │ Smart City                                                           │
+│ propertystatus     │ PropertyStatus     │ Available,Allotted,Reserved,Blocked                                 │
+│ propertytypes      │ PropertyTypes      │ Residential,Commercial,Industrial,Mixed-Use,Agricultural            │
+│ sizes              │ Sizes              │ 5 Marla,7 Marla,10 Marla,1 Kanal,2 Kanal,250 sq meters,500 sq      │
+│                    │                    │ meters,1000 sq meters,1500 sq meters,2000 sq meters                 │
+│ subprojects        │ SubProjects        │ Phase 1,Phase 2,Phase 3,Block A Extension,Block B Extension,        │
+│                    │                    │ Commercial Zone,Residential Zone                                     │
+│ workflowstatus     │ WorkflowStatus     │ Pending,Pending Approval,Approved,Rejected,Completed,Cancelled      │
+│ years              │ Years              │ 2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030,2031,2032,  │
+│                    │                    │ 2033,2034,2035                                                       │
+└────────────────────┴────────────────────┴─────────────────────────────────────────────────────────────────────┘
+
+
+Code Usage:
+- Load: var cities = ConfigValue.Split(',').ToList();
+- Display: foreach (var city in cities) { <option>@city</option> }
+- Save: Just store the selected value
 
 Usage: Dropdowns, filters, validation, and standardization across the system
+Total Configuration Rows in Database: 15
