@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Services;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +36,32 @@ builder.Services.AddAuthentication("Cookies")
 
 builder.Services.AddAuthorization();
 
+// Configure CORS from appsettings
+const string CorsPolicyName = "ConfiguredOrigins";
+var allowedUrlsRaw = builder.Configuration["CORSURLS:AllowedURLS"] ?? string.Empty;
+var allowedOrigins = allowedUrlsRaw
+    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .ToArray();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -49,6 +76,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// Enable CORS early, before auth
+app.UseCors(CorsPolicyName);
 
 // Add session middleware
 app.UseSession();

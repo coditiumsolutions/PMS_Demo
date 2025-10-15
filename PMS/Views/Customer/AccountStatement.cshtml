@@ -1,0 +1,114 @@
+@model PMS.Models.Customer
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Account Statement";
+    var plan = Model.PaymentPlan;
+    var schedules = plan?.PaymentSchedules?.OrderBy(ps => ps.InstallmentNo).ToList() ?? new List<PMS.Models.PaymentSchedule>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="fas fa-file-invoice-dollar me-2"></i>Account Statement</h3>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+        <a class="btn btn-outline-primary btn-sm" href="#" onclick="downloadPDF(event)"><i class="fas fa-file-pdf me-1"></i>Download PDF</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-7">
+                <h6 class="mb-3">Customer Info</h6>
+                <div><strong>Customer ID:</strong> <code>@Model.CustomerID</code></div>
+                <div><strong>Customer Name:</strong> @Model.FullName</div>
+                <div><strong>Address:</strong> @(Model.MailingAddress ?? Model.PermanentAddress ?? "-")</div>
+                <div><strong>Mobile:</strong> @Model.Phone</div>
+            </div>
+            <div class="col-md-5">
+                <h6 class="mb-3">Plot / Plan Info</h6>
+                @{
+                    var property = Model.Allotments?.FirstOrDefault()?.Property;
+                }
+                <div><strong>Plot:</strong> @(property != null ? ($"{property.PlotNo}, Block {property.Block}") : "-")</div>
+                <div><strong>Size:</strong> @(property?.Size ?? Model.RegisteredSize ?? "-")</div>
+                <div><strong>Plan:</strong> @(plan?.PlanName ?? "-")</div>
+                <div><strong>Total Amount:</strong> @(plan != null ? plan.TotalAmount.ToString("N2") + " SSP" : "-")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Account Head</th>
+                        <th class="text-center">Installment No</th>
+                        <th class="text-end">Due Amount</th>
+                        <th class="text-end">Amount Due</th>
+                        <th class="text-end">Amount Paid</th>
+                        <th class="text-center">Paid On</th>
+                        <th>Payment DS/Instrument No</th>
+                        <th class="text-end">Surcharge</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @{
+                    decimal totalDueAmount = 0m;
+                    decimal totalAmountDue = 0m;
+                    decimal totalAmountPaid = 0m;
+                    decimal totalSurcharge = 0m;
+                }
+                @foreach (var sch in schedules)
+                {
+                    var payments = sch.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<PMS.Models.Payment>();
+                    var amountPaid = payments.Sum(p => p.Amount);
+                    var amountDue = Math.Max(0, sch.Amount - amountPaid);
+                    // Simple surcharge display: based on flag and rate; actual calc may vary
+                    var surcharge = sch.SurchargeApplied ? Math.Round(amountDue * sch.SurchargeRate, 2) : 0m;
+
+                    totalDueAmount += sch.Amount;
+                    totalAmountDue += amountDue;
+                    totalAmountPaid += amountPaid;
+                    totalSurcharge += surcharge;
+
+                    <tr>
+                        <td>Installment</td>
+                        <td class="text-center">@sch.InstallmentNo</td>
+                        <td class="text-end">@sch.Amount.ToString("N2")</td>
+                        <td class="text-end">@amountDue.ToString("N2")</td>
+                        <td class="text-end">@amountPaid.ToString("N2")</td>
+                        <td class="text-center">@(payments.LastOrDefault()?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
+                        <td>@(payments.LastOrDefault()?.ReferenceNo ?? "-")</td>
+                        <td class="text-end">@surcharge.ToString("N2")</td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td colspan="2" class="text-end">Totals</td>
+                        <td class="text-end">@totalDueAmount.ToString("N2")</td>
+                        <td class="text-end">@totalAmountDue.ToString("N2")</td>
+                        <td class="text-end">@totalAmountPaid.ToString("N2")</td>
+                        <td></td>
+                        <td></td>
+                        <td class="text-end">@totalSurcharge.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="text-muted small mt-3">This is a system generated report.</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function downloadPDF(e) {
+        e.preventDefault();
+        window.print();
+    }
+</script>
+}

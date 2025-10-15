@@ -253,6 +253,30 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
+
+    /* Users Modals - No Backdrop */
+    .modal-backdrop {
+        display: none !important;
+    }
+
+    body.modal-open .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Disable global dim overlay from layout on this page */
+    body.modal-open::before {
+        display: none !important;
+        background: transparent !important;
+    }
+
+    /* Force transparent background for all modals on this page */
+    .modal {
+        background: transparent !important;
+    }
+
+    .modal.show {
+        background: transparent !important;
+    }
 </style>
 
 @section Scripts {
@@ -264,6 +288,25 @@
                 "columnDefs": [
                     { "orderable": false, "targets": 6 }
                 ]
+            });
+
+            // Remove any existing backdrops
+            $('.modal-backdrop').remove();
+
+            // Ensure Bootstrap 5 modals have no backdrop and stay above UI
+            $('.modal').on('show.bs.modal', function(e) {
+                // Remove any existing backdrops
+                $('.modal-backdrop').remove();
+                // Ensure instance exists and set backdrop to false
+                var modalInstance = bootstrap.Modal.getOrCreateInstance(this, { backdrop: false });
+                if (modalInstance && modalInstance._config) {
+                    modalInstance._config.backdrop = false;
+                }
+            });
+
+            // Remove backdrops on shown/hidden as a safeguard
+            $('.modal').on('shown.bs.modal hidden.bs.modal', function() {
+                $('.modal-backdrop').remove();
             });
         });
 

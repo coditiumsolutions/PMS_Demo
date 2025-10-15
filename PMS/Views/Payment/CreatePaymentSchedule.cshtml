@@ -126,6 +126,14 @@
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Tip:</strong> Surcharge will be automatically applied if payment is made after the due date.
+                        @if (paymentPlan != null)
+                        {
+                            var existingTotal = paymentPlan.PaymentSchedules?.Sum(ps => ps.Amount) ?? 0m;
+                            var remaining = paymentPlan.TotalAmount - existingTotal;
+                            <div class="mt-2">
+                                <strong>Remaining allowable total:</strong> @remaining.ToString("N2") SSP
+                            </div>
+                        }
                     </div>
 
                     <hr>

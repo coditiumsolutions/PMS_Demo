@@ -228,25 +228,48 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreatePaymentSchedule(PaymentSchedule schedule)
         {
-            if (ModelState.IsValid)
+            // Normalize surcharge rate (allow user to input percent)
+            if (schedule.SurchargeRate > 1)
             {
-                schedule.ScheduleID = GenerateID();
-                _context.PaymentSchedules.Add(schedule);
-                await _context.SaveChangesAsync();
-
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    await LogActivity(userId, "Create Payment Schedule", "PaymentSchedule", schedule.ScheduleID);
-                }
-
-                TempData["Success"] = "Installment created successfully.";
-                return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
+                schedule.SurchargeRate = schedule.SurchargeRate / 100m;
             }
 
-            var paymentPlan = await _context.PaymentPlans.FindAsync(schedule.PlanID);
-            ViewBag.PaymentPlan = paymentPlan;
-            return View(schedule);
+            // Server-side guard: total of installments must not exceed plan total
+            var plan = await _context.PaymentPlans
+                .Include(p => p.PaymentSchedules)
+                .FirstOrDefaultAsync(p => p.PlanID == schedule.PlanID);
+
+            if (plan == null)
+            {
+                return NotFound();
+            }
+
+            var existingTotal = plan.PaymentSchedules.Sum(ps => ps.Amount);
+            var projectedTotal = existingTotal + schedule.Amount;
+            if (projectedTotal > plan.TotalAmount)
+            {
+                var remaining = plan.TotalAmount - existingTotal;
+                ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} SSP.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.PaymentPlan = plan;
+                return View(schedule);
+            }
+
+            schedule.ScheduleID = GenerateID();
+            _context.PaymentSchedules.Add(schedule);
+            await _context.SaveChangesAsync();
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, "Create Payment Schedule", "PaymentSchedule", schedule.ScheduleID);
+            }
+
+            TempData["Success"] = "Installment created successfully.";
+            return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
         }
 
         [HttpPost]
@@ -259,6 +282,32 @@ namespace PMS.Controllers
                 if (schedule.SurchargeRate > 1)
                 {
                     schedule.SurchargeRate = schedule.SurchargeRate / 100;
+                }
+
+                // Guard: editing installment should not cause total to exceed plan total
+                var plan = await _context.PaymentPlans
+                    .Include(p => p.PaymentSchedules)
+                    .FirstOrDefaultAsync(p => p.PlanID == schedule.PlanID);
+                if (plan == null)
+                {
+                    return NotFound();
+                }
+
+                // Find existing schedule to get old amount
+                var existingSchedule = await _context.PaymentSchedules.AsNoTracking()
+                    .FirstOrDefaultAsync(ps => ps.ScheduleID == schedule.ScheduleID);
+                if (existingSchedule == null)
+                {
+                    return NotFound();
+                }
+
+                var totalWithoutThis = plan.PaymentSchedules.Where(ps => ps.ScheduleID != schedule.ScheduleID).Sum(ps => ps.Amount);
+                var projectedTotal = totalWithoutThis + schedule.Amount;
+                if (projectedTotal > plan.TotalAmount)
+                {
+                    var remaining = plan.TotalAmount - totalWithoutThis;
+                    TempData["Error"] = $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} SSP.";
+                    return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
                 }
 
                 _context.Update(schedule);

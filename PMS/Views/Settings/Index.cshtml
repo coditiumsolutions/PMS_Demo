@@ -287,6 +287,42 @@
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         border: none;
     }
+
+    /* Completely remove backdrop for Settings modals */
+    .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Ensure no backdrop appears for any modal on this page */
+    body.modal-open .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Disable global dim overlay from layout on this page */
+    body.modal-open::before {
+        display: none !important;
+        background: transparent !important;
+    }
+
+    /* Force transparent background for all modals */
+    .modal {
+        background: transparent !important;
+    }
+
+    .modal.show {
+        background: transparent !important;
+    }
+
+    /* Specific targeting for Settings page modals */
+    #addConfigModal,
+    .modal[id^="editModal"] {
+        background: transparent !important;
+    }
+
+    #addConfigModal.show,
+    .modal[id^="editModal"].show {
+        background: transparent !important;
+    }
 </style>
 
 @section Scripts {
@@ -297,6 +333,39 @@
                 document.getElementById('deleteForm').submit();
             }
         }
+
+        // Ensure no backdrop is created for Settings modals
+        $(document).ready(function() {
+            // Remove any existing backdrops
+            $('.modal-backdrop').remove();
+            
+            // Override Bootstrap modal show event (Bootstrap 5 safe)
+            $('.modal').on('show.bs.modal', function(e) {
+                // Remove any existing backdrops
+                $('.modal-backdrop').remove();
+                // Ensure a Bootstrap Modal instance exists and set backdrop to false
+                var modalInstance = bootstrap.Modal.getOrCreateInstance(this, { backdrop: false });
+                // For already-created instances, enforce backdrop false as well
+                if (modalInstance && modalInstance._config) {
+                    modalInstance._config.backdrop = false;
+                }
+            });
+
+            // Remove backdrop when modal is shown
+            $('.modal').on('shown.bs.modal', function(e) {
+                $('.modal-backdrop').remove();
+            });
+
+            // Remove backdrop when modal is hidden
+            $('.modal').on('hidden.bs.modal', function(e) {
+                $('.modal-backdrop').remove();
+            });
+
+            // Watch for backdrop creation and remove it
+            setInterval(function() {
+                $('.modal-backdrop').remove();
+            }, 100);
+        });
     </script>
 }
 

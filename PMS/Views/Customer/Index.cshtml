@@ -23,7 +23,7 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label fw-bold">Filter by Project</label>
-                    <select name="projectFilter" class="form-select" onchange="this.form.submit()">
+                    <select name="projectFilter" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
                         @if (ViewBag.Projects != null)
                         {
@@ -38,25 +38,25 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold">Filter by Status</label>
-                    <select name="statusFilter" class="form-select" onchange="this.form.submit()">
+                    <select name="statusFilter" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
                         <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
                         <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold">Search</label>
-                    <input type="text" name="searchTerm" class="form-control" 
+                    <input type="text" name="searchTerm" class="form-control form-control-sm" 
                            placeholder="Search by ID, Name, CNIC, Phone, Email..." 
                            value="@ViewBag.SearchTerm" />
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label fw-bold">&nbsp;</label>
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary btn-sm">
                             <i class="fas fa-search me-2"></i>Search
                         </button>
-                        <a asp-action="Index" class="btn btn-secondary">
+                        <a asp-action="Index" class="btn btn-secondary btn-sm">
                             <i class="fas fa-times me-2"></i>Clear
                         </a>
                     </div>
@@ -75,7 +75,7 @@
                         <th>Customer ID</th>
                         <th>Full Name</th>
                         <th>Project</th>
-                        <th>Email</th>
+                        <th style="width: 160px;">Email</th>
                         <th>Phone</th>
                         <th>City</th>
                         <th>Status</th>
@@ -107,7 +107,9 @@
                                     <span class="text-muted">No Project</span>
                                 }
                             </td>
-                            <td>@customer.Email</td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 160px;">@customer.Email</div>
+                            </td>
                             <td>@customer.Phone</td>
                             <td>@customer.City</td>
                             <td>

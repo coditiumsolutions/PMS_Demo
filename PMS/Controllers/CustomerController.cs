@@ -200,6 +200,30 @@ namespace PMS.Controllers
             return View(customer);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> AccountStatement(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return NotFound();
+            }
+
+            var customer = await _context.Customers
+                .Include(c => c.PaymentPlan)
+                    .ThenInclude(pp => pp.PaymentSchedules)
+                        .ThenInclude(ps => ps.Payments)
+                .Include(c => c.Allotments)
+                    .ThenInclude(a => a.Property)
+                .FirstOrDefaultAsync(c => c.CustomerID == id);
+
+            if (customer == null)
+            {
+                return NotFound();
+            }
+
+            return View(customer);
+        }
+
         // POST: Search Registration by RegID (AJAX)
         [HttpPost]
         public async Task<IActionResult> SearchRegistration(string regID)
