@@ -19,6 +19,7 @@
             --text-primary: #1E1E2D;
             --text-secondary: #6B7280;
             --surface: #FFFFFF;
+            --border: #dee2e6;
         }
 
         body {
@@ -73,13 +74,17 @@
             padding: 0.875rem 1rem;
             font-size: 0.95rem;
             transition: all 0.2s ease-in-out;
-            background: var(--surface);
+            background: #ffffff;
+            color: #212529;
         }
         .form-control:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(156, 106, 222, 0.1);
-            background: var(--surface);
+            background: #ffffff;
             outline: none;
+        }
+        .form-control::placeholder {
+            color: #6c757d;
         }
         .btn-login {
             background: var(--primary);

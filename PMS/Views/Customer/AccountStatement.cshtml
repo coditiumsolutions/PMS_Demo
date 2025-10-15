@@ -1,18 +1,38 @@
 @model PMS.Models.Customer
 
 @{
-    Layout = "~/Views/Shared/_Layout.cshtml";
+	Layout = null;
     ViewData["Title"] = "Account Statement";
     var plan = Model.PaymentPlan;
     var schedules = plan?.PaymentSchedules?.OrderBy(ps => ps.InstallmentNo).ToList() ?? new List<PMS.Models.PaymentSchedule>();
 }
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Juba Smart City PMS</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/juba-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="mb-0"><i class="fas fa-file-invoice-dollar me-2"></i>Account Statement</h3>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 no-print">
         <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
         <a class="btn btn-outline-primary btn-sm" href="#" onclick="downloadPDF(event)"><i class="fas fa-file-pdf me-1"></i>Download PDF</a>
     </div>
+    
+</div>
+
+<div id="statement-root">
+
+<div class="text-center mb-3">
+    <img src="~/images/logo.png" alt="JUBA Smart City Logo" style="max-width: 180px; height: auto;" />
 </div>
 
 <div class="card mb-3">
@@ -30,10 +50,10 @@
                 @{
                     var property = Model.Allotments?.FirstOrDefault()?.Property;
                 }
-                <div><strong>Plot:</strong> @(property != null ? ($"{property.PlotNo}, Block {property.Block}") : "-")</div>
+                <div><strong>Plot:</strong> @(property != null ? ($"{property.PlotNo}, Block {property.Block}{(string.IsNullOrWhiteSpace(property.Street) ? string.Empty : ", Street " + property.Street)}") : "-")</div>
                 <div><strong>Size:</strong> @(property?.Size ?? Model.RegisteredSize ?? "-")</div>
                 <div><strong>Plan:</strong> @(plan?.PlanName ?? "-")</div>
-                <div><strong>Total Amount:</strong> @(plan != null ? plan.TotalAmount.ToString("N2") + " SSP" : "-")</div>
+                <div><strong>Total Amount:</strong> @(plan != null ? plan.TotalAmount.ToString("N0") + " SSP" : "-")</div>
             </div>
         </div>
     </div>
@@ -78,37 +98,51 @@
                     <tr>
                         <td>Installment</td>
                         <td class="text-center">@sch.InstallmentNo</td>
-                        <td class="text-end">@sch.Amount.ToString("N2")</td>
-                        <td class="text-end">@amountDue.ToString("N2")</td>
-                        <td class="text-end">@amountPaid.ToString("N2")</td>
+                        <td class="text-end">@sch.Amount.ToString("N0")</td>
+                        <td class="text-end">@amountDue.ToString("N0")</td>
+                        <td class="text-end">@amountPaid.ToString("N0")</td>
                         <td class="text-center">@(payments.LastOrDefault()?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
                         <td>@(payments.LastOrDefault()?.ReferenceNo ?? "-")</td>
-                        <td class="text-end">@surcharge.ToString("N2")</td>
+                        <td class="text-end">@surcharge.ToString("N0")</td>
                     </tr>
                 }
                 </tbody>
                 <tfoot>
                     <tr class="table-light fw-bold">
                         <td colspan="2" class="text-end">Totals</td>
-                        <td class="text-end">@totalDueAmount.ToString("N2")</td>
-                        <td class="text-end">@totalAmountDue.ToString("N2")</td>
-                        <td class="text-end">@totalAmountPaid.ToString("N2")</td>
+                        <td class="text-end">@totalDueAmount.ToString("N0")</td>
+                        <td class="text-end">@totalAmountDue.ToString("N0")</td>
+                        <td class="text-end">@totalAmountPaid.ToString("N0")</td>
                         <td></td>
                         <td></td>
-                        <td class="text-end">@totalSurcharge.ToString("N2")</td>
+                        <td class="text-end">@totalSurcharge.ToString("N0")</td>
                     </tr>
                 </tfoot>
             </table>
         </div>
-        <div class="text-muted small mt-3">This is a system generated report.</div>
+        <div class="text-muted small mt-3">This is a system generated report and does not require a signature.</div>
     </div>
 </div>
 
-@section Scripts {
 <script>
     function downloadPDF(e) {
         e.preventDefault();
         window.print();
     }
 </script>
-}
+
+<style>
+    @@media print {
+        /* Hide everything except the statement */
+        body * { visibility: hidden; }
+        #statement-root, #statement-root * { visibility: visible; }
+        #statement-root { position: absolute; left: 0; top: 0; width: 100%; }
+        /* Hide controls */
+        .no-print { display: none !important; }
+    }
+</style>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

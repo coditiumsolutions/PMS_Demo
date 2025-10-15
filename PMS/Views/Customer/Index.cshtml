@@ -75,7 +75,6 @@
                         <th>Customer ID</th>
                         <th>Full Name</th>
                         <th>Project</th>
-                        <th style="width: 160px;">Email</th>
                         <th>Phone</th>
                         <th>City</th>
                         <th>Status</th>
@@ -106,9 +105,6 @@
                                 {
                                     <span class="text-muted">No Project</span>
                                 }
-                            </td>
-                            <td>
-                                <div class="text-truncate" style="max-width: 160px;">@customer.Email</div>
                             </td>
                             <td>@customer.Phone</td>
                             <td>@customer.City</td>
@@ -147,9 +143,9 @@
         $(document).ready(function() {
             $('#customersTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 7, "desc" ]], // Created Date is now column 7
+                "order": [[ 6, "desc" ]], // Created Date is now column 6
                 "columnDefs": [
-                    { "orderable": false, "targets": 8 } // Actions column is now column 8
+                    { "orderable": false, "targets": 7 } // Actions column is now column 7
                 ]
             });
         });
