@@ -241,93 +241,6 @@
                                     </div>
                                 </td>
                             </tr>
-
-                            <!-- Payment Details Modal -->
-                            <div class="modal fade" id="paymentModal@(payment.PaymentID)" tabindex="-1">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header" style="background: var(--primary);">
-                                            <h5 class="modal-title text-white">
-                                                <i class="fas fa-receipt me-2"></i>Payment Details - @payment.PaymentID
-                                            </h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="row g-3">
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Payment ID</label>
-                                                    <p class="mb-0"><code>@payment.PaymentID</code></p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Payment Date</label>
-                                                    <p class="mb-0">@payment.PaymentDate.ToString("MMMM dd, yyyy hh:mm tt")</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Customer Name</label>
-                                                    <p class="mb-0"><strong>@payment.Customer?.FullName</strong></p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Customer ID</label>
-                                                    <p class="mb-0"><code>@payment.CustomerID</code></p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Payment Plan</label>
-                                                    <p class="mb-0">@payment.PaymentSchedule?.PaymentPlan?.PlanName</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Installment Number</label>
-                                                    <p class="mb-0">
-                                                        @if (payment.PaymentSchedule != null)
-                                                        {
-                                                            <span>Installment #@payment.PaymentSchedule.InstallmentNo</span>
-                                                        }
-                                                    </p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Amount Paid (SSP)</label>
-                                                    <p class="mb-0"><strong class="text-success fs-5" data-format-number="@payment.Amount">@payment.Amount.ToString("N0")</strong></p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Payment Method</label>
-                                                    <p class="mb-0">@payment.Method</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Reference Number</label>
-                                                    <p class="mb-0"><code>@payment.ReferenceNo</code></p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Status</label>
-                                                    <p class="mb-0">
-                                                        @if (payment.Status == "Completed" || payment.Status == "Approved")
-                                                        {
-                                                            <span class="badge bg-success">@payment.Status</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="badge bg-warning">@payment.Status</span>
-                                                        }
-                                                    </p>
-                                                </div>
-                                                @if (!string.IsNullOrEmpty(payment.Remarks))
-                                                {
-                                                    <div class="col-12">
-                                                        <label class="text-muted small">Remarks</label>
-                                                        <p class="mb-0">@payment.Remarks</p>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <a asp-action="Receipt" asp-route-id="@payment.PaymentID" 
-                                               class="btn btn-primary" 
-                                               target="_blank">
-                                                <i class="fas fa-print me-2"></i>Print Receipt
-                                            </a>
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         }
                     </tbody>
                 </table>
@@ -346,6 +259,97 @@
         }
     </div>
 </div>
+
+<!-- Payment Detail Modals -->
+@foreach (var payment in Model)
+{
+    <!-- Payment Details Modal -->
+    <div class="modal fade" id="paymentModal@(payment.PaymentID)" tabindex="-1" aria-labelledby="paymentModalLabel@(payment.PaymentID)" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary);">
+                    <h5 class="modal-title text-white" id="paymentModalLabel@(payment.PaymentID)">
+                        <i class="fas fa-receipt me-2"></i>Payment Details - @payment.PaymentID
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Payment ID</label>
+                            <p class="mb-0"><code>@payment.PaymentID</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Payment Date</label>
+                            <p class="mb-0">@payment.PaymentDate.ToString("MMMM dd, yyyy hh:mm tt")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Customer Name</label>
+                            <p class="mb-0"><strong>@payment.Customer?.FullName</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Customer ID</label>
+                            <p class="mb-0"><code>@payment.CustomerID</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Payment Plan</label>
+                            <p class="mb-0">@payment.PaymentSchedule?.PaymentPlan?.PlanName</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Installment Number</label>
+                            <p class="mb-0">
+                                @if (payment.PaymentSchedule != null)
+                                {
+                                    <span>Installment #@payment.PaymentSchedule.InstallmentNo</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Amount Paid (SSP)</label>
+                            <p class="mb-0"><strong class="text-success fs-5" data-format-number="@payment.Amount">@payment.Amount.ToString("N0")</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Payment Method</label>
+                            <p class="mb-0">@payment.Method</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Reference Number</label>
+                            <p class="mb-0"><code>@payment.ReferenceNo</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Status</label>
+                            <p class="mb-0">
+                                @if (payment.Status == "Completed" || payment.Status == "Approved")
+                                {
+                                    <span class="badge bg-success">@payment.Status</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">@payment.Status</span>
+                                }
+                            </p>
+                        </div>
+                        @if (!string.IsNullOrEmpty(payment.Remarks))
+                        {
+                            <div class="col-12">
+                                <label class="text-muted small">Remarks</label>
+                                <p class="mb-0">@payment.Remarks</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a asp-action="Receipt" asp-route-id="@payment.PaymentID" 
+                       class="btn btn-primary" 
+                       target="_blank">
+                        <i class="fas fa-print me-2"></i>Print Receipt
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .avatar-xs {
@@ -393,6 +397,49 @@
     .font-size-24 {
         font-size: 24px;
     }
+
+    /* Remove modal backdrop completely */
+    .modal {
+        z-index: 1055 !important;
+    }
+
+    .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Hide backdrop when modal is shown */
+    .modal.show ~ .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Alternative: make backdrop transparent */
+    .modal-backdrop.show {
+        opacity: 0 !important;
+        background-color: transparent !important;
+    }
+
+    /* Ensure modals are properly positioned */
+    .modal-dialog {
+        margin: 1.75rem auto;
+    }
+
+    .modal-dialog-centered {
+        min-height: calc(100% - 3.5rem);
+    }
+
+    /* Fix any potential backdrop issues */
+    .modal.show {
+        display: block !important;
+    }
+
+    .modal.fade .modal-dialog {
+        transition: transform 0.3s ease-out;
+        transform: translate(0, -50px);
+    }
+
+    .modal.show .modal-dialog {
+        transform: none;
+    }
 </style>
 
 @section Scripts {
@@ -412,6 +459,32 @@
                     "infoEmpty": "No payments available",
                     "infoFiltered": "(filtered from _MAX_ total payments)"
                 }
+            });
+
+            // Remove backdrop from all modals
+            $('.modal').on('show.bs.modal', function () {
+                // Prevent backdrop creation
+                $(this).removeClass('fade');
+                $(this).data('bs.modal', null);
+            });
+
+            // Alternative method: hide any existing backdrop
+            $('.modal').on('shown.bs.modal', function () {
+                $('.modal-backdrop').remove();
+            });
+
+            // Prevent backdrop on modal show
+            $(document).on('show.bs.modal', '.modal', function () {
+                // Remove any existing backdrop
+                $('.modal-backdrop').remove();
+            });
+
+            // Ensure no backdrop is created
+            $(document).on('shown.bs.modal', '.modal', function () {
+                // Remove backdrop immediately after modal is shown
+                setTimeout(function() {
+                    $('.modal-backdrop').remove();
+                }, 10);
             });
         });
     </script>
