@@ -5,7 +5,19 @@
     var selectedStatus = ViewBag.SelectedStatus as string ?? "All";
 }
 
+<div class="d-flex justify-content-between align-items-center mb-4">
 
+    <div class="btn-group">
+        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="fas fa-plus me-2"></i>New Inquiry
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" onclick="showNewInquiryModal()">
+                <i class="fas fa-envelope me-2"></i>Property Inquiry
+            </a></li>
+        </ul>
+    </div>
+</div>
 
 <!-- Filter Buttons -->
 <div class="card border-0 shadow-sm mb-4">
@@ -114,7 +126,7 @@
 
 <!-- Inquiries Table -->
 <div class="card border-0 shadow-sm">
-    <div class="card-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
+    <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
         <h5 class="mb-0 text-white">
             <i class="fas fa-list me-2"></i>All Inquiries (@selectedStatus)
         </h5>
@@ -298,225 +310,6 @@
                                     }
                                 </td>
                             </tr>
-
-                            <!-- Details Modal -->
-                            <div class="modal fade" id="detailsModal@(inquiry.InquiryID)" tabindex="-1">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header" style="background: linear-gradient(135deg, #9C6ADE 0%, #C9B3FF 100%);">
-                                            <h5 class="modal-title text-white">
-                                                <i class="fas fa-envelope-open-text me-2"></i>Inquiry Details - #@inquiry.InquiryID
-                                            </h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="row g-3">
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Full Name</label>
-                                                    <p class="mb-0 fw-bold">@inquiry.FullName</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Phone Number</label>
-                                                    <p class="mb-0">
-                                                        <a href="tel:@inquiry.PhoneNumber" class="text-decoration-none">
-                                                            <i class="fas fa-phone text-success me-1"></i>@inquiry.PhoneNumber
-                                                        </a>
-                                                    </p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Email Address</label>
-                                                    <p class="mb-0">
-                                                        @if (!string.IsNullOrEmpty(inquiry.EmailAddress))
-                                                        {
-                                                            <a href="mailto:@inquiry.EmailAddress" class="text-decoration-none">
-                                                                <i class="fas fa-envelope text-primary me-1"></i>@inquiry.EmailAddress
-                                                            </a>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-muted">Not provided</span>
-                                                        }
-                                                    </p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Inquiry Type</label>
-                                                    <p class="mb-0">
-                                                        <span class="badge bg-info">@(inquiry.InquiryType ?? "General")</span>
-                                                    </p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Submitted Date</label>
-                                                    <p class="mb-0">@inquiry.SubmittedAt.ToString("MMMM dd, yyyy hh:mm tt")</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="text-muted small">Status</label>
-                                                    <p class="mb-0">
-                                                        @if (inquiry.Status == "New")
-                                                        {
-                                                            <span class="badge bg-info">@inquiry.Status</span>
-                                                        }
-                                                        else if (inquiry.Status == "Converted")
-                                                        {
-                                                            <span class="badge bg-success">@inquiry.Status</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="badge bg-warning">@inquiry.Status</span>
-                                                        }
-                                                    </p>
-                                                </div>
-                                                @if (!string.IsNullOrEmpty(inquiry.AssignedTo))
-                                                {
-                                                    <div class="col-md-6">
-                                                        <label class="text-muted small">Assigned To</label>
-                                                        <p class="mb-0"><i class="fas fa-user-tie me-1"></i>@inquiry.AssignedTo</p>
-                                                    </div>
-                                                }
-                                                @if (inquiry.FollowUpDate.HasValue)
-                                                {
-                                                    <div class="col-md-6">
-                                                        <label class="text-muted small">Follow-up Date</label>
-                                                        <p class="mb-0 text-warning">
-                                                            <i class="fas fa-calendar-check me-1"></i>
-                                                            @inquiry.FollowUpDate.Value.ToString("MMMM dd, yyyy")
-                                                        </p>
-                                                    </div>
-                                                }
-                                                @if (!string.IsNullOrEmpty(inquiry.IPAddress))
-                                                {
-                                                    <div class="col-md-6">
-                                                        <label class="text-muted small">IP Address</label>
-                                                        <p class="mb-0"><code>@inquiry.IPAddress</code></p>
-                                                    </div>
-                                                }
-                                                <div class="col-12">
-                                                    <label class="text-muted small">Message</label>
-                                                    <div class="alert alert-light mb-0">
-                                                        @(inquiry.Message ?? "No message provided")
-                                                    </div>
-                                                </div>
-                                                @if (!string.IsNullOrEmpty(inquiry.Notes))
-                                                {
-                                                    <div class="col-12">
-                                                        <label class="text-muted small">Internal Notes</label>
-                                                        <div class="alert alert-info mb-0">
-                                                            @Html.Raw(inquiry.Notes.Replace("\n", "<br>"))
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <a href="tel:@inquiry.PhoneNumber" class="btn btn-success">
-                                                <i class="fas fa-phone me-1"></i>Call Now
-                                            </a>
-                                            <a href="https://wa.me/@inquiry.PhoneNumber.Replace("+", "").Replace("-", "").Replace(" ", "")" 
-                                               target="_blank" class="btn btn-success">
-                                                <i class="fab fa-whatsapp me-1"></i>WhatsApp
-                                            </a>
-                                            @if (!string.IsNullOrEmpty(inquiry.EmailAddress))
-                                            {
-                                                <a href="mailto:@inquiry.EmailAddress" class="btn btn-primary">
-                                                    <i class="fas fa-envelope me-1"></i>Email
-                                                </a>
-                                            }
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Status Update Modal -->
-                            <div class="modal fade" id="statusModal@(inquiry.InquiryID)" tabindex="-1">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header" style="background: var(--primary);">
-                                            <h6 class="modal-title text-white">
-                                                <i class="fas fa-edit me-2"></i>Update Inquiry - @inquiry.FullName
-                                            </h6>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <!-- Status Update Form -->
-                                            <form asp-action="UpdateStatus" method="post" class="mb-3">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
-                                                
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold">Update Status</label>
-                                                    <select name="status" class="form-select" required>
-                                                        <option value="New" selected="@(inquiry.Status == "New")">New</option>
-                                                        <option value="Contacted" selected="@(inquiry.Status == "Contacted")">Contacted</option>
-                                                        <option value="Follow-up" selected="@(inquiry.Status == "Follow-up")">Follow-up</option>
-                                                        <option value="Converted" selected="@(inquiry.Status == "Converted")">Converted to Customer</option>
-                                                        <option value="Closed" selected="@(inquiry.Status == "Closed")">Closed</option>
-                                                    </select>
-                                                </div>
-                                                
-                                                <button type="submit" class="btn btn-primary w-100">
-                                                    <i class="fas fa-save me-1"></i>Update Status
-                                                </button>
-                                            </form>
-
-                                            <hr>
-
-                                            <!-- Add Notes Form -->
-                                            <form asp-action="AddNotes" method="post" class="mb-3">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
-                                                
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold">Add Notes</label>
-                                                    <textarea name="notes" class="form-control" rows="3" 
-                                                              placeholder="Enter follow-up notes, customer feedback, etc."></textarea>
-                                                </div>
-                                                
-                                                <button type="submit" class="btn btn-outline-primary w-100">
-                                                    <i class="fas fa-comment-medical me-1"></i>Add Notes
-                                                </button>
-                                            </form>
-
-                                            <hr>
-
-                                            <!-- Assign To Form -->
-                                            <form asp-action="AssignTo" method="post" class="mb-3">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
-                                                
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold">Assign To Sales Agent</label>
-                                                    <input type="text" name="assignedTo" class="form-control" 
-                                                           value="@inquiry.AssignedTo" 
-                                                           placeholder="Enter sales agent name">
-                                                </div>
-                                                
-                                                <button type="submit" class="btn btn-outline-secondary w-100">
-                                                    <i class="fas fa-user-tie me-1"></i>Assign
-                                                </button>
-                                            </form>
-
-                                            <hr>
-
-                                            <!-- Set Follow-up Date Form -->
-                                            <form asp-action="SetFollowUp" method="post">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
-                                                
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold">Set Follow-up Date</label>
-                                                    <input type="date" name="followUpDate" class="form-control" 
-                                                           value="@inquiry.FollowUpDate?.ToString("yyyy-MM-dd")" 
-                                                           min="@DateTime.Today.ToString("yyyy-MM-dd")">
-                                                </div>
-                                                
-                                                <button type="submit" class="btn btn-outline-warning w-100">
-                                                    <i class="fas fa-calendar-check me-1"></i>Set Follow-up
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         }
                     </tbody>
                 </table>
@@ -532,6 +325,229 @@
         }
     </div>
 </div>
+
+<!-- Inquiry Detail Modals -->
+@foreach (var inquiry in Model)
+{
+    <!-- Details Modal -->
+    <div class="modal fade" id="detailsModal@(inquiry.InquiryID)" tabindex="-1" aria-labelledby="detailsModalLabel@(inquiry.InquiryID)" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                    <h5 class="modal-title text-white" id="detailsModalLabel@(inquiry.InquiryID)">
+                        <i class="fas fa-envelope-open-text me-2"></i>Inquiry Details - #@inquiry.InquiryID
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Full Name</label>
+                            <p class="mb-0 fw-bold">@inquiry.FullName</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Phone Number</label>
+                            <p class="mb-0">
+                                <a href="tel:@inquiry.PhoneNumber" class="text-decoration-none">
+                                    <i class="fas fa-phone text-success me-1"></i>@inquiry.PhoneNumber
+                                </a>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Email Address</label>
+                            <p class="mb-0">
+                                @if (!string.IsNullOrEmpty(inquiry.EmailAddress))
+                                {
+                                    <a href="mailto:@inquiry.EmailAddress" class="text-decoration-none">
+                                        <i class="fas fa-envelope text-primary me-1"></i>@inquiry.EmailAddress
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not provided</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Inquiry Type</label>
+                            <p class="mb-0">
+                                <span class="badge bg-info">@(inquiry.InquiryType ?? "General")</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Submitted Date</label>
+                            <p class="mb-0">@inquiry.SubmittedAt.ToString("MMMM dd, yyyy hh:mm tt")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Status</label>
+                            <p class="mb-0">
+                                @if (inquiry.Status == "New")
+                                {
+                                    <span class="badge bg-info">@inquiry.Status</span>
+                                }
+                                else if (inquiry.Status == "Converted")
+                                {
+                                    <span class="badge bg-success">@inquiry.Status</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">@inquiry.Status</span>
+                                }
+                            </p>
+                        </div>
+                        @if (!string.IsNullOrEmpty(inquiry.AssignedTo))
+                        {
+                            <div class="col-md-6">
+                                <label class="text-muted small">Assigned To</label>
+                                <p class="mb-0"><i class="fas fa-user-tie me-1"></i>@inquiry.AssignedTo</p>
+                            </div>
+                        }
+                        @if (inquiry.FollowUpDate.HasValue)
+                        {
+                            <div class="col-md-6">
+                                <label class="text-muted small">Follow-up Date</label>
+                                <p class="mb-0 text-warning">
+                                    <i class="fas fa-calendar-check me-1"></i>
+                                    @inquiry.FollowUpDate.Value.ToString("MMMM dd, yyyy")
+                                </p>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(inquiry.IPAddress))
+                        {
+                            <div class="col-md-6">
+                                <label class="text-muted small">IP Address</label>
+                                <p class="mb-0"><code>@inquiry.IPAddress</code></p>
+                            </div>
+                        }
+                        <div class="col-12">
+                            <label class="text-muted small">Message</label>
+                            <div class="alert alert-light mb-0">
+                                @(inquiry.Message ?? "No message provided")
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(inquiry.Notes))
+                        {
+                            <div class="col-12">
+                                <label class="text-muted small">Internal Notes</label>
+                                <div class="alert alert-info mb-0">
+                                    @Html.Raw(inquiry.Notes.Replace("\n", "<br>"))
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="tel:@inquiry.PhoneNumber" class="btn btn-success">
+                        <i class="fas fa-phone me-1"></i>Call Now
+                    </a>
+                    <a href="https://wa.me/@inquiry.PhoneNumber.Replace("+", "").Replace("-", "").Replace(" ", "")" 
+                       target="_blank" class="btn btn-success">
+                        <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                    </a>
+                    @if (!string.IsNullOrEmpty(inquiry.EmailAddress))
+                    {
+                        <a href="mailto:@inquiry.EmailAddress" class="btn btn-primary">
+                            <i class="fas fa-envelope me-1"></i>Email
+                        </a>
+                    }
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update Modal -->
+    <div class="modal fade" id="statusModal@(inquiry.InquiryID)" tabindex="-1" aria-labelledby="statusModalLabel@(inquiry.InquiryID)" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary);">
+                    <h6 class="modal-title text-white" id="statusModalLabel@(inquiry.InquiryID)">
+                        <i class="fas fa-edit me-2"></i>Update Inquiry - @inquiry.FullName
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Status Update Form -->
+                    <form asp-action="UpdateStatus" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Update Status</label>
+                            <select name="status" class="form-select" required>
+                                <option value="New" selected="@(inquiry.Status == "New")">New</option>
+                                <option value="Contacted" selected="@(inquiry.Status == "Contacted")">Contacted</option>
+                                <option value="Follow-up" selected="@(inquiry.Status == "Follow-up")">Follow-up</option>
+                                <option value="Converted" selected="@(inquiry.Status == "Converted")">Converted to Customer</option>
+                                <option value="Closed" selected="@(inquiry.Status == "Closed")">Closed</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save me-1"></i>Update Status
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <!-- Add Notes Form -->
+                    <form asp-action="AddNotes" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Add Notes</label>
+                            <textarea name="notes" class="form-control" rows="3" 
+                                      placeholder="Enter follow-up notes, customer feedback, etc."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-comment-medical me-1"></i>Add Notes
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <!-- Assign To Form -->
+                    <form asp-action="AssignTo" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Assign To Sales Agent</label>
+                            <input type="text" name="assignedTo" class="form-control" 
+                                   value="@inquiry.AssignedTo" 
+                                   placeholder="Enter sales agent name">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-user-tie me-1"></i>Assign
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <!-- Set Follow-up Date Form -->
+                    <form asp-action="SetFollowUp" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="inquiryId" value="@inquiry.InquiryID" />
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Set Follow-up Date</label>
+                            <input type="date" name="followUpDate" class="form-control" 
+                                   value="@inquiry.FollowUpDate?.ToString("yyyy-MM-dd")" 
+                                   min="@DateTime.Today.ToString("yyyy-MM-dd")">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-calendar-check me-1"></i>Set Follow-up
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- Delete Form (Hidden) -->
 <form id="deleteForm" asp-action="Delete" method="post" style="display: none;">
@@ -592,6 +608,30 @@
         font-size: 11px;
         padding: 4px 10px;
     }
+
+    /* Inquiry Modals - No Backdrop (same as Users page) */
+    .modal-backdrop {
+        display: none !important;
+    }
+
+    body.modal-open .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Disable global dim overlay from layout on this page */
+    body.modal-open::before {
+        display: none !important;
+        background: transparent !important;
+    }
+
+    /* Force transparent background for all modals on this page */
+    .modal {
+        background: transparent !important;
+    }
+
+    .modal.show {
+        background: transparent !important;
+    }
 </style>
 
 @section Scripts {
@@ -611,6 +651,25 @@
                     "infoEmpty": "No inquiries found",
                     "infoFiltered": "(filtered from _MAX_ total inquiries)"
                 }
+            });
+
+            // Remove any existing backdrops
+            $('.modal-backdrop').remove();
+
+            // Ensure Bootstrap 5 modals have no backdrop and stay above UI (same as Users page)
+            $('.modal').on('show.bs.modal', function(e) {
+                // Remove any existing backdrops
+                $('.modal-backdrop').remove();
+                // Ensure instance exists and set backdrop to false
+                var modalInstance = bootstrap.Modal.getOrCreateInstance(this, { backdrop: false });
+                if (modalInstance && modalInstance._config) {
+                    modalInstance._config.backdrop = false;
+                }
+            });
+
+            // Remove backdrops on shown/hidden as a safeguard
+            $('.modal').on('shown.bs.modal hidden.bs.modal', function() {
+                $('.modal-backdrop').remove();
             });
         });
 

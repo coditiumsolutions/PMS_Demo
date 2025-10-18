@@ -6,9 +6,9 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <!-- <h2>
+    <h2>
         <i class="fas fa-cogs me-2"></i>System Configuration
-    </h2> -->
+    </h2>
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
         <i class="fas fa-plus me-2"></i>Add Configuration
     </button>
@@ -20,28 +20,28 @@
         <div class="stats-card">
             <div class="stats-number">@Model.Count()</div>
             <div class="stats-label">Total Configs</div>
-            <i class="fas fa-list fa-2x mt-2" style="color: var(--primary);"></i>
+            <i class="fas fa-list fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stats-card">
             <div class="stats-number">@categories.Count()</div>
             <div class="stats-label">Categories</div>
-            <i class="fas fa-folder fa-2x mt-2" style="color: var(--primary);"></i>
+            <i class="fas fa-folder fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count(c => c.Category == "Cities")</div>
             <div class="stats-label">Cities</div>
-            <i class="fas fa-city fa-2x mt-2" style="color: var(--primary);"></i>
+            <i class="fas fa-city fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count(c => c.Category == "Countries")</div>
             <div class="stats-label">Countries</div>
-            <i class="fas fa-globe fa-2x mt-2" style="color: var(--primary);"></i>
+            <i class="fas fa-globe fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
 </div>

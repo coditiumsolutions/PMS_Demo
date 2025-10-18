@@ -13,17 +13,24 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" />
     <style>
         :root {
-            --primary: #9C6ADE;
-            --primary-light: #C9B3FF;
-            --primary-bg: #F9F8FC;
-            --surface: #ede4ef;
+            --primary:rgb(104, 167, 226);
+            --primary-light:rgb(72, 123, 165);
+            --primary-bg:rgb(255, 255, 255);
+            --surface:rgb(224, 229, 233);
             --text-primary: #1E1E2D;
-            --text-secondary: #6B7280;
-            --accent: #E879F9;
+            --text-secondary:rgb(107, 108, 128);
+            --accent:rgb(5, 66, 102);
             --border: #E5E7EB;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --sidebar-bg: rgb(8, 45, 80);
+            --sidebar-active-bg:rgb(255, 255, 255);
+            --sidebar-font-color:rgb(0, 0, 0);
+            --sidebar-bg: rgb(11, 56, 99);
+            --sidebar-active-bg:rgb(255, 255, 255);
+            --sidebar-active-font-color:rgb(0, 0, 0);
+            --sidebar-font-color:rgb(255, 255, 255);
         }
 
         body {
@@ -77,8 +84,8 @@
 
         .sidebar {
             min-height: 100vh;
-            background: #ffffff;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            background: var(--sidebar-bg);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
             width: 280px !important;
             min-width: 280px;
             overflow: visible !important;
@@ -107,7 +114,7 @@
         }
 
         .sidebar .nav-link {
-            color: var(--text-secondary);
+            color: var(--sidebar-font-color);
             padding: 10px 15px;
             margin: 4px 0;
             border-radius: 12px;
@@ -121,25 +128,31 @@
         }
 
         .sidebar .nav-link:hover {
-            color: var(--primary);
-            background: rgba(156, 106, 222, 0.08);
+            color: var(--primary-light);
+            background: var(--surface);
+            transform: translateX(5px);
         }
 
         .sidebar .nav-link.active {
-            color: white;
-            background: var(--primary);
-            box-shadow: 0 2px 8px rgba(156, 106, 222, 0.3);
+            color: var(--sidebar-active-font-color);
+            background: var(--sidebar-active-bg);
+            box-shadow: 0 4px 15px rgba(117, 188, 255, 0.3);
+            border-left: 4px solid var(--primary-light);
         }
 
         .sidebar .nav-link i {
             margin-right: 10px;
             width: 18px;
-            color: var(--primary);
+            color: var(--sidebar-font-color);
             font-size: 13px;
         }
 
         .sidebar .nav-link.active i {
-            color: white;
+            color: var(--sidebar-active-font-color);
+        }
+
+        .sidebar .nav-link:hover i {
+            color: var(--primary-light);
         }
 
         .brand-section {
@@ -152,8 +165,11 @@
         .brand-logo-img {
             max-width: 160px;
             height: auto;
-            filter: drop-shadow(2px 2px 4px rgba(156, 106, 222, 0.2));
+            filter: drop-shadow(2px 2px 4px rgba(117, 188, 255, 0.3));
             transition: transform 0.2s ease-in-out;
+            background: white;
+            padding: 8px 15px 8px 15px;
+            border-radius: 10px;
         }
 
         .brand-logo-img:hover {
@@ -164,14 +180,14 @@
             font-family: 'Inter', sans-serif;
             font-size: 20px;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--sidebar-font-color);
             margin-bottom: 8px;
             line-height: 1.2;
         }
 
         .brand-subtitle {
             font-size: 11px;
-            color: var(--text-secondary);
+            color: var(--primary-light);
             letter-spacing: 0.5px;
             text-transform: uppercase;
             font-weight: 500;
@@ -183,7 +199,7 @@
             margin: 0;
             padding: 10px 0 5px 0;
             letter-spacing: 1px;
-            color: var(--text-secondary);
+            color: var(--primary-light);
         }
 
         .main-content {
@@ -198,7 +214,7 @@
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             padding: 25px 45px;
             border-bottom: none;
-            box-shadow: 0 4px 12px rgba(156, 106, 222, 0.15);
+            box-shadow: 0 4px 12px rgba(72, 123, 165, 0.15);
             margin-left: 0;
             margin-top: 25px;
             margin-right: 45px;
@@ -232,7 +248,7 @@
         }
 
         .content-body {
-            padding: 25px 45px 45px 45px;
+            padding: 25px 5px 45px 5px;
             margin-left: 0;
             position: relative;
             z-index: 1;
@@ -359,7 +375,7 @@
 
         .form-control:focus {
             border-color: var(--primary) !important;
-            box-shadow: 0 0 0 0.2rem rgba(156, 106, 222, 0.25) !important;
+            box-shadow: 0 0 0 0.2rem rgba(72, 123, 165, 0.25) !important;
             background-color: #ffffff !important;
             color: #212529 !important;
         }
@@ -379,7 +395,7 @@
 
         .form-select:focus {
             border-color: var(--primary) !important;
-            box-shadow: 0 0 0 0.2rem rgba(156, 106, 222, 0.25) !important;
+            box-shadow: 0 0 0 0.2rem rgba(72, 123, 165, 0.25) !important;
             background-color: #ffffff !important;
             color: #212529 !important;
         }
@@ -401,7 +417,7 @@
 
         .input-group:focus-within .form-control {
             border-color: var(--primary) !important;
-            box-shadow: 0 0 0 0.2rem rgba(156, 106, 222, 0.25) !important;
+            box-shadow: 0 0 0 0.2rem rgba(72, 123, 165, 0.25) !important;
         }
 
         /* Textarea Styling */
@@ -575,12 +591,12 @@
             padding: 10px 20px;
             font-weight: 600;
             transition: all 0.2s ease-in-out;
-            box-shadow: 0 2px 8px rgba(156, 106, 222, 0.25);
+            box-shadow: 0 2px 8px rgba(72, 123, 165, 0.25);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #8a5cc9;
+            background: var(--primary-light);
             box-shadow: 0 4px 12px rgba(156, 106, 222, 0.35);
             color: white;
         }
@@ -643,7 +659,7 @@
         }
 
         .table tbody tr:hover {
-            background: rgba(156, 106, 222, 0.04);
+            background: rgba(72, 123, 165, 0.04);
         }
 
         /* Smaller badges in tables */
@@ -696,7 +712,7 @@
 
         .form-control:focus, .form-select:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(156, 106, 222, 0.1);
+            box-shadow: 0 0 0 3px rgba(72, 123, 165, 0.1);
             outline: none;
         }
 
@@ -719,9 +735,9 @@
         }
 
         .alert-info {
-            background: rgba(156, 106, 222, 0.08);
+            background: rgba(72, 123, 165, 0.08);
             color: var(--primary);
-            border-color: rgba(156, 106, 222, 0.2);
+            border-color: rgba(72, 123, 165, 0.2);
         }
 
         .alert-warning {
@@ -771,12 +787,12 @@
         }
 
         .dropdown-item:hover {
-            background: rgba(156, 106, 222, 0.08);
+            background: rgba(72, 123, 165, 0.08);
             color: var(--primary);
         }
 
         .dropdown-item.active {
-            background: rgba(156, 106, 222, 0.12);
+            background: rgba(72, 123, 165, 0.12);
             color: var(--primary);
             font-weight: 600;
         }
@@ -804,7 +820,7 @@
             font-family: 'Inter', sans-serif;
             font-size: 2.2rem;
             font-weight: 700;
-            color: var(--primary);
+            color: var(--primary-light);
             margin-bottom: 8px;
         }
 
@@ -830,7 +846,7 @@
         .dataTables_wrapper .dataTables_filter input:focus {
             border-color: var(--primary);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(156, 106, 222, 0.1);
+            box-shadow: 0 0 0 3px rgba(72, 123, 165, 0.1);
         }
 
         .dataTables_wrapper .dataTables_paginate .paginate_button {
@@ -846,10 +862,46 @@
         }
 
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-            background: rgba(156, 106, 222, 0.08) !important;
+            background: rgba(72, 123, 165, 0.08) !important;
             border-color: var(--primary) !important;
             color: var(--primary) !important;
             border-radius: 8px !important;
+        }
+
+        /* Dropdown menu styling for sidebar */
+        .sidebar .dropdown-menu {
+            background: rgb(11, 56, 99);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar .dropdown-item {
+            color: var(--sidebar-font-color);
+            padding: 8px 16px;
+            font-size: 13px;
+            transition: all 0.2s ease-in-out;
+            background: var(--sidebar-bg);
+        }
+
+        .sidebar .dropdown-item:hover {
+            background: var(--sidebar-active-bg);
+            color: var(--sidebar-active-font-color);
+        }
+
+        .sidebar .dropdown-item.active {
+            background: var(--sidebar-active-bg);
+            color: var(--sidebar-active-font-color);
+        }
+
+        .sidebar .dropdown-item i {
+            color: var(--sidebar-font-color);
+            width: 16px;
+        }
+
+        .sidebar .dropdown-item.active i {
+            color: var(--sidebar-active-font-color);
         }
 
         .dataTables_wrapper .dataTables_info {
@@ -890,10 +942,10 @@
                     <!-- Sidebar -->
                     <nav class="col-md-3 col-lg-3 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
-                    <div class="brand-section">
+                    <div class="brand-section" style="background: var(--sidebar-bg);">
                         <img src="~/images/logo.png" alt="JUBA Smart City Logo" class="brand-logo-img mb-2" />
                         <!-- <div class="brand-logo">JUBA Smart City</div> -->
-                        <div class="brand-subtitle">Property Management System</div>
+                        <div style="color: white; font-weight: 600;" class="brand-subtitle">Property Management System</div>
                     </div>
                     
                     <ul class="nav flex-column">
@@ -953,13 +1005,7 @@
                             </a>
                         </li>
                         
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() == "Schedules" ? "active" : "")" 
-                               asp-controller="Payment" asp-action="Schedules">
-                                <i class="fas fa-calendar-check"></i>
-                                Payment Schedules
-                            </a>
-                        </li>
+                       
                         
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() == "CustomerPayments" ? "active" : "")" 
@@ -971,7 +1017,7 @@
                         
                         <!-- Sales & Leads Section -->
                         <li class="nav-item mt-3">
-                            <h6 class="text-black-50 px-3">Sales & Leads</h6>
+                            <h6 class="px-3 text-white">Sales & Leads</h6>
                         </li>
                         
                         <li class="nav-item">
@@ -984,7 +1030,7 @@
                         
                         <!-- Reports Section -->
                         <li class="nav-item mt-3">
-                            <h6 class="text-black-50 px-3">Reports & Analytics</h6>
+                            <h6 class="px-3 text-white">Reports & Analytics</h6>
                         </li>
                         
                         <li class="nav-item dropdown">
@@ -1028,7 +1074,7 @@
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item mt-3">
-                                <h6 class="text-black-50 px-3">Administration</h6>
+                                <h6 class="px-3 text-white">Administration</h6>
                             </li>
                             
                             <li class="nav-item">
@@ -1077,7 +1123,51 @@
                 {
                     <div class="content-header">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
-                            <h1 class="h2 mb-0">@ViewData["Title"]</h1>
+                            <h1 class="h2 mb-0">
+                                @{
+                                    var controller = ViewContext.RouteData.Values["Controller"]?.ToString();
+                                    var action = ViewContext.RouteData.Values["Action"]?.ToString();
+                                    var icon = "";
+                                    
+                                    switch (controller)
+                                    {
+                                        case "Customer":
+                                            icon = "fas fa-users";
+                                            break;
+                                        case "Project":
+                                            icon = "fas fa-building";
+                                            break;
+                                        case "Property":
+                                            icon = "fas fa-home";
+                                            break;
+                                        case "Allotment":
+                                            icon = "fas fa-hand-holding";
+                                            break;
+                                        case "Payment":
+                                            icon = "fas fa-money-bill-wave";
+                                            break;
+                                        case "Registration":
+                                            icon = "fas fa-file-alt";
+                                            break;
+                                        case "SalesInquiry":
+                                            icon = "fas fa-envelope-open-text";
+                                            break;
+                                        case "Reports":
+                                            icon = "fas fa-chart-bar";
+                                            break;
+                                        case "Account":
+                                            icon = "fas fa-user-cog";
+                                            break;
+                                        case "Settings":
+                                            icon = "fas fa-cogs";
+                                            break;
+                                        default:
+                                            icon = "fas fa-file";
+                                            break;
+                                    }
+                                }
+                                <i class="@icon me-2"></i>@ViewData["Title"]
+                            </h1>
                             <div class="btn-toolbar mb-2 mb-md-0">
                                 <div class="btn-group me-2">
                                     <a href="@Url.Action("Index", "Home")" class="btn btn-outline-primary">
