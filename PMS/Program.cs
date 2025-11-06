@@ -36,29 +36,23 @@ builder.Services.AddAuthentication("Cookies")
 
 builder.Services.AddAuthorization();
 
-// Configure CORS from appsettings
-const string CorsPolicyName = "ConfiguredOrigins";
-var allowedUrlsRaw = builder.Configuration["CORSURLS:AllowedURLS"] ?? string.Empty;
-var allowedOrigins = allowedUrlsRaw
-    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-    .ToArray();
-
+// Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(CorsPolicyName, policy =>
+    options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        if (allowedOrigins.Length > 0)
-        {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
-        else
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
+        policy.WithOrigins(
+                "https://smartventures.com.pk",
+                "http://localhost:8080",
+                "http://localhost:3000",
+                "http://172.20.229.3:8099",
+                "https://172.20.229.3:8099",
+                "http://app.virtualsofttechnology.com",
+                "https://app.virtualsofttechnology.com"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -78,7 +72,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 // Enable CORS early, before auth
-app.UseCors(CorsPolicyName);
+app.UseCors("AllowSpecificOrigins");
 
 // Add session middleware
 app.UseSession();

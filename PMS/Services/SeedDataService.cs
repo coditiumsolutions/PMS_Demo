@@ -201,16 +201,20 @@ namespace PMS.Services
 
             foreach (var plan in paymentPlans)
             {
-                var schedules = new List<PaymentSchedule>();
-                var monthlyAmount = plan.TotalAmount / plan.DurationMonths;
+                if (!plan.DurationMonths.HasValue || plan.DurationMonths.Value <= 0)
+                    continue;
 
-                for (int i = 1; i <= plan.DurationMonths; i++)
+                var schedules = new List<PaymentSchedule>();
+                var durationMonths = plan.DurationMonths.Value;
+                var monthlyAmount = plan.TotalAmount / durationMonths;
+
+                for (int i = 1; i <= durationMonths; i++)
                 {
                     schedules.Add(new PaymentSchedule
                     {
                         ScheduleID = $"SCH{plan.PlanID.Substring(4)}{i:D3}",
                         PlanID = plan.PlanID,
-                        PaymentDescription = $"Installment {i} of {plan.DurationMonths}",
+                        PaymentDescription = $"Installment {i} of {durationMonths}",
                         InstallmentNo = i,
                         DueDate = DateTime.Now.AddMonths(i),
                         Amount = monthlyAmount,

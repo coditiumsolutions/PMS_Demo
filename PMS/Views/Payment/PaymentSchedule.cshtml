@@ -6,7 +6,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>
-        <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plan Details
+        <i class="fas fa-file-invoice-dollar me-2"></i>
     </h2>
     <div>
         <a asp-action="CreatePaymentSchedule" asp-route-planId="@Model.PlanID" class="btn btn-primary me-2">
@@ -35,7 +35,7 @@
             </div>
             <div class="col-md-3">
                 <small class="text-muted">Duration</small>
-                <p class="fw-bold">@Model.DurationMonths Months</p>
+                <p class="fw-bold">@(Model.DurationMonths?.ToString() ?? "N/A") Months</p>
             </div>
             <div class="col-md-3">
                 <small class="text-muted">Frequency</small>
@@ -54,34 +54,6 @@
         }
     </div>
 </div>
-
-<!-- Customers on This Plan -->
-@if (Model.Customers != null && Model.Customers.Any())
-{
-    <div class="card mb-4">
-        <div class="card-header">
-            <h6 class="mb-0">
-                <i class="fas fa-users me-2"></i>Customers on This Plan (@Model.Customers.Count)
-            </h6>
-        </div>
-        <div class="card-body">
-            <div class="d-flex flex-wrap gap-2">
-                @foreach (var customer in Model.Customers.Take(10))
-                {
-                    <span class="badge bg-primary" style="font-size: 12px; padding: 8px 12px;">
-                        <i class="fas fa-user me-1"></i>@customer.FullName
-                    </span>
-                }
-                @if (Model.Customers.Count > 10)
-                {
-                    <span class="badge bg-secondary" style="font-size: 12px; padding: 8px 12px;">
-                        +@(Model.Customers.Count - 10) more
-                    </span>
-                }
-            </div>
-        </div>
-    </div>
-}
 
 <!-- Payment Schedules Table -->
 <div class="card">
@@ -107,7 +79,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var schedule in Model.PaymentSchedules.OrderBy(s => s.InstallmentNo))
+                        @foreach (var schedule in Model.PaymentSchedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
                         {
                             var totalPaid = schedule.Payments?.Where(p => p.Status == "Completed").Sum(p => p.Amount) ?? 0;
                             var isPaid = totalPaid >= schedule.Amount;
@@ -115,7 +87,7 @@
                             
                             <tr class="@(isPaid ? "table-success" : isOverdue ? "table-warning" : "")">
                                 <td>
-                                    <strong>#@schedule.InstallmentNo</strong>
+                                    <strong>#@(schedule.InstallmentNo?.ToString() ?? "N/A")</strong>
                                 </td>
                                 <td>
                                     @schedule.PaymentDescription
@@ -212,7 +184,7 @@
                                     <div class="modal-content">
                                         <div class="modal-header" style="background: var(--primary-green);">
                                             <h5 class="modal-title text-white">
-                                                <i class="fas fa-receipt me-2"></i>Installment #@schedule.InstallmentNo Details
+                                                <i class="fas fa-receipt me-2"></i>Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A") Details
                                             </h5>
                                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                         </div>
@@ -224,7 +196,7 @@
                                                 </div>
                                                 <div class="col-6">
                                                     <label class="text-muted small">Installment Number</label>
-                                                    <p><strong>#@schedule.InstallmentNo</strong></p>
+                                                    <p><strong>#@(schedule.InstallmentNo?.ToString() ?? "N/A")</strong></p>
                                                 </div>
                                                 <div class="col-12">
                                                     <label class="text-muted small">Description</label>
@@ -299,7 +271,7 @@
                                     <div class="modal-content">
                                         <div class="modal-header" style="background: var(--primary);">
                                             <h6 class="modal-title text-white">
-                                                <i class="fas fa-edit me-2"></i>Edit Installment #@schedule.InstallmentNo
+                                                <i class="fas fa-edit me-2"></i>Edit Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A")
                                             </h6>
                                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                         </div>
@@ -310,7 +282,7 @@
 
                                                 <div class="mb-3">
                                                     <label class="form-label">Installment Number</label>
-                                                    <input type="number" name="InstallmentNo" class="form-control" value="@schedule.InstallmentNo" required />
+                                                    <input type="number" name="InstallmentNo" class="form-control" value="@(schedule.InstallmentNo ?? 0)" required />
                                                 </div>
 
                                                 <div class="mb-3">

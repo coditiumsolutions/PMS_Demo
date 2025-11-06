@@ -6,86 +6,41 @@
 
 <div class="row">
     <div class="col-12">
-        <!-- <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="fas fa-user-plus me-2"></i>Add New Customer</h2>
-            <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Back to List
-            </a>
-        </div> -->
-
-        <!-- Registration Search Section -->
-        <div class="card mb-2 registration-search-card" style="border: 2px solid #6f42c1;">
-            <div class="card-header py-1" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 text-white" style="font-size: 14px;">
-                        <i class="fas fa-search me-2"></i>Search Registration (Optional)
-                    </h6>
-                    <a asp-controller="Registration" asp-action="Create" class="btn btn-sm btn-light" target="_blank">
-                        <i class="fas fa-plus me-1"></i>New Registration
-                    </a>
-                </div>
-            </div>
-            <div class="">
-                <div class="row align-items-end">
-                    <div class="col-md-6" style="padding: 25px;">
-                        <label class="form-label fw-bold mb-1" style="font-size: 13px;">Registration ID</label>
-                        <div class="input-group input-group-sm">
-                            <input type="text" id="regIDInput" class="form-control" placeholder="Enter Registration ID (e.g., REG0000001)" />
-                            <button type="button" id="searchRegBtn" class="btn btn-primary">
-                                <i class="fas fa-search"></i>
-                            </button>
-                            <button type="button" id="clearRegBtn" class="btn btn-secondary" style="display: none;">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <small class="text-muted" style="font-size: 11px;">Auto-fills Name, CNIC, Phone, Email</small>
-                    </div>
-                    <div class="col-md-6">
-                        <!-- Success/Error Messages -->
-                        <div id="regSuccessSection" style="display: none;">
-                            <div class="alert alert-success py-1 mb-0">
-                                <small><i class="fas fa-check-circle me-1"></i><span id="regSuccessMessage"></span></small>
-                            </div>
-                        </div>
-                        <div id="regErrorSection" style="display: none;">
-                            <div class="alert alert-danger py-1 mb-0">
-                                <small><i class="fas fa-exclamation-triangle me-1"></i><span id="regErrorMessage"></span></small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Customer Form -->
-        <form asp-action="Create" method="post">
-            <!-- Hidden RegID field for form submission -->
-            <input type="hidden" asp-for="RegID" id="regIDHidden" />
+        <!-- Customer Wizard Form -->
+        <form asp-action="Create" method="post" id="customerWizardForm">
+            <input type="hidden" id="currentStepHidden" name="currentStep" value="3" />
 
             <div class="card">
-            <div class="card-header p-0">
-                <ul class="nav nav-tabs customer-tabs" id="customerTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
-                            <i class="fas fa-user-circle me-2"></i>Personal Info
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="nominee-tab" data-bs-toggle="tab" data-bs-target="#nominee" type="button" role="tab" aria-controls="nominee" aria-selected="false">
-                            <i class="fas fa-user-shield me-2"></i>Nominee Info
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="registration-tab" data-bs-toggle="tab" data-bs-target="#registration" type="button" role="tab" aria-controls="registration" aria-selected="false">
-                            <i class="fas fa-file-contract me-2"></i>Registration Info
-                        </button>
-                    </li>
-                </ul>
-            </div>
-            <div class="card-body">
-                    <div class="tab-content" id="customerTabContent">
-                        <!-- Personal Info Tab (Personal + Contact) -->
-                        <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                <div class="card-header" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-user-plus me-2"></i>Create New Customer
+                        </h5>
+                        <div class="text-white">
+                            <span id="wizardStepIndicator">Step 1 of 3</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Wizard Progress Bar -->
+                    <div class="mb-4">
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 id="wizardProgress" 
+                                 style="width: 33.33%; background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <strong>Step 1: Personal Info</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Wizard Steps -->
+                    <div id="wizardSteps">
+                        <!-- Step 1: Personal Info -->
+                        <div class="wizard-step" id="step1" data-step="1">
+                            <h5 class="mb-4" style="color: rgb(104, 167, 226);">
+                                <i class="fas fa-user-circle me-2"></i>Step 1: Personal Information
+                            </h5>
                             <div class="row">
                                 <!-- Personal Information -->
                                 <div class="col-md-6">
@@ -103,7 +58,7 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="CNIC" class="form-label">CNIC</label>
+                                        <label asp-for="CNIC" class="form-label">National ID</label>
                                         <input asp-for="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
                                     </div>
 
@@ -184,19 +139,22 @@
                             </div>
                         </div>
 
-                        <!-- Nominee Info Tab -->
-                        <div class="tab-pane fade" id="nominee" role="tabpanel" aria-labelledby="nominee-tab">
+                        <!-- Step 2: Next of Kin Info -->
+                        <div class="wizard-step" id="step2" data-step="2" style="display: none;">
+                            <h5 class="mb-4" style="color: rgb(104, 167, 226);">
+                                <i class="fas fa-user-shield me-2"></i>Step 2: Next of Kin Information
+                            </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="fas fa-user-friends me-2"></i>Nominee Information</h6>
+                                    <h6 class="mb-3"><i class="fas fa-user-friends me-2"></i>Next of Kin Information</h6>
                                     
                                     <div class="mb-3">
-                                        <label asp-for="NomineeName" class="form-label">Nominee Name</label>
+                                        <label asp-for="NomineeName" class="form-label">Next of Kin Name</label>
                                         <input asp-for="NomineeName" class="form-control" />
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="NomineeID" class="form-label">Nominee ID / CNIC</label>
+                                        <label asp-for="NomineeID" class="form-label">Next of Kin ID / National ID</label>
                                         <input asp-for="NomineeID" class="form-control" />
                                     </div>
 
@@ -218,50 +176,54 @@
                                 <div class="col-md-6">
                                     <div class="alert alert-info">
                                         <i class="fas fa-info-circle me-2"></i>
-                                        <strong>Nominee Information</strong>
-                                        <p class="mb-0 mt-2">Please provide the details of the person who will be the nominee for this customer. This person will have rights in case of any unforeseen circumstances.</p>
+                                        <strong>Next of Kin Information</strong>
+                                        <p class="mb-0 mt-2">Please provide the details of the person who will be the next of kin for this customer. This person will have rights in case of any unforeseen circumstances.</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Registration Info Tab -->
-                        <div class="tab-pane fade" id="registration" role="tabpanel" aria-labelledby="registration-tab">
+                        <!-- Step 3: Payment Plan Info -->
+                        <div class="wizard-step" id="step3" data-step="3" style="display: none;">
+                            <h5 class="mb-4" style="color: rgb(104, 167, 226);">
+                                <i class="fas fa-file-contract me-2"></i>Step 3: Payment Plan Information
+                            </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <!-- <h6 class="mb-3"><i class="fas fa-file-alt me-2"></i>Registration Details</h6> -->
-                                    
                                     <div class="mb-3">
-                                        <label asp-for="RegID" class="form-label">Registration</label>
-                                        <select asp-for="RegID" class="form-select">
-                                            <option value="">Select Registration</option>
-                                            @if (ViewBag.Registrations != null)
+                                        <label asp-for="ProjectID" class="form-label">Project *</label>
+                                        <select asp-for="ProjectID" id="projectIDSelect" class="form-select" required>
+                                            <option value="">Select Project</option>
+                                            @if (ViewBag.Projects != null)
                                             {
-                                                @foreach (var reg in ViewBag.Registrations)
+                                                @foreach (var project in ViewBag.Projects)
                                                 {
-                                                    <option value="@reg.RegID">@reg.FullName - @reg.RegID</option>
+                                                    <option value="@project.ProjectID" data-project-prefix="@(project.Prefix ?? "")">@project.ProjectName (@project.Prefix)</option>
                                                 }
                                             }
                                         </select>
+                                        <span asp-validation-for="ProjectID" class="text-danger"></span>
+                                        <small class="text-muted">The project prefix will be used to generate the Customer ID</small>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="PlanID" class="form-label">Payment Plan</label>
-                                        <select asp-for="PlanID" class="form-select">
+                                        <label asp-for="PlanID" class="form-label">Payment Plan *</label>
+                                        <select asp-for="PlanID" id="planIDSelect" class="form-select" required>
                                             <option value="">Select Payment Plan</option>
                                             @if (ViewBag.PaymentPlans != null)
                                             {
                                                 @foreach (var plan in ViewBag.PaymentPlans)
                                                 {
-                                                    <option value="@plan.PlanID">@plan.PlanName - @plan.TotalAmount.ToString("C")</option>
+                                                    <option value="@plan.PlanID" data-project-prefix="@(plan.Project?.Prefix ?? "")">@plan.PlanName - @plan.TotalAmount.ToString("C")</option>
                                                 }
                                             }
                                         </select>
+                                        <span asp-validation-for="PlanID" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="SubProject" class="form-label">Sub Project</label>
-                                        <select asp-for="SubProject" class="form-select">
+                                        <label asp-for="SubProject" class="form-label">Sub Project *</label>
+                                        <select asp-for="SubProject" class="form-select" required>
                                             <option value="">Select Sub Project</option>
                                             @if (ViewBag.SubProjects != null)
                                             {
@@ -271,11 +233,12 @@
                                                 }
                                             }
                                         </select>
+                                        <span asp-validation-for="SubProject" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
-                                        <select asp-for="RegisteredSize" class="form-select">
+                                        <label asp-for="RegisteredSize" class="form-label">Registered Size *</label>
+                                        <select asp-for="RegisteredSize" class="form-select" required>
                                             <option value="">Select Size</option>
                                             @if (ViewBag.Sizes != null)
                                             {
@@ -285,6 +248,22 @@
                                                 }
                                             }
                                         </select>
+                                        <span asp-validation-for="RegisteredSize" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="DealerID" class="form-label">Dealer *</label>
+                                        <select asp-for="DealerID" class="form-select" required>
+                                            <option value="">Select Dealer</option>
+                                            @if (ViewBag.Dealers != null)
+                                            {
+                                                @foreach (var dealer in ViewBag.Dealers)
+                                                {
+                                                    <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                                }
+                                            }
+                                        </select>
+                                        <span asp-validation-for="DealerID" class="text-danger"></span>
                                     </div>
                                 </div>
 
@@ -295,28 +274,46 @@
                                         <label asp-for="AdditionalInfo" class="form-label">Additional Notes</label>
                                         <textarea asp-for="AdditionalInfo" class="form-control" rows="6" placeholder="Enter any additional information about the customer..."></textarea>
                                     </div>
+
+                                    <!-- Preview Customer ID -->
+                                    <div class="alert alert-info">
+                                        <h6 class="alert-heading"><i class="fas fa-id-badge me-2"></i>Customer ID Preview</h6>
+                                        <p class="mb-0">
+                                            <strong>Customer ID will be:</strong><br>
+                                            <span id="customerIDPreview" class="badge bg-secondary" style="font-size: 14px;">Select Project to preview</span>
+                                        </p>
+                                        <small class="text-muted">Format: [Project Prefix][Sequential Number] (e.g., JSC0001)</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Form Actions -->
+                    <!-- Wizard Navigation Buttons -->
                     <div class="row mt-4">
                         <div class="col-12">
                             <hr>
-                            <div class="d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary me-2">
-                                    <i class="fas fa-save me-2"></i>Create Customer
+                            <div class="d-flex justify-content-between">
+                                <button type="button" id="prevBtn" class="btn btn-secondary" style="display: none;" onclick="previousStep()">
+                                    <i class="fas fa-arrow-left me-2"></i>Previous
                                 </button>
-                                <a asp-action="Index" class="btn btn-secondary">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
+                                <div class="ms-auto">
+                                    <button type="button" id="nextBtn" class="btn text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" onclick="nextStep()">
+                                        Next <i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                    <button type="submit" id="createBtn" class="btn text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%); display: none;">
+                                        <i class="fas fa-save me-2"></i>Create Customer
+                                    </button>
+                                    <a asp-action="Index" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -330,85 +327,38 @@
         padding: 8px 12px !important;
     }
 
-    /* Ultra-compact registration search card */
-    .registration-search-card .card-body {
-        padding: 6px 10px !important;
+
+    /* Wizard Step Styling */
+    .wizard-step {
+        min-height: 400px;
     }
 
-    .registration-search-card .card-header {
-        padding: 6px 10px !important;
-    }
-
-    /* Remove all margins from registration search elements */
-    .registration-search-card .form-label {
-        margin-bottom: 2px !important;
-    }
-
-    .registration-search-card .input-group {
-        margin-bottom: 2px !important;
-    }
-
-    .registration-search-card small {
-        margin-top: 0 !important;
-    }
-
-    /* Tab Styling */
-    .customer-tabs {
-        border-bottom: 2px solid #6f42c1;
-        background: linear-gradient(135deg, #f8f9fa 0%, #f3f0ff 100%);
-        padding: 0.5rem 1rem 0;
-    }
-
-    .customer-tabs .nav-link {
-        color: #666;
-        font-weight: 600;
-        border: none;
-        border-bottom: 3px solid transparent;
-        padding: 0.75rem 1.25rem;
-        transition: all 0.3s ease;
-        font-size: 14px;
-    }
-
-    .customer-tabs .nav-link:hover {
-        color: #6f42c1;
-        background: rgba(111, 66, 193, 0.05);
-        border-bottom-color: #9370db;
-    }
-
-    .customer-tabs .nav-link.active {
-        color: #6f42c1;
-        background: white;
-        border-bottom-color: #6f42c1;
-        font-weight: 700;
-    }
-
-    .customer-tabs .nav-link i {
-        font-size: 13px;
-    }
-
-    /* Tab Content */
-    .tab-content {
-        padding-top: 1rem;
-    }
-
-    /* Section Headers within Tabs */
-    .tab-pane h6 {
-        color: #6f42c1;
+    .wizard-step h5 {
         font-weight: 700;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e8dcff;
+        border-bottom: 2px solid rgba(104, 167, 226, 0.3);
     }
 
-    /* Responsive Tabs */
-    @@media (max-width: 768px) {
-        .customer-tabs .nav-link {
-            padding: 0.5rem 0.75rem;
-            font-size: 12px;
-        }
+    /* Progress Bar */
+    .progress {
+        border-radius: 10px;
+        overflow: hidden;
+    }
 
-        .customer-tabs .nav-link i {
-            display: none;
-        }
+    .progress-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+    }
+
+    /* Section Headers within Steps */
+    .wizard-step h6 {
+        color: rgb(104, 167, 226);
+        font-weight: 700;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(104, 167, 226, 0.2);
     }
 </style>
 
@@ -416,72 +366,260 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     
     <script>
-        // Registration Search and Auto-Fill
-        $('#searchRegBtn').click(function() {
-            var regID = $('#regIDInput').val().trim();
+        let currentStep = 1;
+        const totalSteps = 3;
+
+        // Wizard Navigation Functions
+        function updateWizardUI() {
+            // Show/hide steps
+            $('.wizard-step').hide();
+            $('#step' + currentStep).show();
+
+            // Update progress bar
+            var progress = (currentStep / totalSteps) * 100;
+            $('#wizardProgress').css('width', progress + '%');
             
-            if (!regID) {
-                alert('Please enter a Registration ID');
+            var stepText = '';
+            if (currentStep === 1) {
+                stepText = 'Step 1: Personal Info';
+            } else if (currentStep === 2) {
+                stepText = 'Step 2: Next of Kin Info';
+            } else if (currentStep === 3) {
+                stepText = 'Step 3: Payment Plan Info';
+            }
+            $('#wizardProgress').html('<strong>' + stepText + '</strong>');
+
+            // Update step indicator
+            $('#wizardStepIndicator').text('Step ' + currentStep + ' of ' + totalSteps);
+
+            // Show/hide navigation buttons
+            if (currentStep === 1) {
+                $('#prevBtn').hide();
+                $('#nextBtn').show();
+                $('#createBtn').hide();
+            } else if (currentStep === totalSteps) {
+                $('#prevBtn').show();
+                $('#nextBtn').hide();
+                $('#createBtn').show();
+            } else {
+                $('#prevBtn').show();
+                $('#nextBtn').show();
+                $('#createBtn').hide();
+            }
+        }
+
+        function nextStep() {
+            // Validate current step
+            var currentStepElement = $('#step' + currentStep);
+            var form = currentStepElement.closest('form')[0];
+            
+            // Get all required fields in current step
+            var requiredFields = currentStepElement.find('[required]');
+            var isValid = true;
+            
+            requiredFields.each(function() {
+                if (!$(this).val()) {
+                    isValid = false;
+                    $(this).addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            if (!isValid) {
+                alert('Please fill all required fields before proceeding.');
                 return;
             }
 
-            // Show loading
-            $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Searching...').prop('disabled', true);
-
-            $.post('@Url.Action("SearchRegistration", "Customer")', { regID: regID }, function(response) {
-                if (response.success) {
-                    // Auto-fill the form
-                    $('#regIDHidden').val(response.registration.regID);
-                    $('input[name="FullName"]').val(response.registration.fullName);
-                    $('input[name="CNIC"]').val(response.registration.cnic || '');
-                    $('input[name="Phone"]').val(response.registration.phone);
-                    $('input[name="Email"]').val(response.registration.email || '');
-
-                    // Show success message
-                    $('#regSuccessMessage').text('Registration found! Customer details auto-filled from Registration: ' + response.registration.regID);
-                    $('#regSuccessSection').show();
-                    $('#regErrorSection').hide();
-                    $('#clearRegBtn').show();
-
-                    // Scroll to form
-                    $('html, body').animate({
-                        scrollTop: $('.customer-tabs').offset().top - 100
-                    }, 500);
-                } else {
-                    // Show error
-                    $('#regErrorMessage').text(response.message);
-                    $('#regErrorSection').show();
-                    $('#regSuccessSection').hide();
-                }
-            }).fail(function() {
-                $('#regErrorMessage').text('Error searching for registration. Please try again.');
-                $('#regErrorSection').show();
-                $('#regSuccessSection').hide();
-            }).always(function() {
-                $('#searchRegBtn').html('<i class="fas fa-search me-2"></i>Search').prop('disabled', false);
-            });
-        });
-
-        // Clear Registration
-        $('#clearRegBtn').click(function() {
-            $('#regIDInput').val('');
-            $('#regIDHidden').val('');
-            $('input[name="FullName"]').val('');
-            $('input[name="CNIC"]').val('');
-            $('input[name="Phone"]').val('');
-            $('input[name="Email"]').val('');
-            $('#regSuccessSection').hide();
-            $('#regErrorSection').hide();
-            $(this).hide();
-        });
-
-        // Enter key support for registration search
-        $('#regIDInput').keypress(function(e) {
-            if (e.which == 13) {
-                e.preventDefault();
-                $('#searchRegBtn').click();
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateWizardUI();
+                
+                // Scroll to top
+                $('html, body').animate({
+                    scrollTop: $('.card').offset().top - 100
+                }, 300);
             }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateWizardUI();
+                
+                // Scroll to top
+                $('html, body').animate({
+                    scrollTop: $('.card').offset().top - 100
+                }, 300);
+            }
+        }
+
+        // Update Customer ID Preview when Project is selected
+        $('#projectIDSelect').on('change', function() {
+            var selectedOption = $(this).find('option:selected');
+            var projectPrefix = selectedOption.data('project-prefix');
+            
+            if (projectPrefix) {
+                // Show preview (actual number will be generated on server)
+                $('#customerIDPreview').text(projectPrefix + 'XXXXX').removeClass('bg-secondary').addClass('bg-primary');
+            } else {
+                $('#customerIDPreview').text('Select Project to preview').removeClass('bg-primary').addClass('bg-secondary');
+            }
+        });
+
+        // Also update preview when Payment Plan is selected (as fallback if Project not selected)
+        $('#planIDSelect').on('change', function() {
+            // Only update if ProjectID is not selected
+            if (!$('#projectIDSelect').val()) {
+                var selectedOption = $(this).find('option:selected');
+                var projectPrefix = selectedOption.data('project-prefix');
+                
+                if (projectPrefix) {
+                    // Show preview (actual number will be generated on server)
+                    $('#customerIDPreview').text(projectPrefix + 'XXXXX').removeClass('bg-secondary').addClass('bg-primary');
+                } else {
+                    $('#customerIDPreview').text('Select Project or Payment Plan to preview').removeClass('bg-primary').addClass('bg-secondary');
+                }
+            }
+        });
+
+        // Form submission handler
+        $('#customerWizardForm').on('submit', function(e) {
+            // Only validate if we're on step 3 (final step)
+            if (currentStep !== 3) {
+                e.preventDefault();
+                alert('Please complete all steps before submitting.');
+                currentStep = 3;
+                updateWizardUI();
+                return false;
+            }
+            
+            // Validate all required fields in all steps
+            var isValid = true;
+            var firstInvalidStep = null;
+            var invalidFields = [];
+            
+            for (var step = 1; step <= totalSteps; step++) {
+                var stepElement = $('#step' + step);
+                var requiredFields = stepElement.find('[required]');
+                
+                requiredFields.each(function() {
+                    var field = $(this);
+                    var value = field.val();
+                    var fieldName = field.attr('name') || field.attr('id') || 'field';
+                    
+                    // Check if it's a select and has a value
+                    if (field.is('select')) {
+                        if (!value || value === '' || value === null) {
+                            isValid = false;
+                            field.addClass('is-invalid');
+                            invalidFields.push(fieldName);
+                            if (firstInvalidStep === null) {
+                                firstInvalidStep = step;
+                            }
+                        } else {
+                            field.removeClass('is-invalid');
+                        }
+                    } else if (field.is('input[type="email"]')) {
+                        // Email validation - simple check without complex regex to avoid Razor parsing issues
+                        function isValidEmail(email) {
+                            if (!email || email.trim() === '') return false;
+                            var trimmed = email.trim();
+                            var atSymbol = String.fromCharCode(64); // @@ symbol
+                            var atIndex = trimmed.indexOf(atSymbol);
+                            if (atIndex <= 0 || atIndex >= trimmed.length - 1) return false;
+                            var dotIndex = trimmed.lastIndexOf('.');
+                            if (dotIndex <= atIndex || dotIndex >= trimmed.length - 1) return false;
+                            return true;
+                        }
+                        
+                        if (field.attr('required')) {
+                            if (!value || value.trim() === '' || !isValidEmail(value)) {
+                                isValid = false;
+                                field.addClass('is-invalid');
+                                invalidFields.push(fieldName);
+                                if (firstInvalidStep === null) {
+                                    firstInvalidStep = step;
+                                }
+                            } else {
+                                field.removeClass('is-invalid');
+                            }
+                        } else if (value && value.trim() !== '') {
+                            // If email is provided but not required, validate format
+                            if (!isValidEmail(value)) {
+                                isValid = false;
+                                field.addClass('is-invalid');
+                                invalidFields.push(fieldName);
+                                if (firstInvalidStep === null) {
+                                    firstInvalidStep = step;
+                                }
+                            } else {
+                                field.removeClass('is-invalid');
+                            }
+                        } else {
+                            field.removeClass('is-invalid');
+                        }
+                    } else {
+                        // For input fields
+                        if (!value || value.trim() === '') {
+                            isValid = false;
+                            field.addClass('is-invalid');
+                            invalidFields.push(fieldName);
+                            if (firstInvalidStep === null) {
+                                firstInvalidStep = step;
+                            }
+                        } else {
+                            field.removeClass('is-invalid');
+                        }
+                    }
+                });
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+                var message = 'Please fill all required fields before submitting.';
+                if (invalidFields.length > 0) {
+                    var maxFields = 5;
+                    var fieldsToShow = invalidFields.length > maxFields ? maxFields : invalidFields.length;
+                    var fieldsList = [];
+                    for (var i = 0; i < fieldsToShow; i++) {
+                        fieldsList.push(invalidFields[i]);
+                    }
+                    message += '\n\nMissing fields: ' + fieldsList.join(', ');
+                    if (invalidFields.length > maxFields) {
+                        message += ' and ' + (invalidFields.length - maxFields) + ' more...';
+                    }
+                }
+                alert(message);
+                
+                // Navigate to first invalid step
+                if (firstInvalidStep !== null) {
+                    currentStep = firstInvalidStep;
+                    updateWizardUI();
+                    $('html, body').animate({
+                        scrollTop: $('.card').offset().top - 100
+                    }, 300);
+                }
+                return false;
+            }
+            
+            // If validation passes, allow form submission
+            // Show loading state
+            $('#createBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
+            return true;
+        });
+
+        // Initialize wizard
+        $(document).ready(function() {
+            // Check if we're returning from a validation error (ModelState has errors)
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <text>
+                // If there are validation errors, show step 3 (Payment Plan Info)
+                currentStep = 3;
+                </text>
+            }
+            updateWizardUI();
         });
     </script>
 }
-

@@ -94,7 +94,16 @@
 
                             <div class="mb-3">
                                 <label asp-for="Size" class="form-label">Size *</label>
-                                <input asp-for="Size" class="form-control" placeholder="e.g., 5 Marla, 10 Marla, 1 Kanal" required />
+                                <select asp-for="Size" class="form-select" required>
+                                    <option value="">Select Size</option>
+                                    @if (ViewBag.Sizes != null)
+                                    {
+                                        @foreach (var size in ViewBag.Sizes)
+                                        {
+                                            <option value="@size">@size</option>
+                                        }
+                                    }
+                                </select>
                                 <span asp-validation-for="Size" class="text-danger"></span>
                             </div>
 
@@ -102,6 +111,21 @@
                                 <label class="form-label">Status</label>
                                 <input type="text" class="form-control" value="Available" disabled />
                                 <small class="text-muted">New properties are automatically set to "Available"</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="DealerID" class="form-label">Dealer *</label>
+                                <select asp-for="DealerID" class="form-select" required>
+                                    <option value="">Select Dealer</option>
+                                    @if (ViewBag.Dealers != null)
+                                    {
+                                        @foreach (var dealer in ViewBag.Dealers)
+                                        {
+                                            <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                        }
+                                    }
+                                </select>
+                                <span asp-validation-for="DealerID" class="text-danger"></span>
                             </div>
                         </div>
                     </div>

@@ -48,7 +48,7 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="nominee-tab" data-bs-toggle="tab" data-bs-target="#nominee" type="button" role="tab" aria-controls="nominee" aria-selected="false">
-                            <i class="fas fa-user-shield me-2"></i>Nominee
+                            <i class="fas fa-user-shield me-2"></i>Next of Kin
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -64,6 +64,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab" aria-controls="activity" aria-selected="false">
                             <i class="fas fa-history me-2"></i>Activity
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab" aria-controls="attachments" aria-selected="false">
+                            <i class="fas fa-paperclip me-2"></i>Attachments
                         </button>
                     </li>
                 </ul>
@@ -103,7 +108,7 @@
                     </div>
                     <div class="col-md-6 mb-2">
                         <div class="detail-field">
-                            <label><i class="fas fa-id-card me-2"></i>CNIC</label>
+                            <label><i class="fas fa-id-card me-2"></i>National ID</label>
                             <p>@Model.CNIC</p>
                         </div>
                     </div>
@@ -170,18 +175,18 @@
                 </div>
                     </div>
 
-                    <!-- Nominee Information Tab -->
+                    <!-- Next of Kin Information Tab -->
                     <div class="tab-pane fade" id="nominee" role="tabpanel" aria-labelledby="nominee-tab">
                 <div class="row">
                     <div class="col-md-4 mb-2">
                         <div class="detail-field">
-                            <label><i class="fas fa-user me-2"></i>Nominee Name</label>
+                            <label><i class="fas fa-user me-2"></i>Next of Kin Name</label>
                             <p>@(Model.NomineeName ?? "N/A")</p>
                         </div>
                     </div>
                     <div class="col-md-4 mb-2">
                         <div class="detail-field">
-                            <label><i class="fas fa-id-card me-2"></i>Nominee ID</label>
+                            <label><i class="fas fa-id-card me-2"></i>Next of Kin ID</label>
                             <p>@(Model.NomineeID ?? "N/A")</p>
                         </div>
                     </div>
@@ -248,7 +253,7 @@
                                         <div class="col-md-4 mb-2">
                                             <div class="detail-field">
                                                 <label><i class="fas fa-clock me-2"></i>Duration</label>
-                                                <p>@Model.PaymentPlan.DurationMonths Months</p>
+                                                <p>@(Model.PaymentPlan.DurationMonths?.ToString() ?? "N/A") Months</p>
                                             </div>
                                         </div>
                                         <div class="col-md-4 mb-2">
@@ -333,6 +338,7 @@
                                     <th>Type</th>
                                     <th>Date</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -346,7 +352,40 @@
                                         <td>@allotment.AllottmentType</td>
                                         <td>@allotment.AllotmentDate.ToString("MMM dd, yyyy")</td>
                                         <td>
-                                            <span class="badge bg-primary">@allotment.WorkFlowStatus</span>
+                                            @if (allotment.WorkFlowStatus == "Approved")
+                                            {
+                                                <span class="badge bg-success">@allotment.WorkFlowStatus</span>
+                                            }
+                                            else if (allotment.WorkFlowStatus == "Pending" || allotment.WorkFlowStatus == "Pending Approval")
+                                            {
+                                                <span class="badge bg-warning">@allotment.WorkFlowStatus</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-primary">@allotment.WorkFlowStatus</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a asp-controller="Allotment" asp-action="Details" asp-route-id="@allotment.AllotmentID" 
+                                                   class="btn btn-sm btn-outline-info" title="View Allotment" onclick="event.stopPropagation();">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                @if (allotment.WorkFlowStatus == "Pending" || allotment.WorkFlowStatus == "Pending Approval")
+                                                {
+                                                    <a asp-controller="Allotment" asp-action="Details" asp-route-id="@allotment.AllotmentID" 
+                                                       class="btn btn-sm btn-outline-primary" title="Edit Allotment" onclick="event.stopPropagation();">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a href="@Url.Action("UnAllot", "Allotment")" 
+                                                       class="btn btn-sm btn-outline-danger" title="Un-Allot Property" onclick="event.stopPropagation();">
+                                                        <i class="fas fa-undo"></i>
+                                                    </a>
+                                                }
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -356,9 +395,100 @@
                 }
                 else
                 {
-                    <div class="text-center text-muted py-3">
-                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-                        <p class="mb-0">No property allotments found.</p>
+                    <div id="noAllotmentSection">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>No Allotment Found</strong><br>
+                            This customer does not have a property allotted yet. You can start the allotment process below.
+                        </div>
+
+                        @if (Model.PaymentPlan == null || string.IsNullOrEmpty(Model.PaymentPlan.ProjectID) || string.IsNullOrEmpty(Model.RegisteredSize))
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Cannot Create Allotment:</strong>
+                                @if (Model.PaymentPlan == null || string.IsNullOrEmpty(Model.PaymentPlan.ProjectID))
+                                {
+                                    <p>Customer must have a Payment Plan with an assigned Project.</p>
+                                }
+                                @if (string.IsNullOrEmpty(Model.RegisteredSize))
+                                {
+                                    <p>Customer must have a Registered Size set.</p>
+                                }
+                                <a asp-action="Edit" asp-route-id="@Model.CustomerID" class="btn btn-sm btn-primary mt-2">
+                                    <i class="fas fa-edit me-2"></i>Edit Customer to Set Required Information
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-plus-circle me-2"></i>Start Allotment Process
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="createAllotmentForm">
+                                        <input type="hidden" id="customerID" value="@Model.CustomerID" />
+                                        <input type="hidden" id="projectID" value="@Model.PaymentPlan.ProjectID" />
+                                        <input type="hidden" id="registeredSize" value="@Model.RegisteredSize" />
+
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-building me-2"></i>Customer Project
+                                                </label>
+                                                <input type="text" class="form-control" value="@(Model.PaymentPlan.Project?.ProjectName ?? "N/A")" readonly />
+                                                <small class="text-muted">Properties will be filtered by this project</small>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-ruler-combined me-2"></i>Registered Size
+                                                </label>
+                                                <input type="text" class="form-control" value="@Model.RegisteredSize" readonly />
+                                                <small class="text-muted">Properties will be filtered by this size</small>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-tag me-2"></i>Allotment Type <span class="text-danger">*</span>
+                                                </label>
+                                                <select id="allotmentType" class="form-select" required>
+                                                    <option value="">Select Type</option>
+                                                    <option value="Regular">Regular</option>
+                                                    <option value="Transfer">Transfer</option>
+                                                    <option value="Balloting">Balloting</option>
+                                                    <option value="Special">Special</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-home me-2"></i>Select Property <span class="text-danger">*</span>
+                                                </label>
+                                                <select id="propertyID" class="form-select" required>
+                                                    <option value="">Loading properties...</option>
+                                                </select>
+                                                <small class="text-muted">Only available properties matching project and size are shown</small>
+                                            </div>
+                                            <div class="col-md-12 mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-comment me-2"></i>Comments
+                                                </label>
+                                                <textarea id="comments" class="form-control" rows="3" placeholder="Enter any comments or notes..."></textarea>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="fas fa-check me-2"></i>Create Allotment
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" onclick="loadProperties()">
+                                                    <i class="fas fa-redo me-2"></i>Refresh Properties List
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
                     </div>
@@ -399,6 +529,65 @@
                         <p class="mb-0">No activity logs found.</p>
                     </div>
                 }
+                    </div>
+
+                    <!-- Attachments Tab -->
+                    <div class="tab-pane fade" id="attachments" role="tabpanel" aria-labelledby="attachments-tab">
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="mb-3"><i class="fas fa-paperclip me-2"></i>Customer Attachments</h6>
+                                
+                                <!-- Customer Picture Section -->
+                                <div class="card mb-4" style="border-color: rgb(104, 167, 226);">
+                                    <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                        <h6 class="mb-0"><i class="fas fa-user-circle me-2"></i>Customer Picture</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center" id="customerPicturePreview">
+                                            <img id="customerPictureImg" src="" alt="Customer Picture" class="img-thumbnail" style="max-width: 300px; max-height: 300px; display: none;" />
+                                            <div id="customerPicturePlaceholder" class="text-muted">
+                                                <i class="fas fa-user-circle fa-5x"></i>
+                                                <p class="mt-2">No picture uploaded</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ID Card Section -->
+                                <div class="card mb-4" style="border-color: rgb(104, 167, 226);">
+                                    <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                        <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Customer ID Card</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center" id="idCardPreview">
+                                            <img id="idCardImg" src="" alt="ID Card" class="img-thumbnail" style="max-width: 300px; max-height: 300px; display: none;" />
+                                            <div id="idCardPlaceholder" class="text-muted">
+                                                <i class="fas fa-id-card fa-5x"></i>
+                                                <p class="mt-2">No ID card uploaded</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Other Attachments Section -->
+                                <div class="card mb-4" style="border-color: rgb(104, 167, 226);">
+                                    <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                        <h6 class="mb-0"><i class="fas fa-folder-open me-2"></i>Other Attachments</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="attachmentsList">
+                                            <h6 class="mb-3">Uploaded Attachments</h6>
+                                            <div id="attachmentsContainer" class="row">
+                                                <div class="col-12 text-center text-muted py-3">
+                                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                                    <p>Loading attachments...</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -505,4 +694,217 @@
         }
     }
 </style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Load properties when tab is shown
+            $('#allotments-tab').on('shown.bs.tab', function() {
+                loadProperties();
+            });
+
+            // If tab is already active, load properties
+            if ($('#allotments-tab').hasClass('active')) {
+                loadProperties();
+            }
+
+            // Load attachments when attachments tab is shown
+            $('#attachments-tab').on('shown.bs.tab', function() {
+                loadAttachments();
+            });
+
+            // Load attachments on page load if tab is active
+            if ($('#attachments-tab').hasClass('active')) {
+                loadAttachments();
+            }
+
+            // Handle form submission
+            $('#createAllotmentForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                var customerID = $('#customerID').val();
+                var propertyID = $('#propertyID').val();
+                var allotmentType = $('#allotmentType').val();
+                var comments = $('#comments').val();
+
+                if (!propertyID || !allotmentType) {
+                    alert('Please select both Property and Allotment Type');
+                    return;
+                }
+
+                // Show loading
+                var submitBtn = $(this).find('button[type="submit"]');
+                var originalText = submitBtn.html();
+                submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
+
+                $.ajax({
+                    url: '@Url.Action("CreateAllotmentFromCustomer", "Allotment")',
+                    method: 'POST',
+                    data: {
+                        customerID: customerID,
+                        propertyID: propertyID,
+                        allotmentType: allotmentType,
+                        comments: comments
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert(response.message);
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                            submitBtn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred while creating the allotment');
+                        submitBtn.prop('disabled', false).html(originalText);
+                    }
+                });
+            });
+        });
+
+        function loadProperties() {
+            var customerID = $('#customerID').val();
+            if (!customerID) return;
+
+            var propertySelect = $('#propertyID');
+            propertySelect.html('<option value="">Loading properties...</option>');
+
+            $.ajax({
+                url: '@Url.Action("GetAvailablePropertiesForCustomer", "Customer")',
+                method: 'POST',
+                data: { customerID: customerID },
+                success: function(response) {
+                    if (response.success && response.properties.length > 0) {
+                        propertySelect.html('<option value="">Select a Property</option>');
+                        $.each(response.properties, function(index, property) {
+                            var optionText = property.plotNo;
+                            if (property.block) optionText += ' - Block ' + property.block;
+                            if (property.street) optionText += ' - ' + property.street;
+                            optionText += ' (' + property.size + ')';
+                            
+                            propertySelect.append(
+                                $('<option></option>')
+                                    .attr('value', property.propertyID)
+                                    .text(optionText)
+                            );
+                        });
+                    } else {
+                        var message = response.message || 'No available properties found';
+                        propertySelect.html('<option value="">' + message + '</option>');
+                    }
+                },
+                error: function() {
+                    propertySelect.html('<option value="">Error loading properties</option>');
+                }
+            });
+        }
+
+        var customerId = '@Model.CustomerID';
+
+        // Load attachments
+        function loadAttachments() {
+            $.ajax({
+                url: '@Url.Action("GetAttachments", "Customer")',
+                method: 'GET',
+                data: { customerId: customerId },
+                success: function(response) {
+                    if (response.success) {
+                        displayAttachments(response.attachments);
+                    } else {
+                        $('#attachmentsContainer').html('<div class="col-12 text-center text-muted py-3"><p>' + (response.message || 'Error loading attachments') + '</p></div>');
+                    }
+                },
+                error: function() {
+                    $('#attachmentsContainer').html('<div class="col-12 text-center text-muted py-3"><p>Error loading attachments</p></div>');
+                }
+            });
+        }
+
+        // Display attachments
+        function displayAttachments(attachments) {
+            var container = $('#attachmentsContainer');
+            container.empty();
+
+            if (attachments.length === 0) {
+                container.html('<div class="col-12 text-center text-muted py-3"><i class="fas fa-inbox fa-2x mb-2"></i><p>No attachments uploaded yet</p></div>');
+                return;
+            }
+
+            // Separate attachments by type
+            var customerPicture = attachments.find(a => a.attachmentType === 'CustomerPicture');
+            var idCard = attachments.find(a => a.attachmentType === 'IDCard');
+            var otherAttachments = attachments.filter(a => a.attachmentType === 'Other');
+
+            // Display Customer Picture
+            if (customerPicture) {
+                $('#customerPictureImg').attr('src', customerPicture.filePath).show();
+                $('#customerPicturePlaceholder').hide();
+            } else {
+                $('#customerPictureImg').hide();
+                $('#customerPicturePlaceholder').show();
+            }
+
+            // Display ID Card
+            if (idCard) {
+                if (idCard.fileType && idCard.fileType.includes('pdf')) {
+                    $('#idCardImg').hide();
+                    $('#idCardPlaceholder').html('<i class="fas fa-file-pdf fa-5x"></i><p class="mt-2">PDF Document</p><a href="' + idCard.filePath + '" target="_blank" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);"><i class="fas fa-eye me-1"></i>View PDF</a>').show();
+                } else {
+                    $('#idCardImg').attr('src', idCard.filePath).show();
+                    $('#idCardPlaceholder').hide();
+                }
+            } else {
+                $('#idCardImg').hide();
+                $('#idCardPlaceholder').html('<i class="fas fa-id-card fa-5x"></i><p class="mt-2">No ID card uploaded</p>').show();
+            }
+
+            // Display Other Attachments
+            if (otherAttachments.length > 0) {
+                otherAttachments.forEach(function(attachment) {
+                    var isImage = attachment.fileType && attachment.fileType.startsWith('image/');
+                    var isPdf = attachment.fileType && attachment.fileType.includes('pdf');
+                    
+                    var cardHtml = '<div class="col-md-4 mb-3">' +
+                        '<div class="card h-100">' +
+                        '<div class="card-body text-center">';
+                    
+                    if (isImage) {
+                        cardHtml += '<img src="' + attachment.filePath + '" class="img-thumbnail mb-2" style="max-width: 100%; max-height: 200px;" />';
+                    } else if (isPdf) {
+                        cardHtml += '<i class="fas fa-file-pdf fa-4x text-danger mb-2"></i>';
+                    } else {
+                        cardHtml += '<i class="fas fa-file fa-4x text-muted mb-2"></i>';
+                    }
+                    
+                    cardHtml += '<h6 class="card-title">' + (attachment.fileName || 'Attachment') + '</h6>';
+                    
+                    if (attachment.description) {
+                        cardHtml += '<p class="card-text text-muted small">' + attachment.description + '</p>';
+                    }
+                    
+                    cardHtml += '<p class="card-text small text-muted">' + 
+                        (attachment.fileSize ? formatFileSize(attachment.fileSize) : '') + 
+                        ' • ' + attachment.uploadedAt + '</p>' +
+                        '<a href="' + attachment.filePath + '" target="_blank" class="btn btn-sm text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">' +
+                        '<i class="fas fa-eye me-1"></i>View</a>' +
+                        '</div></div></div>';
+                    
+                    container.append(cardHtml);
+                });
+            } else {
+                container.append('<div class="col-12 text-center text-muted py-3"><p>No other attachments</p></div>');
+            }
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    </script>
+}
 

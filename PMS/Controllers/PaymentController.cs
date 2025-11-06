@@ -188,14 +188,100 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreatePaymentPlan(PaymentPlan paymentPlan)
+        public async Task<IActionResult> CreatePaymentPlan([FromBody] PaymentPlanCreateViewModel viewModel)
         {
-            if (ModelState.IsValid)
+            try
             {
-                paymentPlan.PlanID = GenerateID();
-                paymentPlan.CreatedAt = DateTime.Now;
+                if (viewModel?.PaymentPlan == null || viewModel?.PaymentSchedules == null)
+                {
+                    return Json(new { success = false, message = "Invalid data provided" });
+                }
+
+                var planData = viewModel.PaymentPlan;
+                var scheduleData = viewModel.PaymentSchedules;
+
+                // Validate total amount: Token + Installments must not exceed Plan Total Amount
+                decimal totalInstallmentsAmount = scheduleData.TotalInstallments * scheduleData.InstallmentAmount;
+                decimal tokenAmount = scheduleData.IncludeToken && scheduleData.TokenAmount.HasValue ? scheduleData.TokenAmount.Value : 0;
+                decimal grandTotal = totalInstallmentsAmount + tokenAmount;
+
+                if (grandTotal > planData.TotalAmount)
+                {
+                    decimal excess = grandTotal - planData.TotalAmount;
+                    return Json(new { 
+                        success = false, 
+                        message = $"Total Installments Amount (SSP {totalInstallmentsAmount:N2}) + Token Amount (SSP {tokenAmount:N2}) = SSP {grandTotal:N2} exceeds Parent Total Amount (SSP {planData.TotalAmount:N2}). Excess: SSP {excess:N2}." 
+                    });
+                }
+
+                // Create PaymentPlan
+                var paymentPlan = new PaymentPlan
+                {
+                    PlanID = GenerateID(),
+                    PlanName = planData.PlanName,
+                    ProjectID = string.IsNullOrEmpty(planData.ProjectID) ? null : planData.ProjectID,
+                    TotalAmount = planData.TotalAmount,
+                    DurationMonths = planData.DurationMonths,
+                    Frequency = planData.Frequency,
+                    Description = planData.Description,
+                    CreatedAt = DateTime.Now
+                };
 
                 _context.PaymentPlans.Add(paymentPlan);
+                await _context.SaveChangesAsync();
+
+                // Create PaymentSchedules
+                var schedules = new List<PaymentSchedule>();
+                var includeToken = scheduleData.IncludeToken;
+                var totalInstallments = scheduleData.TotalInstallments;
+                var installmentAmount = scheduleData.InstallmentAmount;
+                var frequency = scheduleData.Frequency ?? "Monthly";
+                var firstDueDate = scheduleData.FirstInstallmentDueDate;
+                var paymentDescription = scheduleData.PaymentDescription ?? "Installment";
+                var surchargeApplied = scheduleData.SurchargeApplied;
+                var surchargeRate = scheduleData.SurchargeRate;
+
+                int installmentNo = 0;
+
+                // Create Token if included (Installment 0 - no surcharge)
+                if (includeToken && scheduleData.TokenAmount.HasValue)
+                {
+                    var tokenSchedule = new PaymentSchedule
+                    {
+                        ScheduleID = GenerateID(),
+                        PlanID = paymentPlan.PlanID,
+                        PaymentDescription = paymentDescription,
+                        InstallmentNo = 0,
+                        DueDate = firstDueDate,
+                        Amount = scheduleData.TokenAmount.Value,
+                        SurchargeApplied = false, // Token has no surcharge
+                        SurchargeRate = 0m // Token has no surcharge rate
+                    };
+                    schedules.Add(tokenSchedule);
+                    installmentNo = 1;
+                }
+
+                // Create regular installments
+                for (int i = 0; i < totalInstallments; i++)
+                {
+                    var dueDate = CalculateDueDate(firstDueDate, frequency, i);
+                    
+                    var schedule = new PaymentSchedule
+                    {
+                        ScheduleID = GenerateID(),
+                        PlanID = paymentPlan.PlanID,
+                        PaymentDescription = paymentDescription,
+                        InstallmentNo = installmentNo,
+                        DueDate = dueDate,
+                        Amount = installmentAmount,
+                        SurchargeApplied = surchargeApplied,
+                        SurchargeRate = surchargeRate
+                    };
+                    schedules.Add(schedule);
+                    installmentNo++;
+                }
+
+                _context.PaymentSchedules.AddRange(schedules);
                 await _context.SaveChangesAsync();
 
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -204,11 +290,24 @@ namespace PMS.Controllers
                     await LogActivity(userId, "Create Payment Plan", "PaymentPlan", paymentPlan.PlanID);
                 }
 
-                return RedirectToAction(nameof(PaymentSchedule), new { planId = paymentPlan.PlanID });
+                return Json(new { success = true, planId = paymentPlan.PlanID });
             }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
 
-            ViewBag.Projects = _context.Projects.ToList();
-            return View(paymentPlan);
+        private DateTime CalculateDueDate(DateTime firstDueDate, string frequency, int installmentIndex)
+        {
+            return frequency switch
+            {
+                "Monthly" => firstDueDate.AddMonths(installmentIndex),
+                "Quarterly" => firstDueDate.AddMonths(installmentIndex * 3),
+                "Half Yearly" => firstDueDate.AddMonths(installmentIndex * 6),
+                "Yearly" => firstDueDate.AddYears(installmentIndex),
+                _ => firstDueDate.AddMonths(installmentIndex)
+            };
         }
 
         [HttpGet]

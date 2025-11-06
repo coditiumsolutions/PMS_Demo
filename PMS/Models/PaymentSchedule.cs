@@ -16,7 +16,7 @@ namespace PMS.Models
         [StringLength(250)]
         public string? PaymentDescription { get; set; }
 
-        public int InstallmentNo { get; set; }
+        public int? InstallmentNo { get; set; }
 
         public DateTime DueDate { get; set; }
 

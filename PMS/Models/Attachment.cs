@@ -13,11 +13,25 @@ namespace PMS.Models
         [StringLength(50)]
         public string? RefType { get; set; }
 
-        [StringLength(10)]
+        [StringLength(50)]
         public string? RefID { get; set; }
+
+        [StringLength(50)]
+        public string? AttachmentType { get; set; } // 'CustomerPicture', 'IDCard', 'Other'
+
+        [StringLength(255)]
+        public string? FileName { get; set; }
 
         [StringLength(255)]
         public string? FilePath { get; set; }
+
+        public long? FileSize { get; set; }
+
+        [StringLength(100)]
+        public string? FileType { get; set; }
+
+        [StringLength(500)]
+        public string? Description { get; set; }
 
         [StringLength(10)]
         public string? UploadedBy { get; set; }

@@ -10,12 +10,15 @@ namespace PMS.Models
         [StringLength(10)]
         public string AllotmentID { get; set; } = string.Empty;
 
+        [Required]
         [StringLength(10)]
         public string? PropertyID { get; set; }
 
+        [Required]
         [StringLength(10)]
         public string? CustomerID { get; set; }
 
+        [Required]
         [StringLength(10)]
         public string? AllottedBy { get; set; }
 
@@ -24,11 +27,13 @@ namespace PMS.Models
         [StringLength(50)]
         public string? ApprovedBy { get; set; }
 
+        [Required]
         [StringLength(50)]
-        public string? AllottmentType { get; set; }
+        public string AllottmentType { get; set; } = "Regular";
 
+        [Required]
         [StringLength(250)]
-        public string? WorkFlowStatus { get; set; }
+        public string WorkFlowStatus { get; set; } = "Pending";
 
         public string? Comments { get; set; }
 

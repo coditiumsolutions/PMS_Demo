@@ -25,7 +25,7 @@ namespace PMS.Controllers
             
             // Get property status distribution
             var propertyStatusData = await _context.Properties
-                .GroupBy(p => p.Status)
+                .GroupBy(p => p.Status ?? "Unknown")
                 .Select(g => new { Status = g.Key, Count = g.Count() })
                 .ToListAsync();
 
@@ -37,7 +37,7 @@ namespace PMS.Controllers
                 .Select(g => new { 
                     Year = g.Key.Year, 
                     Month = g.Key.Month, 
-                    Total = g.Sum(p => p.Amount) 
+                    Total = g.Sum(p => (decimal?)p.Amount) ?? 0 
                 })
                 .OrderBy(x => x.Year).ThenBy(x => x.Month)
                 .ToListAsync();
@@ -48,13 +48,13 @@ namespace PMS.Controllers
                 .ToListAsync();
             
             var overdue = schedules.Count(s => s.DueDate < today && 
-                (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
+                (s.Payments == null || (s.Payments.Where(p => p.Status == "Completed").Sum(p => (decimal?)p.Amount) ?? 0) < s.Amount));
             var dueThisWeek = schedules.Count(s => s.DueDate >= today && s.DueDate <= today.AddDays(7) &&
-                (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
+                (s.Payments == null || (s.Payments.Where(p => p.Status == "Completed").Sum(p => (decimal?)p.Amount) ?? 0) < s.Amount));
             var upcoming = schedules.Count(s => s.DueDate > today.AddDays(7) &&
-                (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
+                (s.Payments == null || (s.Payments.Where(p => p.Status == "Completed").Sum(p => (decimal?)p.Amount) ?? 0) < s.Amount));
             var paid = schedules.Count(s => s.Payments != null && 
-                s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) >= s.Amount);
+                (s.Payments.Where(p => p.Status == "Completed").Sum(p => (decimal?)p.Amount) ?? 0) >= s.Amount);
 
             // Get customer registration trend
             var customerTrend = await _context.Customers
@@ -63,10 +63,29 @@ namespace PMS.Controllers
                 .Select(g => new { 
                     Year = g.Key.Year, 
                     Month = g.Key.Month, 
-                    Count = g.Count() 
+                    Count = (int?)g.Count() ?? 0 
                 })
                 .OrderBy(x => x.Year).ThenBy(x => x.Month)
                 .ToListAsync();
+
+            // Get dealer data for graph
+            var dealers = await _context.Dealers
+                .Include(d => d.Customers)
+                .Include(d => d.Properties)
+                .ToListAsync();
+
+            // Sort in memory after loading (can't use null operators in expression trees)
+            var sortedDealers = dealers
+                .OrderByDescending(d => (d.Customers != null ? d.Customers.Count : 0) + (d.Properties != null ? d.Properties.Count : 0))
+                .Take(10)
+                .ToList();
+
+            var dealerData = sortedDealers.Select(d => new DealerDashboardData
+            {
+                DealershipName = d.DealershipName ?? string.Empty,
+                Customers = d.Customers != null ? d.Customers.Count : 0,
+                Properties = d.Properties != null ? d.Properties.Count : 0
+            }).ToList();
 
             var dashboardData = new DashboardViewModel
             {
@@ -107,7 +126,8 @@ namespace PMS.Controllers
                 },
                 CustomerTrendData = customerTrend.ToDictionary(
                     x => new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), 
-                    x => x.Count)
+                    x => x.Count),
+                DealerData = dealerData
             };
 
             return View(dashboardData);

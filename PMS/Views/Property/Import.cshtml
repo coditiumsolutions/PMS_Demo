@@ -1,0 +1,162 @@
+@{
+    ViewData["Title"] = "Import Properties";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-file-upload me-2"></i></h2>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Import Instructions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">File Format Requirements:</h6>
+                        <ul>
+                            <li>Supported formats: <strong>CSV (.csv)</strong> or <strong>Excel (.xlsx, .xls)</strong></li>
+                            <li>First row must contain column headers</li>
+                            <li>Data starts from row 2</li>
+                        </ul>
+
+                        <h6 class="text-primary mt-3">Required Columns (A to H):</h6>
+                        <ol>
+                            <li><strong>ProjectID</strong> - Must exist in Projects table</li>
+                            <li><strong>PlotNo</strong> - Plot number (required)</li>
+                            <li><strong>Street</strong> - Street name</li>
+                            <li><strong>PlotType</strong> - Type of plot (e.g., General, Corner, Park Facing)</li>
+                            <li><strong>Block</strong> - Block identifier</li>
+                            <li><strong>PropertyType</strong> - Type of property (e.g., Plot, Apartment, House)</li>
+                            <li><strong>Size</strong> - Property size (e.g., 1000 sq ft, 10 Marla)</li>
+                            <li><strong>Additional Info</strong> - Additional notes (optional)</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Example Format:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ProjectID</th>
+                                        <th>PlotNo</th>
+                                        <th>Street</th>
+                                        <th>PlotType</th>
+                                        <th>Block</th>
+                                        <th>PropertyType</th>
+                                        <th>Size</th>
+                                        <th>Additional Info</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>PROJ00001</td>
+                                        <td>1</td>
+                                        <td>Main Street</td>
+                                        <td>General</td>
+                                        <td>5</td>
+                                        <td>Plot</td>
+                                        <td>1000 sq ft</td>
+                                        <td>Main Street Plot</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>Note:</strong> 
+                            <ul class="mb-0 mt-2">
+                                <li>PropertyID will be auto-generated</li>
+                                <li>Status will be set to "Available"</li>
+                                <li>Dealer must be selected before upload</li>
+                                <li>All imported properties will be assigned to the selected dealer</li>
+                                <li>CreatedAt will be set automatically</li>
+                                <li>Duplicate properties (same ProjectID + PlotNo + Block) will be skipped</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload File</h5>
+                    <a asp-action="DownloadSample" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-download me-2"></i>Download Sample
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <form asp-action="ImportPreview" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="dealerId" class="form-label">Dealer *</label>
+                                <select class="form-select" id="dealerId" name="dealerId" required>
+                                    <option value="">Select Dealer</option>
+                                    @if (ViewBag.Dealers != null)
+                                    {
+                                        @foreach (var dealer in ViewBag.Dealers)
+                                        {
+                                            <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                        }
+                                    }
+                                </select>
+                                <small class="form-text text-muted">Select the dealer for all imported properties</small>
+                                <span class="text-danger field-validation-valid" data-valmsg-for="dealerId" data-valmsg-replace="true"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">Select File (CSV or Excel) *</label>
+                                <input type="file" class="form-control" id="file" name="file" accept=".csv,.xlsx,.xls" required />
+                                <small class="form-text text-muted">Maximum file size: 10MB</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload and Preview
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // File size validation
+        document.getElementById('file').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var fileSize = file.size / 1024 / 1024; // Size in MB
+                if (fileSize > 10) {
+                    alert('File size exceeds 10MB. Please select a smaller file.');
+                    e.target.value = '';
+                }
+            }
+        });
+    </script>
+}
+

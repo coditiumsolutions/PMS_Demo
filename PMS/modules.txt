@@ -50,6 +50,7 @@ Rules:
    - NO property (when new customer, installments pending)
    - ONE property (after allotment)
    - NEVER multiple properties
+   --
 
 3. If a customer wants ANOTHER plot:
    - Create a NEW Customer entry for the same person
@@ -112,11 +113,47 @@ Process Flow:
    - Full customer profile created
    - Registration → Customer (conversion)
 
+4. Dealers MODULE
+   - Here we will create affiliated dealers to out JUBA SMART CITY
+   - Each Customer and Property wil have a DealerID so we can track the references
+
+
 Business Rules:
 - One Registration can have multiple Customers (if same person buys multiple plots)
 - Each Customer must link to one Registration
 - Registration cannot be deleted if linked to customer(s)
 - Registration approval is recommended before customer creation
+
+===========================================
+CUSTOMER ATTACHMENTS MODULE
+===========================================
+
+Purpose: Manage customer documents and images (profile picture, ID card, other documents)
+
+Attachment Types:
+1. Customer Picture (1 per customer)
+
+
+2. ID Card (1 per customer)
+
+3. Other Attachments (Unlimited)
+   - Additional documents (contracts, agreements, etc.)
+   - Image files or PDF
+   - Optional description field
+   - Multiple files allowed
+
+File Validation:
+- Allowed: Images (JPG, PNG, GIF, BMP) and PDF
+- Max file size: 8MB per file
+- Files stored in: /wwwroot/uploads/customers/{CustomerID}/
+
+Location:
+- Customer Edit page → Attachments tab (upload/delete)
+- Customer Details page → Attachments tab (view only)
+
+Database:
+- Table: Attachments
+- Fields: AttachmentID, RefType, RefID, AttachmentType, FileName, FilePath, FileSize, FileType, Description, UploadedBy, UploadedAt
 
 ===========================================
 CONFIGURATION SETTINGS (KEY-VALUE DICTIONARY)

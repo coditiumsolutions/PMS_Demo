@@ -34,6 +34,7 @@ namespace PMS.Controllers
                 .Include(c => c.Registration)
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p.Project)
+                .Include(c => c.Allotments)
                 .AsQueryable();
 
             // Apply project filter
@@ -175,6 +176,66 @@ namespace PMS.Controllers
             }
         }
 
+        // POST: Get Available Properties for Customer (matching project and size)
+        [HttpPost]
+        public async Task<IActionResult> GetAvailablePropertiesForCustomer(string customerID)
+        {
+            try
+            {
+                var customer = await _context.Customers
+                    .Include(c => c.Project)
+                    .FirstOrDefaultAsync(c => c.CustomerID == customerID);
+
+                if (customer == null)
+                {
+                    return Json(new { success = false, message = "Customer not found" });
+                }
+
+                if (string.IsNullOrEmpty(customer.ProjectID))
+                {
+                    return Json(new { success = false, message = "Customer does not have a project assigned" });
+                }
+
+                if (string.IsNullOrEmpty(customer.RegisteredSize))
+                {
+                    return Json(new { success = false, message = "Customer does not have a registered size" });
+                }
+
+                var projectID = customer.ProjectID;
+                var registeredSize = customer.RegisteredSize;
+
+                // Get available properties matching customer's project and size
+                var properties = await _context.Properties
+                    .Include(p => p.Project)
+                    .Where(p => p.Status == "Available" 
+                        && p.ProjectID == projectID 
+                        && p.Size == registeredSize)
+                    .OrderBy(p => p.PlotNo)
+                    .Select(p => new
+                    {
+                        propertyID = p.PropertyID,
+                        plotNo = p.PlotNo,
+                        block = p.Block,
+                        size = p.Size,
+                        propertyType = p.PropertyType,
+                        street = p.Street,
+                        plotType = p.PlotType
+                    })
+                    .ToListAsync();
+
+                return Json(new { 
+                    success = true, 
+                    properties = properties,
+                    projectName = customer.Project?.ProjectName,
+                    registeredSize = registeredSize
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public async Task<IActionResult> Details(string id)
         {
             if (id == null)
@@ -270,8 +331,15 @@ namespace PMS.Controllers
 
         public IActionResult Create()
         {
-            // No need for ViewBag.Registrations - using AJAX search instead
-            ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            // Load registrations for dropdown (also supports AJAX search)
+            ViewBag.Registrations = _context.Registrations.ToList();
+            ViewBag.Projects = _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .ToList();
+            ViewBag.PaymentPlans = _context.PaymentPlans
+                .Include(pp => pp.Project)
+                .ToList();
+            ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
             
             // Load configurations (comma-separated values)
             var citiesConfig = _context.Configurations
@@ -307,7 +375,8 @@ namespace PMS.Controllers
         {
             if (ModelState.IsValid)
             {
-                customer.CustomerID = GenerateID();
+                // Generate CustomerID based on Project Prefix
+                customer.CustomerID = await GenerateCustomerID(customer.ProjectID);
                 customer.CreatedAt = DateTime.Now;
                 customer.Status = "Active";
 
@@ -320,11 +389,19 @@ namespace PMS.Controllers
                     await LogActivity(userId, "Create Customer", "Customer", customer.CustomerID);
                 }
 
-                return RedirectToAction(nameof(Index));
+                // Redirect to Edit page so user can upload attachments
+                return RedirectToAction(nameof(Edit), new { id = customer.CustomerID });
             }
 
             // Reload data on validation error
-            ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            ViewBag.Registrations = _context.Registrations.ToList();
+            ViewBag.Projects = _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .ToList();
+            ViewBag.PaymentPlans = _context.PaymentPlans
+                .Include(pp => pp.Project)
+                .ToList();
+            ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
             
             // Reload configurations (comma-separated values)
             var citiesConfig = _context.Configurations
@@ -361,14 +438,27 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
-            var customer = await _context.Customers.FindAsync(id);
+            var customer = await _context.Customers
+                .Include(c => c.Allotments)
+                    .ThenInclude(a => a.Property)
+                .Include(c => c.Project)
+                .Include(c => c.PaymentPlan)
+                    .ThenInclude(p => p.Project)
+                .FirstOrDefaultAsync(c => c.CustomerID == id);
+
             if (customer == null)
             {
                 return NotFound();
             }
 
             ViewBag.Registrations = _context.Registrations.ToList();
-            ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            ViewBag.Projects = _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .ToList();
+            ViewBag.PaymentPlans = _context.PaymentPlans
+                .Include(pp => pp.Project)
+                .ToList();
+            ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
             
             // Load configurations (comma-separated values)
             var citiesConfig = _context.Configurations
@@ -394,6 +484,13 @@ namespace PMS.Controllers
             ViewBag.SubProjects = subProjectsConfig != null 
                 ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
+
+            // Load allotment types
+            var allotmentTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "allotmenttypes");
+            ViewBag.AllotmentTypes = allotmentTypesConfig != null 
+                ? allotmentTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string> { "Regular", "Transfer", "Balloting", "Special" };
             
             return View(customer);
         }
@@ -435,7 +532,13 @@ namespace PMS.Controllers
             }
 
             ViewBag.Registrations = _context.Registrations.ToList();
-            ViewBag.PaymentPlans = _context.PaymentPlans.ToList();
+            ViewBag.Projects = _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .ToList();
+            ViewBag.PaymentPlans = _context.PaymentPlans
+                .Include(pp => pp.Project)
+                .ToList();
+            ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
             
             // Reload configurations (comma-separated values)
             var citiesConfig = _context.Configurations
@@ -528,6 +631,304 @@ namespace PMS.Controllers
         private string GenerateID()
         {
             return Guid.NewGuid().ToString("N")[..10].ToUpper();
+        }
+
+        // Generate CustomerID based on Project Prefix: "JSC0001", "JSC0002", etc. (no dash)
+        private async Task<string> GenerateCustomerID(string? projectID)
+        {
+            if (string.IsNullOrEmpty(projectID))
+            {
+                // Fallback to random if no project selected
+                return GenerateID();
+            }
+
+            // Get Project directly
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.ProjectID == projectID);
+
+            if (project == null || string.IsNullOrEmpty(project.Prefix))
+            {
+                // Fallback to random if project or prefix not found
+                return GenerateID();
+            }
+
+            string projectPrefix = project.Prefix;
+
+            // Get all existing customers with this project prefix (check both with and without dash for backward compatibility)
+            var existingCustomers = await _context.Customers
+                .Include(c => c.Project)
+                .Where(c => c.Project != null && 
+                           c.Project.ProjectID == projectID &&
+                           (c.CustomerID.StartsWith(projectPrefix) || c.CustomerID.StartsWith(projectPrefix + "-")))
+                .ToListAsync();
+
+            // Extract numeric part from existing CustomerIDs (format: "JSC0001" or "JSC-00001" for backward compatibility)
+            int maxNumber = 0;
+            foreach (var existingCustomer in existingCustomers)
+            {
+                string existingCustomerID = existingCustomer.CustomerID;
+                
+                // Remove prefix to get the number part
+                if (existingCustomerID.StartsWith(projectPrefix))
+                {
+                    string existingNumberPart = existingCustomerID.Substring(projectPrefix.Length);
+                    
+                    // Remove dash if present (for backward compatibility)
+                    if (existingNumberPart.StartsWith("-"))
+                    {
+                        existingNumberPart = existingNumberPart.Substring(1);
+                    }
+                    
+                    // Try to parse the number part
+                    if (int.TryParse(existingNumberPart, out int parsedNumber))
+                    {
+                        if (parsedNumber > maxNumber)
+                        {
+                            maxNumber = parsedNumber;
+                        }
+                    }
+                }
+            }
+
+            // Generate next sequential number
+            int nextNumber = maxNumber + 1;
+            
+            // Calculate available length for number part (10 total - prefix length, no dash)
+            int availableLength = 10 - projectPrefix.Length;
+            
+            if (availableLength <= 0)
+            {
+                // Prefix is too long, fallback to random
+                return GenerateID();
+            }
+            
+            // Format number with appropriate padding (max 5 digits, but adjust if prefix is longer)
+            int maxDigits = Math.Min(5, availableLength);
+            string numberPart = nextNumber.ToString().PadLeft(maxDigits, '0');
+            
+            // If number exceeds available length, truncate
+            if (numberPart.Length > availableLength)
+            {
+                numberPart = numberPart.Substring(numberPart.Length - availableLength);
+            }
+            
+            // Format: Prefix + Number (no dash)
+            string customerID = $"{projectPrefix}{numberPart}";
+
+            return customerID;
+        }
+
+        // ===========================================================
+        // ATTACHMENT MANAGEMENT
+        // ===========================================================
+
+        [HttpPost]
+        public async Task<IActionResult> UploadAttachment(string customerId, IFormFile file, string attachmentType, string description = "")
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    return Json(new { success = false, message = "Customer ID is required" });
+                }
+
+                if (file == null || file.Length == 0)
+                {
+                    return Json(new { success = false, message = "Please select a file to upload" });
+                }
+
+                if (string.IsNullOrEmpty(attachmentType))
+                {
+                    return Json(new { success = false, message = "Attachment type is required" });
+                }
+
+                // Validate file type (images only)
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    return Json(new { success = false, message = "Only image files (JPG, PNG, GIF, BMP) and PDF files are allowed" });
+                }
+
+                // Validate file size (max 8MB)
+                const long maxFileSize = 8 * 1024 * 1024; // 8MB
+                if (file.Length > maxFileSize)
+                {
+                    return Json(new { success = false, message = "File size exceeds 8MB limit" });
+                }
+
+                // Check if customer exists
+                var customer = await _context.Customers.FindAsync(customerId);
+                if (customer == null)
+                {
+                    return Json(new { success = false, message = "Customer not found" });
+                }
+
+                // Check for existing CustomerPicture or IDCard (only one allowed)
+                if (attachmentType == "CustomerPicture" || attachmentType == "IDCard")
+                {
+                    var existing = await _context.Attachments
+                        .FirstOrDefaultAsync(a => a.RefType == "Customer" && 
+                                                  a.RefID == customerId && 
+                                                  a.AttachmentType == attachmentType);
+                    
+                    if (existing != null)
+                    {
+                        // Delete existing file
+                        if (!string.IsNullOrEmpty(existing.FilePath) && System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existing.FilePath.TrimStart('/'))))
+                        {
+                            System.IO.File.Delete(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existing.FilePath.TrimStart('/')));
+                        }
+                        _context.Attachments.Remove(existing);
+                    }
+                }
+
+                // Create uploads directory if it doesn't exist
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "customers", customerId);
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                // Generate unique filename
+                var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                var relativePath = $"/uploads/customers/{customerId}/{uniqueFileName}";
+
+                // Save file
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                }
+
+                // Generate attachment ID
+                var attachmentID = GenerateID();
+
+                // Save attachment record
+                var attachment = new Attachment
+                {
+                    AttachmentID = attachmentID,
+                    RefType = "Customer",
+                    RefID = customerId,
+                    AttachmentType = attachmentType,
+                    FileName = file.FileName,
+                    FilePath = relativePath,
+                    FileSize = file.Length,
+                    FileType = file.ContentType,
+                    Description = description,
+                    UploadedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                    UploadedAt = DateTime.Now
+                };
+
+                _context.Attachments.Add(attachment);
+                await _context.SaveChangesAsync();
+
+                // Log activity
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    await LogActivity(userId, $"Upload {attachmentType}", "Attachment", attachmentID);
+                }
+
+                return Json(new { 
+                    success = true, 
+                    message = "File uploaded successfully",
+                    attachment = new {
+                        attachmentID = attachment.AttachmentID,
+                        fileName = attachment.FileName,
+                        filePath = attachment.FilePath,
+                        fileSize = attachment.FileSize,
+                        fileType = attachment.FileType,
+                        attachmentType = attachment.AttachmentType,
+                        description = attachment.Description,
+                        uploadedAt = attachment.UploadedAt.ToString("MMM dd, yyyy hh:mm tt")
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error uploading file: {ex.Message}" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAttachments(string customerId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    return Json(new { success = false, message = "Customer ID is required" });
+                }
+
+                var attachments = await _context.Attachments
+                    .Where(a => a.RefType == "Customer" && a.RefID == customerId)
+                    .OrderByDescending(a => a.UploadedAt)
+                    .Select(a => new
+                    {
+                        attachmentID = a.AttachmentID,
+                        fileName = a.FileName,
+                        filePath = a.FilePath,
+                        fileSize = a.FileSize,
+                        fileType = a.FileType,
+                        attachmentType = a.AttachmentType,
+                        description = a.Description,
+                        uploadedAt = a.UploadedAt.ToString("MMM dd, yyyy hh:mm tt"),
+                        uploadedBy = a.UploadedByUser != null ? a.UploadedByUser.FullName : "Unknown"
+                    })
+                    .ToListAsync();
+
+                return Json(new { success = true, attachments });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error loading attachments: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteAttachment(string attachmentId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(attachmentId))
+                {
+                    return Json(new { success = false, message = "Attachment ID is required" });
+                }
+
+                var attachment = await _context.Attachments.FindAsync(attachmentId);
+                if (attachment == null)
+                {
+                    return Json(new { success = false, message = "Attachment not found" });
+                }
+
+                // Delete physical file
+                if (!string.IsNullOrEmpty(attachment.FilePath))
+                {
+                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", attachment.FilePath.TrimStart('/'));
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        System.IO.File.Delete(filePath);
+                    }
+                }
+
+                // Delete record
+                _context.Attachments.Remove(attachment);
+                await _context.SaveChangesAsync();
+
+                // Log activity
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    await LogActivity(userId, "Delete Attachment", "Attachment", attachmentId);
+                }
+
+                return Json(new { success = true, message = "Attachment deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error deleting attachment: {ex.Message}" });
+            }
         }
     }
 }

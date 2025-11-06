@@ -19,7 +19,7 @@ namespace PMS.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
 
-        public int DurationMonths { get; set; }
+        public int? DurationMonths { get; set; }
 
         [StringLength(50)]
         public string? Frequency { get; set; }

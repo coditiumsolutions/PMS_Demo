@@ -97,7 +97,7 @@
                             </td>
                             <td>
                                 <i class="far fa-calendar me-1"></i>
-                                @plan.DurationMonths Months
+                                @(plan.DurationMonths?.ToString() ?? "N/A") Months
                             </td>
                             <td>
                                 <span class="badge bg-secondary">@plan.Frequency</span>

@@ -215,7 +215,7 @@ namespace PMS.Controllers
         public string CustomerName { get; set; }
         public string Phone { get; set; }
         public string PlanName { get; set; }
-        public int InstallmentNo { get; set; }
+        public int? InstallmentNo { get; set; }
         public DateTime DueDate { get; set; }
         public decimal AmountDue { get; set; }
         public decimal AmountPaid { get; set; }

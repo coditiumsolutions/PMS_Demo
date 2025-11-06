@@ -218,6 +218,160 @@ namespace PMS.Controllers
             return Json(new { success = true, properties = properties });
         }
 
+        // POST: Create Allotment (AJAX endpoint)
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> CreateAllotmentFromCustomer(string customerID, string propertyID, 
+            string allotmentType, string comments)
+        {
+            try
+            {
+                // Validate inputs
+                if (string.IsNullOrEmpty(customerID) || string.IsNullOrEmpty(propertyID))
+                {
+                    return Json(new { success = false, message = "Customer ID and Property ID are required" });
+                }
+
+                // Check if customer exists and is active
+                var customer = await _context.Customers
+                    .Include(c => c.Allotments)
+                    .FirstOrDefaultAsync(c => c.CustomerID == customerID);
+
+                if (customer == null)
+                {
+                    return Json(new { success = false, message = "Customer not found" });
+                }
+
+                if (customer.Status != "Active")
+                {
+                    return Json(new { success = false, message = "Customer is not Active" });
+                }
+
+                // Check if customer already has an allotment
+                if (customer.Allotments != null && customer.Allotments.Any())
+                {
+                    return Json(new { success = false, message = "Customer already has a property allotted. One customer can only have ONE property." });
+                }
+
+                // Check if property exists and is available
+                var property = await _context.Properties
+                    .Include(p => p.Allotments)
+                    .FirstOrDefaultAsync(p => p.PropertyID == propertyID);
+
+                if (property == null)
+                {
+                    return Json(new { success = false, message = "Property not found" });
+                }
+
+                if (property.Status != "Available")
+                {
+                    return Json(new { success = false, message = "Property is not available for allotment" });
+                }
+
+                // Check if property already has an allotment (double check)
+                if (property.Allotments != null && property.Allotments.Any())
+                {
+                    return Json(new { success = false, message = "Property is already allotted to another customer" });
+                }
+
+                // Generate a new unique Allotment ID
+                var allAllotmentIds = await _context.Allotments
+                    .Select(a => a.AllotmentID)
+                    .ToListAsync();
+
+                int nextId = 1;
+                if (allAllotmentIds.Any())
+                {
+                    int maxId = 0;
+                    foreach (var id in allAllotmentIds)
+                    {
+                        if (int.TryParse(id, out int numericId))
+                        {
+                            if (numericId > maxId) maxId = numericId;
+                        }
+                        else if (id.StartsWith("ALLOT") && int.TryParse(id.AsSpan(5), out int prefixedNumericId))
+                        {
+                            if (prefixedNumericId > maxId) maxId = prefixedNumericId;
+                        }
+                    }
+                    nextId = maxId + 1;
+                }
+                string allotmentID = nextId.ToString();
+
+                // Get current user ID
+                var userID = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "ADMIN";
+
+                // Validate AllottedBy is not empty
+                if (string.IsNullOrEmpty(userID))
+                {
+                    return Json(new { success = false, message = "User ID is required. Please ensure you are logged in." });
+                }
+
+                // Create Allotment
+                var allotment = new Allotment
+                {
+                    AllotmentID = allotmentID,
+                    PropertyID = propertyID,
+                    CustomerID = customerID,
+                    AllottedBy = userID,
+                    AllotmentDate = DateTime.Now,
+                    AllottmentType = allotmentType ?? "Regular",
+                    WorkFlowStatus = "Pending",
+                    Comments = comments
+                };
+
+                // Validate model
+                if (!TryValidateModel(allotment))
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return Json(new { success = false, message = "Validation failed: " + string.Join(", ", errors) });
+                }
+
+                _context.Allotments.Add(allotment);
+
+                // Update Property Status
+                property.Status = "Allotted";
+
+                // Log activity
+                var log = new ActivityLog
+                {
+                    UserID = userID,
+                    Action = $"Property {propertyID} allotted to Customer {customerID}",
+                    RefType = "Allotment",
+                    RefID = allotmentID,
+                    CreatedAt = DateTime.Now
+                };
+                _context.ActivityLogs.Add(log);
+
+                await _context.SaveChangesAsync();
+
+                return Json(new { 
+                    success = true, 
+                    message = $"Property successfully allotted! Allotment ID: {allotmentID}",
+                    allotmentID = allotmentID
+                });
+            }
+            catch (DbUpdateException dbEx)
+            {
+                return Json(new { 
+                    success = false, 
+                    message = "Database error: " + dbEx.Message,
+                    innerException = dbEx.InnerException?.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { 
+                    success = false, 
+                    message = "Error creating allotment: " + ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
         // POST: Create Allotment
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -281,18 +435,29 @@ namespace PMS.Controllers
                     return RedirectToAction(nameof(Create));
                 }
 
-                // Generate Allotment ID
-                var lastAllotment = await _context.Allotments
-                    .OrderByDescending(a => a.AllotmentID)
-                    .FirstOrDefaultAsync();
-                
+                // Generate a new unique Allotment ID
+                var allAllotmentIds = await _context.Allotments
+                    .Select(a => a.AllotmentID)
+                    .ToListAsync();
+
                 int nextId = 1;
-                if (lastAllotment != null && lastAllotment.AllotmentID.Length > 5)
+                if (allAllotmentIds.Any())
                 {
-                    int.TryParse(lastAllotment.AllotmentID.Substring(5), out nextId);
-                    nextId++;
+                    int maxId = 0;
+                    foreach (var id in allAllotmentIds)
+                    {
+                        if (int.TryParse(id, out int numericId))
+                        {
+                            if (numericId > maxId) maxId = numericId;
+                        }
+                        else if (id.StartsWith("ALLOT") && int.TryParse(id.AsSpan(5), out int prefixedNumericId))
+                        {
+                            if (prefixedNumericId > maxId) maxId = prefixedNumericId;
+                        }
+                    }
+                    nextId = maxId + 1;
                 }
-                string allotmentID = "ALLOT" + nextId.ToString("D5");
+                string allotmentID = nextId.ToString();
 
                 // Get current user ID
                 var userID = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "ADMIN";
@@ -306,9 +471,12 @@ namespace PMS.Controllers
                     AllottedBy = userID,
                     AllotmentDate = DateTime.Now,
                     AllottmentType = allotmentType ?? "Regular",
-                    WorkFlowStatus = "Pending Approval",
+                    WorkFlowStatus = "Pending",
                     Comments = comments
                 };
+
+                if (string.IsNullOrWhiteSpace(allotment.AllottmentType)) allotment.AllottmentType = "Regular";
+                if (string.IsNullOrWhiteSpace(allotment.WorkFlowStatus)) allotment.WorkFlowStatus = "Pending";
 
                 _context.Allotments.Add(allotment);
 
@@ -376,6 +544,31 @@ namespace PMS.Controllers
                 TempData["Error"] = "Error creating allotment: " + ex.Message;
                 return RedirectToAction(nameof(Create));
             }
+        }
+
+        // GET: Allotment/Details
+        public async Task<IActionResult> Details(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return NotFound();
+            }
+
+            var allotment = await _context.Allotments
+                .Include(a => a.Customer)
+                    .ThenInclude(c => c.PaymentPlan)
+                        .ThenInclude(p => p.Project)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.Project)
+                .Include(a => a.AllottedByUser)
+                .FirstOrDefaultAsync(a => a.AllotmentID == id);
+
+            if (allotment == null)
+            {
+                return NotFound();
+            }
+
+            return View(allotment);
         }
 
         // GET: Allotment/UnAllot

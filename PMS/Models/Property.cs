@@ -38,12 +38,18 @@ namespace PMS.Models
 
         public string? AdditionalInfo { get; set; }
 
+        public int? DealerID { get; set; }
+
         // Navigation properties
         [ForeignKey("ProjectID")]
         public virtual Project? Project { get; set; }
 
+        [ForeignKey("DealerID")]
+        public virtual Dealer? Dealer { get; set; }
+
         public virtual ICollection<Allotment> Allotments { get; set; } = new List<Allotment>();
         public virtual ICollection<Possession> Possessions { get; set; } = new List<Possession>();
         public virtual ICollection<Transfer> Transfers { get; set; } = new List<Transfer>();
+        public virtual ICollection<PropertyLog> PropertyLogs { get; set; } = new List<PropertyLog>();
     }
 }

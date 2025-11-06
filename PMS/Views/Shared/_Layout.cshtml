@@ -982,6 +982,14 @@
                         </li>
                         
                         <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Dealer" ? "active" : "")" 
+                               asp-controller="Dealer" asp-action="Index">
+                                <i class="fas fa-store"></i>
+                                Dealers
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Property" ? "active" : "")" 
                                asp-controller="Property" asp-action="Index">
                                 <i class="fas fa-home"></i>

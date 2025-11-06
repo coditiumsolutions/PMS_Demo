@@ -4,7 +4,7 @@
 	Layout = null;
     ViewData["Title"] = "Account Statement";
     var plan = Model.PaymentPlan;
-    var schedules = plan?.PaymentSchedules?.OrderBy(ps => ps.InstallmentNo).ToList() ?? new List<PMS.Models.PaymentSchedule>();
+    var schedules = plan?.PaymentSchedules?.OrderBy(ps => ps.InstallmentNo ?? int.MaxValue).ToList() ?? new List<PMS.Models.PaymentSchedule>();
 }
 
 <!DOCTYPE html>
@@ -86,6 +86,10 @@
             </div>
         </div>
 
+        <!-- Surcharge Policy Information -->
+        <div class="a4-section">
+
+
         <!-- Payment Schedule Table -->
         <div class="a4-section">
             <div class="a4-section-title">Payment Schedule</div>
@@ -94,12 +98,13 @@
                     <tr>
                         <th class="text-start">Account Head</th>
                         <th>Installment No</th>
+                        <th>Due Date</th>
                         <th class="text-end">Due Amount</th>
                         <th class="text-end">Amount Due</th>
                         <th class="text-end">Amount Paid</th>
                         <th>Paid On</th>
                         <th class="text-start">Payment DS/Instrument No</th>
-                        <th class="text-end">Surcharge</th>
+                        <th class="text-end">Surcharge (Daily)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -114,29 +119,84 @@
                     var payments = sch.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<PMS.Models.Payment>();
                     var amountPaid = payments.Sum(p => p.Amount);
                     var amountDue = Math.Max(0, sch.Amount - amountPaid);
-                    // Simple surcharge display: based on flag and rate; actual calc may vary
-                    var surcharge = sch.SurchargeApplied ? Math.Round(amountDue * sch.SurchargeRate, 2) : 0m;
+                    
+                    // Calculate daily surcharge from DueDate until fully paid or today
+                    decimal surcharge = 0m;
+                    if (sch.SurchargeApplied && amountDue > 0)
+                    {
+                        var dueDate = sch.DueDate.Date;
+                        var today = DateTime.Now.Date;
+                        var endDate = today; // Default to today if not fully paid
+                        
+                        // If fully paid, calculate surcharge only until the last payment date
+                        if (amountPaid >= sch.Amount && payments.Any())
+                        {
+                            endDate = payments.Last().PaymentDate.Date;
+                        }
+                        
+                        // Calculate days overdue (only if past due date)
+                        if (endDate > dueDate)
+                        {
+                            var daysOverdue = (int)(endDate - dueDate).TotalDays;
+                            
+                            // Calculate surcharge: amountDue * daily rate * days overdue
+                            // SurchargeRate is stored as 0.05 which represents 0.05% per day (not 5%)
+                            // So 0.05 in DB = 0.05% = 0.0005 as decimal
+                            // Daily surcharge = Amount Due × 0.0005 × Days Overdue
+                            // Example: 100,000 × 0.0005 = 50 per day, × 3 days = 150
+                            var dailySurchargeRate = sch.SurchargeRate / 100m; // Convert 0.05 to 0.0005 (0.05%)
+                            var dailySurchargeAmount = amountDue * dailySurchargeRate; // Amount × 0.0005 per day
+                            surcharge = Math.Round(dailySurchargeAmount * daysOverdue, 2);
+                        }
+                    }
 
                     totalDueAmount += sch.Amount;
                     totalAmountDue += amountDue;
                     totalAmountPaid += amountPaid;
                     totalSurcharge += surcharge;
+                    
+                    // Calculate days overdue for display
+                    var daysOverdueDisplay = 0;
+                    if (amountDue > 0)
+                    {
+                        var dueDate = sch.DueDate.Date;
+                        var today = DateTime.Now.Date;
+                        if (today > dueDate)
+                        {
+                            daysOverdueDisplay = (int)(today - dueDate).TotalDays;
+                        }
+                    }
 
                     <tr>
                         <td class="text-start">Installment</td>
-                        <td>@sch.InstallmentNo</td>
+                        <td>@(sch.InstallmentNo?.ToString() ?? "N/A")</td>
+                        <td>
+                            @sch.DueDate.ToString("MMM dd, yyyy")
+                            @if (daysOverdueDisplay > 0)
+                            {
+                                <br /><small class="text-danger">(@daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : "") overdue)</small>
+                            }
+                        </td>
                         <td class="text-end">@sch.Amount.ToString("N0")</td>
                         <td class="text-end">@amountDue.ToString("N0")</td>
                         <td class="text-end">@amountPaid.ToString("N0")</td>
                         <td>@(payments.LastOrDefault()?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
                         <td class="text-start">@(payments.LastOrDefault()?.ReferenceNo ?? "-")</td>
-                        <td class="text-end">@surcharge.ToString("N0")</td>
+                        <td class="text-end">
+                            @surcharge.ToString("N0")
+                            @if (sch.SurchargeApplied && amountDue > 0 && daysOverdueDisplay > 0)
+                            {
+                                var dailyRatePercent = sch.SurchargeRate; // 0.05 = 0.05%
+                                var dailySurchargeAmount = amountDue * (sch.SurchargeRate / 100m);
+                                <br /><small class="text-muted">(@dailyRatePercent.ToString("N2")% daily = @dailySurchargeAmount.ToString("N0") per day × @daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : ""))</small>
+                            }
+                        </td>
                     </tr>
                 }
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="2" class="text-end">Totals</td>
+                        <td colspan="3" class="text-end">Totals</td>
                         <td class="text-end">@totalDueAmount.ToString("N0")</td>
                         <td class="text-end">@totalAmountDue.ToString("N0")</td>
                         <td class="text-end">@totalAmountPaid.ToString("N0")</td>
@@ -170,72 +230,73 @@
     /* A4 Paper Size Styling */
     .a4-container {
         width: 210mm;
-        min-height: 297mm;
+        height: 297mm;
         margin: 0 auto;
-        padding: 20mm;
+        padding: 15mm;
         background: white;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
     }
 
     .a4-header {
         border-bottom: 2px solid #333;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
     }
 
     .a4-title {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: bold;
         color: #333;
-        margin-bottom: 10px;
-    }
-
-    .a4-subtitle {
-        font-size: 14px;
-        color: #666;
         margin-bottom: 5px;
     }
 
+    .a4-subtitle {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 3px;
+    }
+
     .a4-section {
-        margin-bottom: 25px;
+        margin-bottom: 12px;
     }
 
     .a4-section-title {
-        font-size: 16px;
+        font-size: 13px;
         font-weight: bold;
         color: #333;
-        margin-bottom: 15px;
-        padding-bottom: 5px;
+        margin-bottom: 8px;
+        padding-bottom: 3px;
         border-bottom: 1px solid #ddd;
     }
 
     .a4-info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 30px;
-        margin-bottom: 25px;
+        gap: 15px;
+        margin-bottom: 12px;
     }
 
     .a4-info-block {
         background: #f8f9fa;
-        padding: 15px;
+        padding: 10px;
         border-radius: 5px;
         border-left: 4px solid #007bff;
     }
 
     .a4-info-block h6 {
-        font-size: 14px;
+        font-size: 11px;
         font-weight: bold;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
         color: #333;
     }
 
     .a4-info-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 5px;
-        font-size: 13px;
+        margin-bottom: 3px;
+        font-size: 10px;
     }
 
     .a4-info-label {
@@ -250,23 +311,24 @@
     .a4-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 12px;
-        margin-bottom: 20px;
+        font-size: 9px;
+        margin-bottom: 10px;
     }
 
     .a4-table th {
         background: #f8f9fa;
         border: 1px solid #ddd;
-        padding: 8px 6px;
+        padding: 4px 3px;
         font-weight: bold;
         text-align: center;
-        font-size: 11px;
+        font-size: 9px;
     }
 
     .a4-table td {
         border: 1px solid #ddd;
-        padding: 6px;
+        padding: 4px 3px;
         text-align: center;
+        font-size: 9px;
     }
 
     .a4-table .text-start {
@@ -284,10 +346,10 @@
     }
 
     .a4-footer {
-        margin-top: 30px;
-        padding-top: 15px;
+        margin-top: 10px;
+        padding-top: 8px;
         border-top: 1px solid #ddd;
-        font-size: 11px;
+        font-size: 9px;
         color: #666;
         text-align: center;
     }
@@ -300,6 +362,11 @@
 
     /* Print Styles */
     @@media print {
+        @@page {
+            size: A4;
+            margin: 0;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -308,11 +375,13 @@
         
         .a4-container {
             width: 210mm;
-            min-height: 297mm;
+            height: 297mm;
             margin: 0;
-            padding: 15mm;
+            padding: 12mm;
             box-shadow: none;
+            page-break-after: avoid;
             page-break-inside: avoid;
+            overflow: hidden;
         }
         
         .no-print {
@@ -321,9 +390,32 @@
         
         .a4-table {
             page-break-inside: avoid;
+            font-size: 8px;
+        }
+        
+        .a4-table th,
+        .a4-table td {
+            padding: 3px 2px;
+            font-size: 8px;
         }
         
         .a4-section {
+            page-break-inside: avoid;
+            margin-bottom: 8px;
+        }
+        
+        .a4-header {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+        }
+        
+        .a4-footer {
+            margin-top: 8px;
+            padding-top: 5px;
+        }
+        
+        /* Prevent page breaks */
+        .a4-info-grid {
             page-break-inside: avoid;
         }
     }

@@ -19,5 +19,15 @@ namespace PMS.Models
         public Dictionary<string, decimal> MonthlyPaymentsData { get; set; } = new Dictionary<string, decimal>();
         public Dictionary<string, int> PaymentStatusData { get; set; } = new Dictionary<string, int>();
         public Dictionary<string, int> CustomerTrendData { get; set; } = new Dictionary<string, int>();
+        
+        // Dealer Data
+        public List<DealerDashboardData> DealerData { get; set; } = new List<DealerDashboardData>();
+    }
+
+    public class DealerDashboardData
+    {
+        public string DealershipName { get; set; } = string.Empty;
+        public int Customers { get; set; }
+        public int Properties { get; set; }
     }
 }

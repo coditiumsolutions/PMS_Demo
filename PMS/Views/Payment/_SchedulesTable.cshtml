@@ -68,7 +68,7 @@
                             }
                         </td>
                         <td>
-                            <span class="badge bg-primary">#@schedule.InstallmentNo</span>
+                            <span class="badge bg-primary">#@(schedule.InstallmentNo?.ToString() ?? "N/A")</span>
                         </td>
                         <td>
                             @schedule.PaymentDescription
@@ -153,7 +153,7 @@
                             <div class="modal-content">
                                 <div class="modal-header" style="background: var(--primary-green);">
                                     <h6 class="modal-title text-white">
-                                        <i class="fas fa-receipt me-2"></i>Installment #@schedule.InstallmentNo
+                                        <i class="fas fa-receipt me-2"></i>Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A")
                                     </h6>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
@@ -165,7 +165,7 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Installment #</small>
-                                            <p><strong>#@schedule.InstallmentNo</strong></p>
+                                            <p><strong>#@(schedule.InstallmentNo?.ToString() ?? "N/A")</strong></p>
                                         </div>
                                         <div class="col-12 mb-2">
                                             <small class="text-muted">Description</small>

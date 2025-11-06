@@ -178,7 +178,7 @@
                                 @if (payment.PaymentSchedule != null)
                                 {
                                     <small class="text-muted">
-                                        Installment #@payment.PaymentSchedule.InstallmentNo
+                                        Installment #@(payment.PaymentSchedule.InstallmentNo?.ToString() ?? "N/A")
                                         <br>
                                         @payment.PaymentSchedule.PaymentDescription
                                     </small>

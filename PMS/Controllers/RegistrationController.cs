@@ -92,21 +92,33 @@ namespace PMS.Controllers
         {
             if (ModelState.IsValid)
             {
-                registration.RegID = GenerateID();
-                registration.CreatedAt = DateTime.Now;
-                registration.Status = "Pending";
-
-                _context.Registrations.Add(registration);
-                await _context.SaveChangesAsync();
-
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!string.IsNullOrEmpty(userId))
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    await LogActivity(userId, "Create Registration", "Registration", registration.RegID);
-                }
+                    registration.RegID = await GenerateID();
+                    registration.CreatedAt = DateTime.Now;
+                    registration.Status = "Pending";
 
-                TempData["Success"] = $"Registration created successfully! Registration ID: {registration.RegID}";
-                return RedirectToAction(nameof(Index));
+                    _context.Registrations.Add(registration);
+                    await _context.SaveChangesAsync();
+
+                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        await LogActivity(userId, "Create Registration", "Registration", registration.RegID);
+                    }
+
+                    await transaction.CommitAsync();
+
+                    TempData["Success"] = $"Registration created successfully! Registration ID: {registration.RegID}";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = $"Error creating registration: {ex.Message}";
+                    return View(registration);
+                }
             }
 
             return View(registration);
@@ -262,20 +274,48 @@ namespace PMS.Controllers
             return _context.Registrations.Any(e => e.RegID == id);
         }
 
-        private string GenerateID()
+        private async Task<string> GenerateID()
         {
-            var lastRegistration = _context.Registrations
-                .OrderByDescending(r => r.RegID)
-                .FirstOrDefault();
+            string newId;
+            int attempts = 0;
+            const int maxAttempts = 10;
 
-            int nextId = 1;
-            if (lastRegistration != null && lastRegistration.RegID.Length > 3)
+            do
             {
-                int.TryParse(lastRegistration.RegID.Substring(3), out nextId);
-                nextId++;
-            }
+                attempts++;
+                
+                // Get the maximum numeric ID from existing registrations
+                var existingIds = await _context.Registrations
+                    .Where(r => r.RegID.StartsWith("REG") && r.RegID.Length == 10)
+                    .Select(r => r.RegID.Substring(3))
+                    .ToListAsync();
 
-            return "REG" + nextId.ToString("D7");
+                var maxNumericId = existingIds
+                    .Where(id => int.TryParse(id, out _))
+                    .Select(id => int.Parse(id))
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                int nextId = maxNumericId + 1;
+                newId = "REG" + nextId.ToString("D7");
+
+                // Check if this ID already exists (race condition protection)
+                if (!_context.Registrations.Any(r => r.RegID == newId))
+                {
+                    break;
+                }
+
+                // If we've tried too many times, add a random component
+                if (attempts >= maxAttempts)
+                {
+                    var random = new Random();
+                    newId = "REG" + (maxNumericId + random.Next(1, 1000)).ToString("D7");
+                    break;
+                }
+
+            } while (attempts < maxAttempts);
+
+            return newId;
         }
 
         private async Task LogActivity(string userId, string action, string refType, string refId)

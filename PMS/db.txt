@@ -107,7 +107,8 @@ CREATE TABLE Customers (
      NomineeName NVARCHAR(100),
     NomineeID NVARCHAR(50),
      NomineeRelation NVARCHAR(50),
-     AdditionalInfo NVARCHAR(max)
+     AdditionalInfo NVARCHAR(max),
+     DealerID int
 );
 
 CREATE TABLE CustomerLogs (
@@ -125,6 +126,7 @@ CREATE TABLE CustomerLogs (
 CREATE TABLE Projects (
     ProjectID CHAR(10) PRIMARY KEY,
     ProjectName NVARCHAR(150),
+    Prefix NVARCHAR(4) NOT NULL,
     Type NVARCHAR(50),
     Location NVARCHAR(150),
     Description NVARCHAR(MAX),
@@ -143,7 +145,19 @@ CREATE TABLE Property (
     Size NVARCHAR(50),
     Status NVARCHAR(50) DEFAULT 'Available',
     CreatedAt DATETIME DEFAULT GETDATE(),
-    AdditionalInfo NVARCHAR(max)
+    AdditionalInfo NVARCHAR(max),
+    DealerID int
+);
+
+CREATE TABLE PropertyLogs (
+    LogID INT IDENTITY PRIMARY KEY,
+    PropertyID CHAR(10),
+    Action NVARCHAR(150),
+    OldValue NVARCHAR(255),
+    NewValue NVARCHAR(255),
+    Remarks NVARCHAR(255),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CreatedBy CHAR(10)
 );
 
 CREATE TABLE Allotment (
@@ -154,7 +168,7 @@ CREATE TABLE Allotment (
     AllotmentDate DATETIME DEFAULT GETDATE(),
     ApprovedBy NVARCHAR(50),
     AllottmentType NVARCHAR(50),
-    WorkFlowStatus NVARCHAR(250),
+    WorkFlowStatus NVARCHAR(250), -- Options: Pending,Approved
     Comments NVARCHAR(max),
     AdditionalInfo NVARCHAR(max)
 );
@@ -261,10 +275,15 @@ CREATE TABLE Approvals (
 -- ===========================================================
 CREATE TABLE Attachments (
     AttachmentID CHAR(10) PRIMARY KEY,
-    RefType NVARCHAR(50),
-    RefID CHAR(10),
-    FilePath NVARCHAR(255),
-    UploadedBy CHAR(10) FOREIGN KEY REFERENCES Users(UserID),
+    RefType NVARCHAR(50), -- e.g., 'Customer', 'Property', 'Allotment'
+    RefID CHAR(50), -- ID of the referenced entity
+    AttachmentType NVARCHAR(50), -- 'CustomerPicture', 'IDCard', 'Other'
+    FileName NVARCHAR(255), -- Original filename
+    FilePath NVARCHAR(255), -- Server path where file is stored
+    FileSize BIGINT NULL, -- File size in bytes
+    FileType NVARCHAR(100) NULL, -- MIME type (e.g., 'image/jpeg', 'image/png', 'application/pdf')
+    Description NVARCHAR(500) NULL, -- Optional description
+    UploadedBy CHAR(10),
     UploadedAt DATETIME DEFAULT GETDATE()
 );
 
@@ -318,9 +337,37 @@ GO
      Notes NVARCHAR(MAX),
      IsContacted BIT DEFAULT 0,
      CreatedAt DATETIME DEFAULT GETDATE()
- );
+ )
+CREATE TABLE Dealers (
+    DealerID INT IDENTITY(1,1) PRIMARY KEY,
+    DealershipName NVARCHAR(500) NOT NULL,
+    RegisterationDate DATE NOT NULL,
+    Status NVARCHAR(50) NOT NULL,
+    MembershipType NCHAR(10) NOT NULL,
+    OwnerName NVARCHAR(500) NOT NULL,
+    OwnerCNIC NVARCHAR(50) NOT NULL,
+    MobileNo NVARCHAR(50) NOT NULL,
+    PhoneNumber NVARCHAR(50) NOT NULL,
+    Email NVARCHAR(50) NOT NULL,
+    Address NVARCHAR(50) NOT NULL,
+    OwnerDetails NVARCHAR(MAX) NOT NULL,
+    Details NVARCHAR(MAX) NULL  -- Unchecked = allows NULL
+);
+
+
+
+
 
 -- Add foreign key constraint separately (after table creation)
 ALTER TABLE Configuration
 ADD CONSTRAINT FK_Configuration_Users FOREIGN KEY (UpdatedBy) REFERENCES Users(UserID);
+GO
+
+-- Add foreign key constraints for PropertyLogs
+ALTER TABLE PropertyLogs
+ADD CONSTRAINT FK_PropertyLogs_Property FOREIGN KEY (PropertyID) REFERENCES Property(PropertyID);
+GO
+
+ALTER TABLE PropertyLogs
+ADD CONSTRAINT FK_PropertyLogs_Users FOREIGN KEY (CreatedBy) REFERENCES Users(UserID);
 GO

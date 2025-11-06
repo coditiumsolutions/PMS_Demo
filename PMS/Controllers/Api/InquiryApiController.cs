@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors;
 using PMS.Data;
 using PMS.Models;
 
@@ -6,6 +7,7 @@ namespace PMS.Controllers.Api
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableCors("AllowSpecificOrigins")]
     public class InquiryApiController : ControllerBase
     {
         private readonly PMSDbContext _context;

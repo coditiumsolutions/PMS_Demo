@@ -37,7 +37,7 @@
             <div class="card mb-4 border-0 shadow-sm">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
                     <h6 class="mb-0 text-white">
-                        <i class="fas fa-calendar-alt me-2"></i>Installment #@schedule.InstallmentNo - @schedule.PaymentDescription
+                        <i class="fas fa-calendar-alt me-2"></i>Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A") - @schedule.PaymentDescription
                     </h6>
                 </div>
                 <div class="card-body">
@@ -137,7 +137,7 @@
                                 <option value="">Select Installment</option>
                                 @if (schedules != null)
                                 {
-                                    foreach (var sched in schedules.OrderBy(s => s.InstallmentNo))
+                                    foreach (var sched in schedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
                                     {
                                         if (sched.ScheduleID == preSelectedScheduleId)
                                         {
@@ -147,7 +147,7 @@
                                                     data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
                                                     data-plan="@sched.PlanID"
                                                     selected>
-                                                [@sched.PaymentPlan?.PlanName] - Installment #@sched.InstallmentNo - SSP @sched.Amount.ToString("N2")
+                                                [@sched.PaymentPlan?.PlanName] - Installment #@(sched.InstallmentNo?.ToString() ?? "N/A") - SSP @sched.Amount.ToString("N2")
                                             </option>
                                         }
                                         else
@@ -157,7 +157,7 @@
                                                     data-description="@sched.PaymentDescription"
                                                     data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
                                                     data-plan="@sched.PlanID">
-                                                [@sched.PaymentPlan?.PlanName] - Installment #@sched.InstallmentNo - SSP @sched.Amount.ToString("N2")
+                                                [@sched.PaymentPlan?.PlanName] - Installment #@(sched.InstallmentNo?.ToString() ?? "N/A") - SSP @sched.Amount.ToString("N2")
                                             </option>
                                         }
                                     }

@@ -13,8 +13,13 @@ namespace PMS.Models
         [StringLength(10)]
         public string? RegID { get; set; }
 
+        [Required]
         [StringLength(10)]
         public string? PlanID { get; set; }
+
+        [Required]
+        [StringLength(10)]
+        public string? ProjectID { get; set; }
 
         // Personal Info
         [StringLength(150)]
@@ -54,9 +59,11 @@ namespace PMS.Models
         public string? Country { get; set; }
 
         // Project Info
+        [Required]
         [StringLength(100)]
         public string? SubProject { get; set; }
 
+        [Required]
         [StringLength(50)]
         public string? RegisteredSize { get; set; }
 
@@ -78,12 +85,21 @@ namespace PMS.Models
 
         public string? AdditionalInfo { get; set; }
 
+        [Required]
+        public int? DealerID { get; set; }
+
         // Navigation properties
         [ForeignKey("RegID")]
         public virtual Registration? Registration { get; set; }
 
+        [ForeignKey("DealerID")]
+        public virtual Dealer? Dealer { get; set; }
+
         [ForeignKey("PlanID")]
         public virtual PaymentPlan? PaymentPlan { get; set; }
+
+        [ForeignKey("ProjectID")]
+        public virtual Project? Project { get; set; }
 
         public virtual ICollection<CustomerLog> CustomerLogs { get; set; } = new List<CustomerLog>();
         public virtual ICollection<Allotment> Allotments { get; set; } = new List<Allotment>();

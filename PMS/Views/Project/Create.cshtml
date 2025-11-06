@@ -25,6 +25,13 @@
                             </div>
 
                             <div class="mb-3">
+                                <label asp-for="Prefix" class="form-label">Prefix *</label>
+                                <input asp-for="Prefix" class="form-control" placeholder="Enter project prefix (e.g., JSC, JSC1)" maxlength="4" required />
+                                <small class="text-muted">Project prefix for identification (max 4 characters)</small>
+                                <span asp-validation-for="Prefix" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
                                 <label asp-for="Type" class="form-label">Project Type *</label>
                                 <select asp-for="Type" class="form-select" required>
                                     <option value="">Select Project Type</option>

@@ -5,29 +5,29 @@
 }
 
 <div class="row">
-    <div class="col-md-8 mx-auto">
+    <div class="col-md-10 mx-auto">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <!-- <h2>
-                <i class="fas fa-clipboard-list me-2"></i>Create Payment Plan
-            </h2> -->
             <a asp-action="Index" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to Payments
             </a>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plan Information
-                </h5>
-            </div>
-            <div class="card-body">
-                <form asp-action="CreatePaymentPlan" method="post">
+        <form id="paymentPlanForm" asp-action="CreatePaymentPlan" method="post">
+            @Html.AntiForgeryToken()
+
+            <!-- Payment Plan Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plan Information
+                    </h5>
+                </div>
+                <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="PlanName" class="form-label">Plan Name *</label>
-                                <input asp-for="PlanName" class="form-control" placeholder="e.g., 3 Year Installment Plan" required />
+                                <input asp-for="PlanName" id="PlanName" class="form-control" placeholder="e.g., 3 Year Installment Plan" required />
                                 <span asp-validation-for="PlanName" class="text-danger"></span>
                             </div>
                         </div>
@@ -35,7 +35,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="ProjectID" class="form-label">Project (Optional)</label>
-                                <select asp-for="ProjectID" class="form-select">
+                                <select asp-for="ProjectID" id="ProjectID" class="form-select">
                                     <option value="">Select Project</option>
                                     @if (ViewBag.Projects != null)
                                     {
@@ -54,93 +54,172 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="TotalAmount" class="form-label">Total Amount (SSP) *</label>
-                                <input asp-for="TotalAmount" type="number" step="0.01" class="form-control" placeholder="e.g., 5000000" required />
+                                <input asp-for="TotalAmount" id="TotalAmount" type="number" step="0.01" class="form-control" placeholder="e.g., 5000000" required />
                                 <span asp-validation-for="TotalAmount" class="text-danger"></span>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label asp-for="DurationMonths" class="form-label">Duration (Months) *</label>
-                                <input asp-for="DurationMonths" type="number" class="form-control" placeholder="e.g., 36" required />
+                                <label asp-for="DurationMonths" class="form-label">Plan Duration (Months) *</label>
+                                <input asp-for="DurationMonths" id="DurationMonths" type="number" class="form-control" placeholder="e.g., 36" required />
                                 <span asp-validation-for="DurationMonths" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label asp-for="Frequency" class="form-label">Payment Frequency *</label>
-                                <select asp-for="Frequency" class="form-select" required>
-                                    <option value="">Select Frequency</option>
-                                    <option value="Monthly">Monthly</option>
-                                    <option value="Quarterly">Quarterly (Every 3 Months)</option>
-                                    <option value="Semi-Annually">Semi-Annually (Every 6 Months)</option>
-                                    <option value="Annually">Annually (Every Year)</option>
-                                </select>
-                                <span asp-validation-for="Frequency" class="text-danger"></span>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Payment Frequency hidden - selected in child section -->
+                    <input type="hidden" asp-for="Frequency" id="Frequency" />
 
                     <div class="row">
                         <div class="col-12">
                             <div class="mb-3">
                                 <label asp-for="Description" class="form-label">Description</label>
-                                <textarea asp-for="Description" class="form-control" rows="3" placeholder="Enter payment plan details and terms"></textarea>
+                                <textarea asp-for="Description" id="Description" class="form-control" rows="3" placeholder="Enter payment plan details and terms"></textarea>
                                 <span asp-validation-for="Description" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Note:</strong> After creating the payment plan, you will be able to add payment schedules/installments.
+            <!-- Payment Schedule Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-check me-2"></i>Payment Schedule Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Token Option -->
+                    <div class="mb-4 p-3 border rounded bg-light">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="includeToken" checked>
+                            <label class="form-check-label fw-bold" for="includeToken">
+                                <i class="fas fa-ticket-alt me-2"></i>Include Token Payment (Installment 0)
+                            </label>
+                        </div>
+                        <div id="tokenAmountSection" class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="tokenAmount" class="form-label">Token Amount (SSP) *</label>
+                                    <input type="number" id="tokenAmount" step="0.01" class="form-control" placeholder="e.g., 50000" required />
+                                    <small class="text-muted">Token payment amount (Installment 0 - No surcharge applied)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block"><i class="fas fa-info-circle me-1"></i>Token payment is a special installment (Installment No: 0). Token has <strong>no surcharge</strong> policy applied.</small>
                     </div>
 
-                    <hr>
+                    <!-- Installment Options -->
+                    <div class="mb-4">
+                        <h6 class="mb-3"><i class="fas fa-list-ol me-2"></i>Bulk Installment Creation</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="totalInstallments" class="form-label">Total Installments (Excluding Token) *</label>
+                                    <input type="number" id="totalInstallments" class="form-control" min="1" value="1" required />
+                                    <small class="text-muted">Number of installments to create (not including token if selected)</small>
+                                </div>
+                            </div>
 
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary me-2">
-                                    <i class="fas fa-save me-2"></i>Create Payment Plan
-                                </button>
-                                <a asp-action="Index" class="btn btn-secondary">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="installmentAmount" class="form-label">Installment Amount (SSP) *</label>
+                                    <input type="number" id="installmentAmount" step="0.01" class="form-control" placeholder="e.g., 125000" required />
+                                    <small class="text-muted">Amount per installment (same for all installments)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="scheduleFrequency" class="form-label">Frequency *</label>
+                                    <select id="scheduleFrequency" class="form-select" required>
+                                        <option value="">Select Frequency</option>
+                                        <option value="Monthly">Monthly</option>
+                                        <option value="Quarterly">Quarterly</option>
+                                        <option value="Half Yearly">Half Yearly</option>
+                                        <option value="Yearly">Yearly</option>
+                                    </select>
+                                    <small class="text-muted">Used to calculate DueDate for each installment</small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="firstInstallmentDueDate" class="form-label">1st Installment Due Date *</label>
+                                    <input type="date" id="firstInstallmentDueDate" class="form-control" required />
+                                    <small class="text-muted">Due date for the first installment (subsequent dates calculated based on frequency)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="paymentDescription" class="form-label">Payment Description *</label>
+                                    <input type="text" id="paymentDescription" class="form-control" placeholder="e.g., Monthly Installment" required />
+                                    <small class="text-muted">Same description will be used for all installments</small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="surchargeRate" class="form-label">Surcharge Rate (%) *</label>
+                                    <input type="number" id="surchargeRate" step="0.01" class="form-control" value="0.05" required />
+                                    <small class="text-muted">Daily surcharge rate (e.g., 0.05 = 0.05% per day)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="surchargeApplied" checked>
+                                <label class="form-check-label" for="surchargeApplied">
+                                    Apply Surcharge (Default: Yes)
+                                </label>
                             </div>
                         </div>
                     </div>
-                </form>
-            </div>
-        </div>
 
-        <!-- Payment Plan Preview -->
-        <div class="card mt-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0">
-                    <i class="fas fa-calculator me-2"></i>Plan Preview
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-2">
-                        <small class="text-muted">Total Amount</small>
-                        <p id="previewTotal" class="fw-bold" style="color: var(--primary-green);">SSP 0.00</p>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <small class="text-muted">Duration</small>
-                        <p id="previewDuration" class="fw-bold">0 Months</p>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <small class="text-muted">Estimated Installment</small>
-                        <p id="previewInstallment" class="fw-bold" style="color: var(--accent-gold);">SSP 0.00</p>
+                    <!-- Preview Section -->
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Installment Preview</h6>
+                        <div id="installmentPreview" class="mt-2">
+                            <p class="mb-1"><strong>Total Installments:</strong> <span id="previewTotalInstallments">0</span></p>
+                            <p class="mb-1"><strong>Token:</strong> <span id="previewToken">Not included</span></p>
+                            <p class="mb-1"><strong>Amount per Installment:</strong> SSP <span id="previewAmount">0.00</span></p>
+                            <p class="mb-1"><strong>Frequency:</strong> <span id="previewFrequency">-</span></p>
+                            <p class="mb-1"><strong>Total Installments Amount:</strong> SSP <span id="previewTotalInstallmentsAmount">0.00</span></p>
+                            <p class="mb-1"><strong>Token Amount:</strong> SSP <span id="previewTokenAmount">0.00</span></p>
+                            <p class="mb-0"><strong>Grand Total (Token + Installments):</strong> SSP <span id="previewGrandTotal">0.00</span> / <span id="previewPlanTotal">0.00</span></p>
+                        </div>
+                        <div id="amountValidationMessage" class="mt-2" style="display: none;">
+                            <div class="alert alert-danger mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i><span id="validationMessageText"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Submit Buttons -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save me-2"></i>Create Payment Plan & Schedules
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -149,28 +228,188 @@
     
     <script>
         $(document).ready(function() {
+            // Show/hide token amount section
+            $('#includeToken').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#tokenAmountSection').show();
+                    $('#tokenAmount').prop('required', true);
+                } else {
+                    $('#tokenAmountSection').hide();
+                    $('#tokenAmount').prop('required', false);
+                }
+                updatePreview();
+            });
+
+            // Update preview when inputs change
             function updatePreview() {
-                var total = parseFloat($('#TotalAmount').val()) || 0;
-                var duration = parseInt($('#DurationMonths').val()) || 0;
-                var frequency = $('#Frequency').val();
-                
-                $('#previewTotal').text('SSP ' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-                $('#previewDuration').text(duration + ' Months');
-                
-                var installments = 0;
-                if (frequency === 'Monthly') installments = duration;
-                else if (frequency === 'Quarterly') installments = Math.ceil(duration / 3);
-                else if (frequency === 'Semi-Annually') installments = Math.ceil(duration / 6);
-                else if (frequency === 'Annually') installments = Math.ceil(duration / 12);
-                
-                var installmentAmount = installments > 0 ? total / installments : 0;
-                $('#previewInstallment').text('SSP ' + installmentAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
-                    (installments > 0 ? ' (' + installments + ' installments)' : ''));
+                var totalInstallments = parseInt($('#totalInstallments').val()) || 0;
+                var includeToken = $('#includeToken').is(':checked');
+                var tokenAmount = parseFloat($('#tokenAmount').val()) || 0;
+                var installmentAmount = parseFloat($('#installmentAmount').val()) || 0;
+                var frequency = $('#scheduleFrequency').val();
+                var planTotalAmount = parseFloat($('#TotalAmount').val()) || 0;
+
+                var totalCount = totalInstallments;
+                if (includeToken) {
+                    totalCount += 1;
+                }
+
+                // Calculate totals
+                var totalInstallmentsAmount = totalInstallments * installmentAmount;
+                var grandTotal = totalInstallmentsAmount + (includeToken ? tokenAmount : 0);
+
+                $('#previewTotalInstallments').text(totalCount);
+                if (includeToken && tokenAmount > 0) {
+                    $('#previewToken').text('Included (Installment 0) - SSP ' + tokenAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (No Surcharge)');
+                    $('#previewTokenAmount').text(tokenAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                } else if (includeToken) {
+                    $('#previewToken').text('Included (Installment 0) - Amount not set');
+                    $('#previewTokenAmount').text('0.00');
+                } else {
+                    $('#previewToken').text('Not included');
+                    $('#previewTokenAmount').text('0.00');
+                }
+                $('#previewAmount').text(installmentAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#previewFrequency').text(frequency || '-');
+                $('#previewTotalInstallmentsAmount').text(totalInstallmentsAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#previewGrandTotal').text(grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#previewPlanTotal').text(planTotalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                // Validate total amount
+                validateTotalAmount(planTotalAmount, grandTotal, includeToken, tokenAmount, totalInstallmentsAmount);
             }
-            
-            $('#TotalAmount, #DurationMonths, #Frequency').on('input change', updatePreview);
+
+            // Validate that total installments + token does not exceed plan total
+            function validateTotalAmount(planTotalAmount, grandTotal, includeToken, tokenAmount, totalInstallmentsAmount) {
+                var validationDiv = $('#amountValidationMessage');
+                var messageText = $('#validationMessageText');
+
+                if (planTotalAmount > 0 && grandTotal > planTotalAmount) {
+                    var excess = grandTotal - planTotalAmount;
+                    messageText.html('Total Installments Amount (SSP ' + totalInstallmentsAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                        ') + Token Amount (SSP ' + (includeToken ? tokenAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') + 
+                        ') = SSP ' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                        ' exceeds Parent Total Amount (SSP ' + planTotalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                        '). Excess: SSP ' + excess.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '.');
+                    validationDiv.show();
+                    return false;
+                } else {
+                    validationDiv.hide();
+                    return true;
+                }
+            }
+
+            // Initialize token section visibility
+            if ($('#includeToken').is(':checked')) {
+                $('#tokenAmountSection').show();
+            } else {
+                $('#tokenAmountSection').hide();
+            }
+
+            // Sync frequency from schedule to plan (hidden field)
+            $('#scheduleFrequency').on('change', function() {
+                $('#Frequency').val($(this).val());
+                updatePreview();
+            });
+
+            $('#totalInstallments, #installmentAmount, #tokenAmount, #scheduleFrequency, #includeToken, #TotalAmount').on('input change', updatePreview);
             updatePreview();
+
+            // Form submission
+            $('#paymentPlanForm').on('submit', function(e) {
+                e.preventDefault();
+
+                // Validate form
+                if (!this.checkValidity()) {
+                    e.stopPropagation();
+                    $(this).addClass('was-validated');
+                    return false;
+                }
+
+                // Collect PaymentPlan data
+                // Frequency is synced from scheduleFrequency to hidden Frequency field
+                var planData = {
+                    PlanName: $('#PlanName').val(),
+                    ProjectID: $('#ProjectID').val() || null,
+                    TotalAmount: parseFloat($('#TotalAmount').val()),
+                    DurationMonths: parseInt($('#DurationMonths').val()),
+                    Frequency: $('#scheduleFrequency').val(), // Use schedule frequency
+                    Description: $('#Description').val()
+                };
+
+                // Collect PaymentSchedule data
+                var includeToken = $('#includeToken').is(':checked');
+                var tokenAmount = includeToken ? parseFloat($('#tokenAmount').val()) : null;
+                var totalInstallments = parseInt($('#totalInstallments').val()) || 0;
+                var installmentAmount = parseFloat($('#installmentAmount').val()) || 0;
+                var planTotalAmount = parseFloat($('#TotalAmount').val()) || 0;
+                
+                if (includeToken && (!tokenAmount || tokenAmount <= 0)) {
+                    alert('Please enter Token Amount if Token is included.');
+                    return false;
+                }
+
+                // Validate total amount
+                var totalInstallmentsAmount = totalInstallments * installmentAmount;
+                var grandTotal = totalInstallmentsAmount + (includeToken ? tokenAmount : 0);
+                
+                if (grandTotal > planTotalAmount) {
+                    var excess = grandTotal - planTotalAmount;
+                    alert('Validation Error: Total Installments Amount (SSP ' + totalInstallmentsAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                        ') + Token Amount (SSP ' + (includeToken ? tokenAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') + 
+                        ') = SSP ' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                        ' exceeds Parent Total Amount (SSP ' + planTotalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
+                        '). Excess: SSP ' + excess.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '.');
+                    return false;
+                }
+
+                var scheduleData = {
+                    IncludeToken: includeToken,
+                    TokenAmount: tokenAmount,
+                    TotalInstallments: parseInt($('#totalInstallments').val()),
+                    InstallmentAmount: parseFloat($('#installmentAmount').val()),
+                    Frequency: $('#scheduleFrequency').val(),
+                    FirstInstallmentDueDate: $('#firstInstallmentDueDate').val(),
+                    PaymentDescription: $('#paymentDescription').val(),
+                    SurchargeApplied: $('#surchargeApplied').is(':checked'),
+                    SurchargeRate: parseFloat($('#surchargeRate').val()) / 100 // Convert percentage to decimal (0.05% = 0.0005)
+                };
+
+                // Combine data - match ViewModel property names (capital P)
+                var formData = {
+                    PaymentPlan: planData,
+                    PaymentSchedules: scheduleData
+                };
+
+                // Get anti-forgery token
+                var token = $('input[name="__RequestVerificationToken"]').val();
+
+                // Submit via AJAX
+                $.ajax({
+                    url: '@Url.Action("CreatePaymentPlan", "Payment")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    headers: {
+                        'RequestVerificationToken': token
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            window.location.href = '@Url.Action("PaymentSchedule", "Payment")?planId=' + response.planId;
+                        } else {
+                            alert('Error: ' + (response.message || 'Failed to create payment plan'));
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        var errorMessage = 'Error creating payment plan. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        alert(errorMessage);
+                        console.error(error);
+                    }
+                });
+            });
         });
     </script>
 }
-

@@ -10,7 +10,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h2 class="text-white mb-1" style="font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                    <i class="fas fa-money-bill-wave me-2"></i>Customer Payments
+                    <!-- <i class="fas fa-money-bill-wave me-2"></i>Customer Payments -->
                 </h2>
                 <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.95rem;">
                     View and manage all payment transactions from customers
@@ -156,7 +156,7 @@
                                     @if (payment.PaymentSchedule != null)
                                     {
                                         <span class="badge bg-info">
-                                            Installment #@payment.PaymentSchedule.InstallmentNo
+                                            Installment #@(payment.PaymentSchedule.InstallmentNo?.ToString() ?? "N/A")
                                         </span>
                                     }
                                     else
@@ -300,7 +300,7 @@
                             <p class="mb-0">
                                 @if (payment.PaymentSchedule != null)
                                 {
-                                    <span>Installment #@payment.PaymentSchedule.InstallmentNo</span>
+                                    <span>Installment #@(payment.PaymentSchedule.InstallmentNo?.ToString() ?? "N/A")</span>
                                 }
                             </p>
                         </div>

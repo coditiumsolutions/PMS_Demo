@@ -33,7 +33,7 @@
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">Duration</small>
-                            <p class="fw-bold">@paymentPlan.DurationMonths Months</p>
+                            <p class="fw-bold">@(paymentPlan.DurationMonths?.ToString() ?? "N/A") Months</p>
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">Frequency</small>

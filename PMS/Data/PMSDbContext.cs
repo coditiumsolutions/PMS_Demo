@@ -52,6 +52,12 @@ namespace PMS.Data
         // Sales & Leads
         public DbSet<PropertyInquiry> PropertyInquiries { get; set; }
 
+        // Dealers
+        public DbSet<Dealer> Dealers { get; set; }
+
+        // Property Logs
+        public DbSet<PropertyLog> PropertyLogs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -172,6 +178,11 @@ namespace PMS.Data
                       .WithMany(p => p.Customers)
                       .HasForeignKey(e => e.PlanID)
                       .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Dealer)
+                      .WithMany(d => d.Customers)
+                      .HasForeignKey(e => e.DealerID)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure CustomerLog
@@ -194,6 +205,7 @@ namespace PMS.Data
                 entity.HasKey(e => e.ProjectID);
                 entity.Property(e => e.ProjectID).HasMaxLength(10);
                 entity.Property(e => e.ProjectName).HasMaxLength(150);
+                entity.Property(e => e.Prefix).HasMaxLength(4);
                 entity.Property(e => e.Type).HasMaxLength(50);
                 entity.Property(e => e.Location).HasMaxLength(150);
             });
@@ -214,6 +226,11 @@ namespace PMS.Data
                 entity.HasOne(e => e.Project)
                       .WithMany(p => p.Properties)
                       .HasForeignKey(e => e.ProjectID)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Dealer)
+                      .WithMany(d => d.Properties)
+                      .HasForeignKey(e => e.DealerID)
                       .OnDelete(DeleteBehavior.SetNull);
             });
 
@@ -428,14 +445,13 @@ namespace PMS.Data
                 entity.HasKey(e => e.AttachmentID);
                 entity.Property(e => e.AttachmentID).HasMaxLength(10);
                 entity.Property(e => e.RefType).HasMaxLength(50);
-                entity.Property(e => e.RefID).HasMaxLength(10);
+                entity.Property(e => e.RefID).HasMaxLength(50);
+                entity.Property(e => e.AttachmentType).HasMaxLength(50);
+                entity.Property(e => e.FileName).HasMaxLength(255);
                 entity.Property(e => e.FilePath).HasMaxLength(255);
+                entity.Property(e => e.FileType).HasMaxLength(100);
+                entity.Property(e => e.Description).HasMaxLength(500);
                 entity.Property(e => e.UploadedBy).HasMaxLength(10);
-
-                entity.HasOne(e => e.UploadedByUser)
-                      .WithMany()
-                      .HasForeignKey(e => e.UploadedBy)
-                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configure ActivityLog
@@ -494,6 +510,43 @@ namespace PMS.Data
                 entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("New");
                 entity.Property(e => e.AssignedTo).HasMaxLength(100);
                 entity.Property(e => e.IsContacted).HasDefaultValue(false);
+            });
+
+            // Configure Dealer
+            modelBuilder.Entity<Dealer>(entity =>
+            {
+                entity.HasKey(e => e.DealerID);
+                entity.Property(e => e.DealershipName).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.RegisterationDate).IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.MembershipType).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.OwnerName).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.OwnerCNIC).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.MobileNo).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.PhoneNumber).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Email).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Address).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.OwnerDetails).IsRequired();
+            });
+
+            // Configure PropertyLog
+            modelBuilder.Entity<PropertyLog>(entity =>
+            {
+                entity.HasKey(e => e.LogID);
+                entity.Property(e => e.PropertyID).HasMaxLength(10);
+                entity.Property(e => e.Action).HasMaxLength(150);
+                entity.Property(e => e.OldValue).HasMaxLength(255);
+                entity.Property(e => e.NewValue).HasMaxLength(255);
+                entity.Property(e => e.Remarks).HasMaxLength(255);
+                entity.Property(e => e.CreatedBy).HasMaxLength(10);
+                entity.HasOne(e => e.Property)
+                      .WithMany(p => p.PropertyLogs)
+                      .HasForeignKey(e => e.PropertyID)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedBy)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

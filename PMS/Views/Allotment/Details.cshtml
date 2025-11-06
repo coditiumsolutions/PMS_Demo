@@ -1,0 +1,277 @@
+@model PMS.Models.Allotment
+
+@{
+    ViewData["Title"] = "Allotment Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <!-- <i class="fas fa-hand-holding me-2"></i>Allotment Details -->
+    </h2>
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-file-contract me-2"></i>Allotment Information - <code>@Model.AllotmentID</code>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Allotment Details -->
+                    <div class="col-md-6">
+                        <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>Allotment Details</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <div class="detail-field">
+                                    <label><i class="fas fa-id-badge me-2"></i>Allotment ID</label>
+                                    <p><code>@Model.AllotmentID</code></p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="detail-field">
+                                    <label><i class="fas fa-tag me-2"></i>Type</label>
+                                    <p>@Model.AllottmentType</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="detail-field">
+                                    <label><i class="fas fa-calendar me-2"></i>Allotment Date</label>
+                                    <p>@Model.AllotmentDate.ToString("MMMM dd, yyyy")</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="detail-field">
+                                    <label><i class="fas fa-info-circle me-2"></i>Status</label>
+                                    <p>
+                                        @if (Model.WorkFlowStatus == "Approved")
+                                        {
+                                            <span class="badge bg-success">@Model.WorkFlowStatus</span>
+                                        }
+                                        else if (Model.WorkFlowStatus == "Pending" || Model.WorkFlowStatus == "Pending Approval")
+                                        {
+                                            <span class="badge bg-warning">@Model.WorkFlowStatus</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@Model.WorkFlowStatus</span>
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.ApprovedBy))
+                            {
+                                <div class="col-md-6 mb-2">
+                                    <div class="detail-field">
+                                        <label><i class="fas fa-user-check me-2"></i>Approved By</label>
+                                        <p>@Model.ApprovedBy</p>
+                                    </div>
+                                </div>
+                            }
+                            @if (Model.AllottedByUser != null)
+                            {
+                                <div class="col-md-6 mb-2">
+                                    <div class="detail-field">
+                                        <label><i class="fas fa-user me-2"></i>Allotted By</label>
+                                        <p>@Model.AllottedByUser.FullName</p>
+                                    </div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Comments))
+                            {
+                                <div class="col-md-12 mb-2">
+                                    <div class="detail-field">
+                                        <label><i class="fas fa-comment me-2"></i>Comments</label>
+                                        <p>@Model.Comments</p>
+                                    </div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.AdditionalInfo))
+                            {
+                                <div class="col-md-12 mb-2">
+                                    <div class="detail-field">
+                                        <label><i class="fas fa-sticky-note me-2"></i>Additional Info</label>
+                                        <p>@Model.AdditionalInfo</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Property Information -->
+                    <div class="col-md-6">
+                        @if (Model.Property != null)
+                        {
+                            <h6 class="mb-3"><i class="fas fa-home me-2"></i>Property Information</h6>
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <div class="detail-field mb-2">
+                                        <label><i class="fas fa-home me-2"></i>Plot No</label>
+                                        <p><strong>@Model.Property.PlotNo</strong></p>
+                                    </div>
+                                    <div class="detail-field mb-2">
+                                        <label><i class="fas fa-id-card me-2"></i>Property ID</label>
+                                        <p><code>@Model.Property.PropertyID</code></p>
+                                    </div>
+                                    <div class="detail-field mb-2">
+                                        <label><i class="fas fa-layer-group me-2"></i>Block</label>
+                                        <p>@(Model.Property.Block ?? "N/A")</p>
+                                    </div>
+                                    <div class="detail-field mb-2">
+                                        <label><i class="fas fa-ruler-combined me-2"></i>Size</label>
+                                        <p>@Model.Property.Size</p>
+                                    </div>
+                                    <div class="detail-field mb-2">
+                                        <label><i class="fas fa-tag me-2"></i>Type</label>
+                                        <p>@Model.Property.PropertyType</p>
+                                    </div>
+                                    @if (Model.Property.Project != null)
+                                    {
+                                        <div class="detail-field mb-3">
+                                            <label><i class="fas fa-project-diagram me-2"></i>Project</label>
+                                            <p><span class="badge bg-info">@Model.Property.Project.ProjectName</span></p>
+                                        </div>
+                                    }
+                                    <a asp-controller="Property" asp-action="Details" asp-route-id="@Model.PropertyID" 
+                                       class="btn btn-primary w-100">
+                                        <i class="fas fa-eye me-2"></i>View Full Property Details
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Property information not available
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Customer Information -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="mb-3"><i class="fas fa-user me-2"></i>Customer Information</h6>
+                        @if (Model.Customer != null)
+                        {
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-user me-2"></i>Full Name</label>
+                                                <p><strong>@Model.Customer.FullName</strong></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-id-card me-2"></i>Customer ID</label>
+                                                <p><code>@Model.Customer.CustomerID</code></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-phone me-2"></i>Phone</label>
+                                                <p>@Model.Customer.Phone</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-envelope me-2"></i>Email</label>
+                                                <p>@(Model.Customer.Email ?? "N/A")</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="detail-field">
+                                                <label><i class="fas fa-id-card-alt me-2"></i>CNIC</label>
+                                                <p>@(Model.Customer.CNIC ?? "N/A")</p>
+                                            </div>
+                                        </div>
+                                        @if (Model.Customer.PaymentPlan != null && Model.Customer.PaymentPlan.Project != null)
+                                        {
+                                            <div class="col-md-6 mb-2">
+                                                <div class="detail-field">
+                                                    <label><i class="fas fa-project-diagram me-2"></i>Project</label>
+                                                    <p><span class="badge bg-info">@Model.Customer.PaymentPlan.Project.ProjectName</span></p>
+                                                </div>
+                                            </div>
+                                        }
+                                        <div class="col-md-12 mt-2">
+                                            <a asp-controller="Customer" asp-action="Details" asp-route-id="@Model.CustomerID" 
+                                               class="btn btn-success">
+                                                <i class="fas fa-eye me-2"></i>View Full Customer Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Customer information not available
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .detail-field {
+        padding: 8px 10px;
+        background: linear-gradient(135deg, #f8f9fa 0%, var(--gold-tint) 100%);
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .detail-field:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(11, 148, 68, 0.1);
+    }
+
+    .detail-field label {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #666;
+        font-weight: 600;
+    }
+
+    .detail-field p {
+        font-size: 14px;
+        color: var(--text-dark);
+        margin-bottom: 0;
+        font-weight: 500;
+    }
+
+    code {
+        background: var(--light-green);
+        color: var(--primary-green);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    h6 {
+        color: #6f42c1;
+        font-weight: 700;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e8dcff;
+    }
+</style>
+
