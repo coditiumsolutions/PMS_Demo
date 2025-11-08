@@ -334,3 +334,20 @@ h1, h2, h3, h4, h5, h6 {
 .hover-glow:hover {
     box-shadow: 0 0 20px rgba(11, 148, 68, 0.3);
 }
+
+/* Better Outline Button Style */
+.btn-outline-theme {
+    color: var(--primary) !important;
+    background-color: transparent;
+    border: 1px solid var(--primary) !important;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-outline-theme:hover {
+    color: #fff !important;
+    background-color: var(--primary) !important;
+    box-shadow: 0 2px 8px rgba(156, 106, 222, 0.3);
+}

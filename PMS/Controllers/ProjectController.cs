@@ -57,6 +57,18 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Project project)
         {
+            // Check if Prefix already exists
+            if (!string.IsNullOrEmpty(project.Prefix))
+            {
+                var existingProject = await _context.Projects
+                    .FirstOrDefaultAsync(p => p.Prefix.ToUpper() == project.Prefix.ToUpper());
+                
+                if (existingProject != null)
+                {
+                    ModelState.AddModelError("Prefix", "A project with this Prefix already exists. Please use a different Prefix.");
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 project.ProjectID = GenerateID();
@@ -100,6 +112,18 @@ namespace PMS.Controllers
             if (id != project.ProjectID)
             {
                 return NotFound();
+            }
+
+            // Check if Prefix already exists (excluding current project)
+            if (!string.IsNullOrEmpty(project.Prefix))
+            {
+                var existingProject = await _context.Projects
+                    .FirstOrDefaultAsync(p => p.Prefix.ToUpper() == project.Prefix.ToUpper() && p.ProjectID != project.ProjectID);
+                
+                if (existingProject != null)
+                {
+                    ModelState.AddModelError("Prefix", "A project with this Prefix already exists. Please use a different Prefix.");
+                }
             }
 
             if (ModelState.IsValid)

@@ -215,13 +215,13 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a asp-action="Details" asp-route-id="@registration.RegID" 
-                                           class="btn btn-sm btn-outline-info" title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
                                         <a asp-action="Edit" asp-route-id="@registration.RegID" 
-                                           class="btn btn-sm btn-outline-primary" title="Edit">
+                                           class="btn btn-sm btn-outline-success" title="Edit">
                                             <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a asp-action="Details" asp-route-id="@registration.RegID" 
+                                           class="btn btn-sm btn-outline-theme" title="View Details">
+                                            <i class="fas fa-eye"></i>
                                         </a>
                                         @if (registration.Customers == null || !registration.Customers.Any())
                                         {
