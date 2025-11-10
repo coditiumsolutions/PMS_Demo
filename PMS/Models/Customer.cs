@@ -39,6 +39,9 @@ namespace PMS.Models
         [StringLength(20)]
         public string? Gender { get; set; }
 
+        [StringLength(100)]
+        public string? Nationality { get; set; }
+
         // Contact Info
         [StringLength(50)]
         public string? Phone { get; set; }
@@ -82,6 +85,12 @@ namespace PMS.Models
 
         [StringLength(50)]
         public string? NomineeRelation { get; set; }
+
+        [StringLength(255)]
+        public string? NomineeNICDocumentPath { get; set; }
+
+        [StringLength(255)]
+        public string? NomineePicturePath { get; set; }
 
         public string? AdditionalInfo { get; set; }
 

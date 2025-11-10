@@ -7,7 +7,7 @@
 <div class="row">
     <div class="col-12">
         <!-- Customer Wizard Form -->
-        <form asp-action="Create" method="post" id="customerWizardForm">
+        <form asp-action="Create" method="post" id="customerWizardForm" enctype="multipart/form-data">
             <input type="hidden" id="currentStepHidden" name="currentStep" value="3" />
 
             <div class="card">
@@ -80,6 +80,21 @@
                                             <option value="Female">Female</option>
                                             <option value="Other">Other</option>
                                         </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="Nationality" class="form-label">Nationality</label>
+                                        <select asp-for="Nationality" class="form-select">
+                                            <option value="">Select Nationality</option>
+                                            @if (ViewBag.Nationalities != null)
+                                            {
+                                                foreach (var nationality in ViewBag.Nationalities)
+                                                {
+                                                    <option value="@nationality">@nationality</option>
+                                                }
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Nationality" class="text-danger"></span>
                                     </div>
                                 </div>
 
@@ -171,6 +186,20 @@
                                             <option value="Sister">Sister</option>
                                             <option value="Other">Other</option>
                                         </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Next of Kin NIC Document</label>
+                                        <input type="file" name="nomineeNICUpload" class="form-control" accept="image/*,.pdf" />
+                                        <small class="text-muted">Accepted formats: JPG, PNG, GIF, BMP, PDF. Max size: 8MB.</small>
+                                        <span asp-validation-for="NomineeNICDocumentPath" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Next of Kin Picture</label>
+                                        <input type="file" name="nomineePictureUpload" class="form-control" accept="image/*" />
+                                        <small class="text-muted">Accepted formats: JPG, PNG, GIF, BMP. Max size: 8MB.</small>
+                                        <span asp-validation-for="NomineePicturePath" class="text-danger"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">

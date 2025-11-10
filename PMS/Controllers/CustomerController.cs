@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
 using System.Security.Claims;
+using System.IO;
 
 namespace PMS.Controllers
 {
@@ -11,6 +12,9 @@ namespace PMS.Controllers
     public class CustomerController : Controller
     {
         private readonly PMSDbContext _context;
+
+        private static readonly string[] _allowedKinFileExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
+        private const long _maxKinFileSize = 8 * 1024 * 1024; // 8MB
 
         public CustomerController(PMSDbContext context)
         {
@@ -365,20 +369,48 @@ namespace PMS.Controllers
             ViewBag.SubProjects = subProjectsConfig != null 
                 ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
+
+            var nationalitiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "nationalities");
+            ViewBag.Nationalities = nationalitiesConfig != null
+                ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
+                : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
             
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Customer customer)
+        public async Task<IActionResult> Create(Customer customer, IFormFile? nomineeNICUpload, IFormFile? nomineePictureUpload)
         {
+            var nomineeNicValidationError = ValidateKinFile(nomineeNICUpload);
+            if (nomineeNicValidationError != null)
+            {
+                ModelState.AddModelError(nameof(customer.NomineeNICDocumentPath), nomineeNicValidationError);
+            }
+
+            var nomineePictureValidationError = ValidateKinFile(nomineePictureUpload);
+            if (nomineePictureValidationError != null)
+            {
+                ModelState.AddModelError(nameof(customer.NomineePicturePath), nomineePictureValidationError);
+            }
+
             if (ModelState.IsValid)
             {
                 // Generate CustomerID based on Project Prefix
                 customer.CustomerID = await GenerateCustomerID(customer.ProjectID);
                 customer.CreatedAt = DateTime.Now;
                 customer.Status = "Active";
+
+                if (nomineeNICUpload != null && nomineeNICUpload.Length > 0)
+                {
+                    customer.NomineeNICDocumentPath = await SaveKinFileAsync(customer.CustomerID, nomineeNICUpload, "kin-nic");
+                }
+
+                if (nomineePictureUpload != null && nomineePictureUpload.Length > 0)
+                {
+                    customer.NomineePicturePath = await SaveKinFileAsync(customer.CustomerID, nomineePictureUpload, "kin-picture");
+                }
 
                 _context.Customers.Add(customer);
                 await _context.SaveChangesAsync();
@@ -427,6 +459,12 @@ namespace PMS.Controllers
             ViewBag.SubProjects = subProjectsConfig != null 
                 ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
+
+            var nationalitiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "nationalities");
+            ViewBag.Nationalities = nationalitiesConfig != null
+                ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
+                : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
             
             return View(customer);
         }
@@ -485,6 +523,12 @@ namespace PMS.Controllers
                 ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
 
+            var nationalitiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "nationalities");
+            ViewBag.Nationalities = nationalitiesConfig != null
+                ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
+                : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
+
             // Load allotment types
             var allotmentTypesConfig = _context.Configurations
                 .FirstOrDefault(c => c.ConfigKey == "allotmenttypes");
@@ -497,17 +541,55 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(string id, Customer customer)
+        public async Task<IActionResult> Edit(string id, Customer customer, IFormFile? nomineeNICUpload, IFormFile? nomineePictureUpload)
         {
             if (id != customer.CustomerID)
             {
                 return NotFound();
             }
 
+            var nomineeNicValidationError = ValidateKinFile(nomineeNICUpload);
+            if (nomineeNicValidationError != null)
+            {
+                ModelState.AddModelError(nameof(customer.NomineeNICDocumentPath), nomineeNicValidationError);
+            }
+
+            var nomineePictureValidationError = ValidateKinFile(nomineePictureUpload);
+            if (nomineePictureValidationError != null)
+            {
+                ModelState.AddModelError(nameof(customer.NomineePicturePath), nomineePictureValidationError);
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
+                    var existingCustomer = await _context.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerID == id);
+                    if (existingCustomer == null)
+                    {
+                        return NotFound();
+                    }
+
+                    if (nomineeNICUpload != null && nomineeNICUpload.Length > 0)
+                    {
+                        DeleteKinFileIfExists(existingCustomer.NomineeNICDocumentPath);
+                        customer.NomineeNICDocumentPath = await SaveKinFileAsync(customer.CustomerID, nomineeNICUpload, "kin-nic");
+                    }
+                    else
+                    {
+                        customer.NomineeNICDocumentPath = existingCustomer.NomineeNICDocumentPath;
+                    }
+
+                    if (nomineePictureUpload != null && nomineePictureUpload.Length > 0)
+                    {
+                        DeleteKinFileIfExists(existingCustomer.NomineePicturePath);
+                        customer.NomineePicturePath = await SaveKinFileAsync(customer.CustomerID, nomineePictureUpload, "kin-picture");
+                    }
+                    else
+                    {
+                        customer.NomineePicturePath = existingCustomer.NomineePicturePath;
+                    }
+
                     _context.Update(customer);
                     await _context.SaveChangesAsync();
 
@@ -564,6 +646,12 @@ namespace PMS.Controllers
             ViewBag.SubProjects = subProjectsConfig != null 
                 ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
+
+            var nationalitiesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "nationalities");
+            ViewBag.Nationalities = nationalitiesConfig != null
+                ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
+                : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
             
             return View(customer);
         }
@@ -716,6 +804,62 @@ namespace PMS.Controllers
             string customerID = $"{projectPrefix}{numberPart}";
 
             return customerID;
+        }
+
+        private string? ValidateKinFile(IFormFile? file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return null;
+            }
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!_allowedKinFileExtensions.Contains(extension))
+            {
+                return "Only image (JPG, JPEG, PNG, GIF, BMP) and PDF files are allowed for kin documents.";
+            }
+
+            if (file.Length > _maxKinFileSize)
+            {
+                return "Kin document file size cannot exceed 8MB.";
+            }
+
+            return null;
+        }
+
+        private async Task<string> SaveKinFileAsync(string customerId, IFormFile file, string filePrefix)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "customers", customerId, "kin");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var extension = Path.GetExtension(file.FileName);
+            var fileName = $"{filePrefix}_{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/uploads/customers/{customerId}/kin/{fileName}";
+        }
+
+        private void DeleteKinFileIfExists(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                return;
+            }
+
+            var trimmedPath = relativePath.TrimStart('~').TrimStart('/');
+            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", trimmedPath.Replace('/', Path.DirectorySeparatorChar));
+            if (System.IO.File.Exists(fullPath))
+            {
+                System.IO.File.Delete(fullPath);
+            }
         }
 
         // ===========================================================

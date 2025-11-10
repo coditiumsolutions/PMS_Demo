@@ -49,9 +49,11 @@
                 </ul>
             </div>
             <div class="card-body">
-                <form asp-action="Edit" method="post">
+                <form asp-action="Edit" method="post" enctype="multipart/form-data">
                     <input type="hidden" asp-for="CustomerID" />
                     <input type="hidden" asp-for="CreatedAt" />
+                    <input type="hidden" asp-for="NomineeNICDocumentPath" />
+                    <input type="hidden" asp-for="NomineePicturePath" />
                     
                     <div class="tab-content" id="customerTabContent">
                         <!-- Personal Info Tab (Personal + Contact) -->
@@ -95,6 +97,21 @@
                                             <option value="Female">Female</option>
                                             <option value="Other">Other</option>
                                         </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="Nationality" class="form-label">Nationality</label>
+                                        <select asp-for="Nationality" class="form-select">
+                                            <option value="">Select Nationality</option>
+                                            @if (ViewBag.Nationalities != null)
+                                            {
+                                                foreach (var nationality in ViewBag.Nationalities)
+                                                {
+                                                    <option value="@nationality">@nationality</option>
+                                                }
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Nationality" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
@@ -193,6 +210,36 @@
                                             <option value="Sister">Sister</option>
                                             <option value="Other">Other</option>
                                         </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Next of Kin NIC Document</label>
+                                        @if (!string.IsNullOrEmpty(Model.NomineeNICDocumentPath))
+                                        {
+                                            <div class="mb-2">
+                                                <a href="@Model.NomineeNICDocumentPath" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye me-1"></i>View Current NIC Document
+                                                </a>
+                                            </div>
+                                        }
+                                        <input type="file" name="nomineeNICUpload" class="form-control" accept="image/*,.pdf" />
+                                        <small class="text-muted">Uploading a file will replace the current document. Accepted formats: JPG, PNG, GIF, BMP, PDF. Max size: 8MB.</small>
+                                        <span asp-validation-for="NomineeNICDocumentPath" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Next of Kin Picture</label>
+                                        @if (!string.IsNullOrEmpty(Model.NomineePicturePath))
+                                        {
+                                            <div class="mb-2">
+                                                <a href="@Model.NomineePicturePath" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye me-1"></i>View Current Picture
+                                                </a>
+                                            </div>
+                                        }
+                                        <input type="file" name="nomineePictureUpload" class="form-control" accept="image/*" />
+                                        <small class="text-muted">Uploading a file will replace the current picture. Accepted formats: JPG, PNG, GIF, BMP. Max size: 8MB.</small>
+                                        <span asp-validation-for="NomineePicturePath" class="text-danger"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
