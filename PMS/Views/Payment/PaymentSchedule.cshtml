@@ -168,13 +168,6 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        @if (!isPaid)
-                                        {
-                                            <a asp-action="RecordPayment" asp-route-scheduleId="@schedule.ScheduleID" 
-                                               class="btn btn-sm btn-success" title="Record Payment">
-                                                <i class="fas fa-money-bill-wave"></i>
-                                            </a>
-                                        }
                                         <button type="button" 
                                                 class="btn btn-sm btn-outline-info" 
                                                 data-bs-toggle="modal" 
@@ -199,170 +192,188 @@
                                 </td>
                             </tr>
 
-                            <tr class="d-none">
-                                <td colspan="7">
-                                    <div class="modal fade" id="scheduleModal@(schedule.ScheduleID)" tabindex="-1">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header" style="background: var(--primary-green);">
-                                                    <h5 class="modal-title text-white">
-                                                        <i class="fas fa-receipt me-2"></i>Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A") Details
-                                                    </h5>
-                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <div class="row mb-3">
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Schedule ID</label>
-                                                            <p><code>@schedule.ScheduleID</code></p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Installment Number</label>
-                                                            <p><strong>#@(schedule.InstallmentNo?.ToString() ?? "N/A")</strong></p>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <label class="text-muted small">Description</label>
-                                                            <p>@schedule.PaymentDescription</p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Due Date</label>
-                                                            <p>@schedule.DueDate.ToString("MMMM dd, yyyy")</p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Amount (SSP)</label>
-                                                            <p><strong style="color: #9C6ADE;">
-                                                                <span data-format-number="@schedule.Amount">@($"{schedule.Amount:N0}")</span>
-                                                            </strong></p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Amount (USD)</label>
-                                                            <p><strong>@amountUsdDisplay</strong></p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Surcharge Applied</label>
-                                                            <p>@(schedule.SurchargeApplied ? "Yes" : "No")</p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="text-muted small">Surcharge Rate</label>
-                                                            <p>@((schedule.SurchargeRate * 100).ToString("N1"))%</p>
-                                                        </div>
-                                                    </div>
-
-                                                    @if (schedule.Payments != null && schedule.Payments.Any())
-                                                    {
-                                                        <hr />
-                                                        <h6 class="mb-3"><i class="fas fa-money-check-alt me-2"></i>Payment History</h6>
-                                                        <div class="table-responsive">
-                                                            <table class="table table-sm">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Date</th>
-                                                                        <th>Amount</th>
-                                                                        <th>Method</th>
-                                                                        <th>Reference</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    @foreach (var payment in schedule.Payments.OrderByDescending(p => p.PaymentDate))
-                                                                    {
-                                                                        <tr>
-                                                                            <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
-                                                                            <td><strong>@($"{payment.Amount:N2}") SSP</strong></td>
-                                                                            <td>@payment.Method</td>
-                                                                            <td><small>@payment.ReferenceNo</small></td>
-                                                                        </tr>
-                                                                    }
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    }
-                                                </div>
-                                                <div class="modal-footer">
-                                                    @if (!isPaid)
-                                                    {
-                                                        <a asp-action="RecordPayment" asp-route-scheduleId="@schedule.ScheduleID" 
-                                                           class="btn btn-success">
-                                                            <i class="fas fa-money-bill-wave me-2"></i>Record Payment
-                                                        </a>
-                                                    }
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="modal fade" id="editModal@(schedule.ScheduleID)" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header" style="background: var(--primary);">
-                                                    <h6 class="modal-title text-white">
-                                                        <i class="fas fa-edit me-2"></i>Edit Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A")
-                                                    </h6>
-                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <form asp-action="EditPaymentSchedule" method="post">
-                                                    <div class="modal-body">
-                                                        <input type="hidden" name="ScheduleID" value="@schedule.ScheduleID" />
-                                                        <input type="hidden" name="PlanID" value="@schedule.PlanID" />
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Installment Number</label>
-                                                            <input type="number" name="InstallmentNo" class="form-control" value="@(schedule.InstallmentNo ?? 0)" required />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Description</label>
-                                                            <input type="text" name="PaymentDescription" class="form-control" value="@schedule.PaymentDescription" required />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Due Date</label>
-                                                            <input type="date" name="DueDate" class="form-control" value="@schedule.DueDate.ToString("yyyy-MM-dd")" required />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Amount (SSP)</label>
-                                                            <input type="number" name="Amount" step="0.01" class="form-control" value="@schedule.Amount" required />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Amount (USD)</label>
-                                                            <input type="number" name="AmountUSD" step="0.01" class="form-control" value="@(schedule.AmountUSD ?? 0m)" />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Surcharge Rate (%)</label>
-                                                            <input type="number" name="SurchargeRate" step="0.01" class="form-control" value="@((schedule.SurchargeRate * 100).ToString("N2"))" />
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <div class="form-check form-switch">
-                                                                <input type="checkbox" name="SurchargeApplied" class="form-check-input" @(schedule.SurchargeApplied ? "checked" : "") />
-                                                                <label class="form-check-label">Apply Surcharge</label>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Additional Notes</label>
-                                                            <textarea name="Description" class="form-control" rows="2">@schedule.Description</textarea>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="submit" class="btn btn-primary">
-                                                            <i class="fas fa-save me-2"></i>Save Changes
-                                                        </button>
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
                         }
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Modals for each schedule (placed outside table) -->
+            @foreach (var schedule in Model.PaymentSchedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
+            {
+                var totalPaid = schedule.Payments?.Where(p => p.Status == "Completed").Sum(p => p.Amount) ?? 0;
+                var isPaid = totalPaid >= schedule.Amount;
+                var amountUsdDisplay = schedule.AmountUSD.HasValue ? schedule.AmountUSD.Value.ToString("N2") : "0.00";
+                
+                <!-- View Details Modal -->
+                <div class="modal fade" id="scheduleModal@(schedule.ScheduleID)" tabindex="-1" data-bs-backdrop="false">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: var(--primary-green);">
+                                <h5 class="modal-title text-white">
+                                    <i class="fas fa-receipt me-2"></i>Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A") Details
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <label class="text-muted small">Schedule ID</label>
+                                        <p><code>@schedule.ScheduleID</code></p>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="text-muted small">Installment Number</label>
+                                        <p><strong>#@(schedule.InstallmentNo?.ToString() ?? "N/A")</strong></p>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="text-muted small">Description</label>
+                                        <p>@schedule.PaymentDescription</p>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="text-muted small">Due Date</label>
+                                        <p>@schedule.DueDate.ToString("MMMM dd, yyyy")</p>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="text-muted small">Amount (SSP)</label>
+                                        <p><strong style="color: #9C6ADE;">
+                                            <span data-format-number="@schedule.Amount">@($"{schedule.Amount:N0}")</span>
+                                        </strong></p>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="text-muted small">Amount (USD)</label>
+                                        <p><strong>@amountUsdDisplay</strong></p>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="text-muted small">Surcharge Applied</label>
+                                        <p>@(schedule.SurchargeApplied ? "Yes" : "No")</p>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="text-muted small">Surcharge Rate</label>
+                                        <p>@((schedule.SurchargeRate * 100).ToString("N1"))%</p>
+                                    </div>
+                                </div>
+
+                                @if (schedule.Payments != null && schedule.Payments.Any())
+                                {
+                                    <hr />
+                                    <h6 class="mb-3"><i class="fas fa-money-check-alt me-2"></i>Payment History</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Amount</th>
+                                                    <th>Method</th>
+                                                    <th>Reference</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var payment in schedule.Payments.OrderByDescending(p => p.PaymentDate))
+                                                {
+                                                    <tr>
+                                                        <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
+                                                        <td><strong>@($"{payment.Amount:N2}") SSP</strong></td>
+                                                        <td>@payment.Method</td>
+                                                        <td><small>@payment.ReferenceNo</small></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                @if (!isPaid)
+                                {
+                                    <a asp-action="RecordPayment" asp-route-scheduleId="@schedule.ScheduleID" 
+                                       class="btn btn-success">
+                                        <i class="fas fa-money-bill-wave me-2"></i>Record Payment
+                                    </a>
+                                }
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Modal -->
+                <div class="modal fade" id="editModal@(schedule.ScheduleID)" tabindex="-1" aria-labelledby="editModalLabel@(schedule.ScheduleID)" aria-hidden="true" data-bs-backdrop="false">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: var(--primary);">
+                                <h6 class="modal-title text-white" id="editModalLabel@(schedule.ScheduleID)">
+                                    <i class="fas fa-edit me-2"></i>Edit Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A")
+                                </h6>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form asp-action="EditPaymentSchedule" method="post">
+                                <div class="modal-body">
+                                    <input type="hidden" name="ScheduleID" value="@schedule.ScheduleID" />
+                                    <input type="hidden" name="PlanID" value="@schedule.PlanID" />
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Installment Number</label>
+                                            <input type="number" name="InstallmentNo" class="form-control" value="@(schedule.InstallmentNo ?? 0)" required />
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Due Date</label>
+                                            <input type="date" name="DueDate" class="form-control" value="@schedule.DueDate.ToString("yyyy-MM-dd")" required />
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label">Description</label>
+                                            <input type="text" name="PaymentDescription" class="form-control" value="@schedule.PaymentDescription" required />
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Amount (SSP)</label>
+                                            <input type="number" name="Amount" step="0.01" class="form-control" value="@schedule.Amount" required />
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Amount (USD)</label>
+                                            <input type="number" name="AmountUSD" step="0.01" class="form-control" value="@(schedule.AmountUSD ?? 0m)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Surcharge Rate (%)</label>
+                                            <input type="number" name="SurchargeRate" step="0.01" class="form-control" value="@((schedule.SurchargeRate * 100).ToString("N2"))" />
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label d-block">&nbsp;</label>
+                                            <div class="form-check form-switch">
+                                                <input type="checkbox" name="SurchargeApplied" class="form-check-input" @(schedule.SurchargeApplied ? "checked" : "") />
+                                                <label class="form-check-label">Apply Surcharge</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label">Additional Notes</label>
+                                            <textarea name="Description" class="form-control" rows="2">@schedule.Description</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Save Changes
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
         }
         else
         {
@@ -393,6 +404,59 @@
         font-size: 12px;
         font-weight: 600;
     }
+
+    /* Remove backdrop completely */
+    .modal-backdrop {
+        display: none !important;
+    }
+
+    body.modal-open .modal-backdrop {
+        display: none !important;
+    }
+
+    /* Disable global dim overlay from layout */
+    body.modal-open::before {
+        display: none !important;
+        background: transparent !important;
+    }
+
+    /* Ensure modals display properly */
+    .modal {
+        z-index: 1055 !important;
+        background: rgba(0, 0, 0, 0) !important;
+        padding: 0 !important;
+    }
+
+    .modal.show {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0) !important;
+        padding: 0 !important;
+    }
+
+    .modal-dialog {
+        z-index: 1056 !important;
+        margin: 1.75rem auto;
+        position: relative;
+    }
+
+    .modal-content {
+        background: white !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        position: relative;
+        z-index: 1057 !important;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        background: white !important;
+        position: relative;
+        z-index: 1058 !important;
+    }
 </style>
 
 @section Scripts {
@@ -403,6 +467,53 @@
                 document.getElementById('deleteForm').submit();
             }
         }
+
+        // Remove backdrop and ensure modals display properly
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to remove backdrops
+            function removeBackdrops() {
+                var backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(function(backdrop) {
+                    backdrop.remove();
+                });
+            }
+
+            // Remove any existing backdrops immediately
+            removeBackdrops();
+
+            // Initialize all modals with no backdrop
+            var allModals = document.querySelectorAll('.modal');
+            allModals.forEach(function(modalElement) {
+                // Ensure backdrop is disabled
+                modalElement.setAttribute('data-bs-backdrop', 'false');
+                
+                // Initialize modal with no backdrop
+                var modal = new bootstrap.Modal(modalElement, {
+                    backdrop: false,
+                    keyboard: true,
+                    focus: true
+                });
+                
+                // Remove backdrop on show
+                modalElement.addEventListener('show.bs.modal', function() {
+                    removeBackdrops();
+                    modalElement.style.display = 'block';
+                });
+                
+                modalElement.addEventListener('shown.bs.modal', function() {
+                    removeBackdrops();
+                    modalElement.classList.add('show');
+                    modalElement.style.display = 'block';
+                });
+
+                modalElement.addEventListener('hidden.bs.modal', function() {
+                    removeBackdrops();
+                });
+            });
+
+            // Also remove backdrops periodically as a safeguard
+            setInterval(removeBackdrops, 100);
+        });
     </script>
 }
 

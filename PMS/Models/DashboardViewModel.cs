@@ -12,7 +12,6 @@ namespace PMS.Models
         public decimal TotalPayments { get; set; }
         public List<Customer> RecentCustomers { get; set; } = new List<Customer>();
         public List<Payment> RecentPayments { get; set; } = new List<Payment>();
-        public List<Allotment> PendingAllotments { get; set; } = new List<Allotment>();
         
         // Chart Data
         public Dictionary<string, int> PropertyStatusData { get; set; } = new Dictionary<string, int>();

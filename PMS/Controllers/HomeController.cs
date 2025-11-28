@@ -105,12 +105,6 @@ namespace PMS.Controllers
                     .OrderByDescending(p => p.PaymentDate)
                     .Take(5)
                     .ToListAsync(),
-                PendingAllotments = await _context.Allotments
-                    .Include(a => a.Customer)
-                    .Include(a => a.Property)
-                    .Where(a => a.WorkFlowStatus == "Pending")
-                    .Take(5)
-                    .ToListAsync(),
                 
                 // Chart Data
                 PropertyStatusData = propertyStatusData.ToDictionary(x => x.Status ?? "Unknown", x => x.Count),

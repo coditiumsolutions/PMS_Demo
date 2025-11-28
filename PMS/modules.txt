@@ -137,14 +137,8 @@ Attachment Types:
 2. ID Card (1 per customer)
 
 3. Other Attachments (Unlimited)
-   - Additional documents (contracts, agreements, etc.)
-   - Image files or PDF
-   - Optional description field
-   - Multiple files allowed
 
 File Validation:
-- Allowed: Images (JPG, PNG, GIF, BMP) and PDF
-- Max file size: 8MB per file
 - Files stored in: /wwwroot/uploads/customers/{CustomerID}/
 
 Location:
