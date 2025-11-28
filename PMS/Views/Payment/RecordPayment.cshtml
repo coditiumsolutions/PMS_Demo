@@ -1,3 +1,5 @@
+@using System.Globalization
+@using System.Linq
 @{
     ViewData["Title"] = "Record Payment";
     var customers = ViewBag.Customers as List<PMS.Models.Customer>;
@@ -5,6 +7,15 @@
     var preSelectedCustomerId = ViewBag.PreSelectedCustomerId as string;
     var preSelectedScheduleId = ViewBag.PreSelectedScheduleId as string;
     var schedule = ViewBag.Schedule as PMS.Models.PaymentSchedule;
+    decimal schedulePaidAmount = 0m;
+    decimal scheduleOutstanding = 0m;
+    if (schedule != null)
+    {
+        schedulePaidAmount = schedule.Payments?.Sum(p => p.Amount) ?? 0m;
+        scheduleOutstanding = ViewBag.ScheduleOutstanding != null
+            ? (decimal)ViewBag.ScheduleOutstanding
+            : Math.Max(0m, schedule.Amount - schedulePaidAmount);
+    }
 }
 
 <!-- Banner with purple gradient -->
@@ -58,8 +69,10 @@
                             }
                         </div>
                         <div class="col-md-3">
-                            <small class="text-muted">Amount Due</small>
-                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @schedule.Amount.ToString("N2")</p>
+                            <small class="text-muted">Outstanding Amount</small>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @scheduleOutstanding.ToString("N2")</p>
+                            <small class="text-muted d-block">Total: SSP @schedule.Amount.ToString("N2")</small>
+                            <small class="text-muted d-block">Paid: SSP @schedulePaidAmount.ToString("N2")</small>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Surcharge Rate</small>
@@ -139,25 +152,42 @@
                                 {
                                     foreach (var sched in schedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
                                     {
+                                        var paid = sched.Payments?.Sum(p => p.Amount) ?? 0m;
+                                        var outstanding = sched.Amount - paid;
+                                        if (outstanding <= 0m && sched.ScheduleID != preSelectedScheduleId)
+                                        {
+                                            continue;
+                                        }
+
+                                        var outstandingDisplay = outstanding > 0m ? outstanding : 0m;
+                                        var optionText = $"[{sched.PaymentPlan?.PlanName}] - Installment #{(sched.InstallmentNo?.ToString() ?? "N/A")} - Outstanding SSP {outstandingDisplay.ToString("N2")}";
+                                        var dataAmount = outstandingDisplay.ToString("0.##", CultureInfo.InvariantCulture);
+                                        var dataTotal = sched.Amount.ToString("0.##", CultureInfo.InvariantCulture);
+                                        var dataPaid = paid.ToString("0.##", CultureInfo.InvariantCulture);
+
                                         if (sched.ScheduleID == preSelectedScheduleId)
                                         {
-                                            <option value="@sched.ScheduleID" 
-                                                    data-amount="@sched.Amount"
+                                            <option value="@sched.ScheduleID"
+                                                    data-amount="@dataAmount"
+                                                    data-total="@dataTotal"
+                                                    data-paid="@dataPaid"
                                                     data-description="@sched.PaymentDescription"
                                                     data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
                                                     data-plan="@sched.PlanID"
                                                     selected>
-                                                [@sched.PaymentPlan?.PlanName] - Installment #@(sched.InstallmentNo?.ToString() ?? "N/A") - SSP @sched.Amount.ToString("N2")
+                                                @optionText
                                             </option>
                                         }
                                         else
                                         {
-                                            <option value="@sched.ScheduleID" 
-                                                    data-amount="@sched.Amount"
+                                            <option value="@sched.ScheduleID"
+                                                    data-amount="@dataAmount"
+                                                    data-total="@dataTotal"
+                                                    data-paid="@dataPaid"
                                                     data-description="@sched.PaymentDescription"
                                                     data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
                                                     data-plan="@sched.PlanID">
-                                                [@sched.PaymentPlan?.PlanName] - Installment #@(sched.InstallmentNo?.ToString() ?? "N/A") - SSP @sched.Amount.ToString("N2")
+                                                @optionText
                                             </option>
                                         }
                                     }
@@ -173,7 +203,7 @@
                             </label>
                             <input type="number" name="amount" id="amount" step="0.01" class="form-control" 
                                    placeholder="Enter amount received" 
-                                   value="@schedule?.Amount" required />
+                                   value="@(schedule != null && scheduleOutstanding > 0m ? scheduleOutstanding.ToString("0.##", CultureInfo.InvariantCulture) : string.Empty)" readonly required />
                             <small class="text-muted" id="amountHint">Enter the payment amount</small>
                         </div>
 
@@ -236,8 +266,10 @@
                                 <strong id="infoDueDate">-</strong>
                             </div>
                             <div class="col-md-4">
-                                <small class="text-muted d-block">Due Amount</small>
+                                <small class="text-muted d-block">Outstanding</small>
                                 <strong id="infoAmount" style="color: #9C6ADE;">-</strong>
+                                <small class="text-muted d-block">Total: <span id="infoTotal">-</span></small>
+                                <small class="text-muted d-block">Paid: <span id="infoPaid">-</span></small>
                             </div>
                         </div>
                     </div>
@@ -282,11 +314,11 @@
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">Surcharge (@((schedule.SurchargeRate * 100).ToString("N1"))%)</small>
-                            <p class="fw-bold text-warning mb-0">SSP @surchargeAmount.ToString("N2")</p>
+                            <p class="fw-bold text-warning mb-0">SSP @surchargeAmount</p>
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">Total Amount Due</small>
-                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @totalWithSurcharge.ToString("N2")</p>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @totalWithSurcharge</p>
                         </div>
                     </div>
                 </div>
@@ -324,10 +356,17 @@
                 }
             });
 
+            var formatCurrency = function(value) {
+                var numeric = Number(value || 0);
+                return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+
             // Update schedule info when schedule is selected
             $('#scheduleId').on('change', function() {
                 var selected = $(this).find('option:selected');
-                var amount = selected.data('amount');
+                var amount = parseFloat(selected.data('amount')) || 0;
+                var total = parseFloat(selected.data('total')) || 0;
+                var paid = parseFloat(selected.data('paid')) || 0;
                 var description = selected.data('description');
                 var dueDate = selected.data('duedate');
 
@@ -335,9 +374,17 @@
                     $('#scheduleInfo').show();
                     $('#infoDescription').text(description || '-');
                     $('#infoDueDate').text(dueDate || '-');
-                    $('#infoAmount').text('SSP ' + (amount ? parseFloat(amount).toFixed(2) : '-'));
-                    $('#amount').val(amount);
-                    $('#amountHint').text('Due amount: SSP ' + parseFloat(amount).toFixed(2));
+                    $('#infoAmount').text('SSP ' + formatCurrency(amount));
+                    $('#infoTotal').text('SSP ' + formatCurrency(total));
+                    $('#infoPaid').text('SSP ' + formatCurrency(paid));
+
+                    if (amount > 0) {
+                        $('#amount').val(amount.toFixed(2));
+                        $('#amountHint').text('Outstanding amount: SSP ' + formatCurrency(amount));
+                    } else {
+                        $('#amount').val('');
+                        $('#amountHint').text('Installment is fully paid. Please verify before recording another payment.');
+                    }
                 } else {
                     $('#scheduleInfo').hide();
                     $('#amount').val('');
@@ -366,12 +413,21 @@
                 // Reset schedule selection
                 $('#scheduleId').val('');
                 $('#scheduleInfo').hide();
+                $('#amount').val('');
+                $('#amountHint').text('Enter the payment amount');
             });
 
             // Trigger change if pre-selected
+            @if (!string.IsNullOrEmpty(preSelectedCustomerId))
+            {
+                <text>
+                $('#customerId').trigger('change');
+                </text>
+            }
             @if (!string.IsNullOrEmpty(preSelectedScheduleId))
             {
                 <text>
+                $('#scheduleId').val('@preSelectedScheduleId');
                 $('#scheduleId').trigger('change');
                 </text>
             }

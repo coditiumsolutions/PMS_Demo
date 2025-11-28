@@ -23,6 +23,9 @@ namespace PMS.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? AmountUSD { get; set; }
+
         public bool SurchargeApplied { get; set; } = true;
 
         [Column(TypeName = "decimal(18,2)")]

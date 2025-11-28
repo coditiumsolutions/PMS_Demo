@@ -33,7 +33,7 @@
     <div id="statement-root">
         <!-- Header Section -->
         <div class="a4-header text-center">
-            <img src="~/images/logo.png" alt="JUBA Smart City Logo" class="a4-logo" />
+            <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
             <div class="a4-title">Account Statement</div>
             <div class="a4-subtitle">JUBA Smart City Property Management System</div>
             <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy")</div>
@@ -118,7 +118,7 @@
                 {
                     var payments = sch.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<PMS.Models.Payment>();
                     var amountPaid = payments.Sum(p => p.Amount);
-                    var amountDue = Math.Max(0, sch.Amount - amountPaid);
+                    var amountDue = Math.Max(0m, sch.Amount - amountPaid);
                     
                     // Calculate daily surcharge from DueDate until fully paid or today
                     decimal surcharge = 0m;
@@ -177,18 +177,18 @@
                                 <br /><small class="text-danger">(@daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : "") overdue)</small>
                             }
                         </td>
-                        <td class="text-end">@sch.Amount.ToString("N0")</td>
-                        <td class="text-end">@amountDue.ToString("N0")</td>
-                        <td class="text-end">@amountPaid.ToString("N0")</td>
+                        <td class="text-end">@($"{sch.Amount:N0}")</td>
+                        <td class="text-end">@($"{amountDue:N0}")</td>
+                        <td class="text-end">@($"{amountPaid:N0}")</td>
                         <td>@(payments.LastOrDefault()?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
                         <td class="text-start">@(payments.LastOrDefault()?.ReferenceNo ?? "-")</td>
                         <td class="text-end">
-                            @surcharge.ToString("N0")
+                            @($"{surcharge:N0}")
                             @if (sch.SurchargeApplied && amountDue > 0 && daysOverdueDisplay > 0)
                             {
                                 var dailyRatePercent = sch.SurchargeRate; // 0.05 = 0.05%
                                 var dailySurchargeAmount = amountDue * (sch.SurchargeRate / 100m);
-                                <br /><small class="text-muted">(@dailyRatePercent.ToString("N2")% daily = @dailySurchargeAmount.ToString("N0") per day × @daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : ""))</small>
+                                <br /><small class="text-muted">(@($"{dailyRatePercent:N2}")% daily = @($"{dailySurchargeAmount:N0}") per day × @daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : ""))</small>
                             }
                         </td>
                     </tr>
@@ -197,12 +197,12 @@
                 <tfoot>
                     <tr>
                         <td colspan="3" class="text-end">Totals</td>
-                        <td class="text-end">@totalDueAmount.ToString("N0")</td>
-                        <td class="text-end">@totalAmountDue.ToString("N0")</td>
-                        <td class="text-end">@totalAmountPaid.ToString("N0")</td>
+                        <td class="text-end">@($"{totalDueAmount:N0}")</td>
+                        <td class="text-end">@($"{totalAmountDue:N0}")</td>
+                        <td class="text-end">@($"{totalAmountPaid:N0}")</td>
                         <td></td>
                         <td></td>
-                        <td class="text-end">@totalSurcharge.ToString("N0")</td>
+                        <td class="text-end">@($"{totalSurcharge:N0}")</td>
                     </tr>
                 </tfoot>
             </table>

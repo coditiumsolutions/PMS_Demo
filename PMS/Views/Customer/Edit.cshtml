@@ -32,11 +32,6 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="registration-tab" data-bs-toggle="tab" data-bs-target="#registration" type="button" role="tab" aria-controls="registration" aria-selected="false">
-                            <i class="fas fa-file-contract me-2"></i>Registration Info
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="allotments-tab" data-bs-toggle="tab" data-bs-target="#allotments" type="button" role="tab" aria-controls="allotments" aria-selected="false">
                             <i class="fas fa-building me-2"></i>Allotments
                         </button>
@@ -49,6 +44,14 @@
                 </ul>
             </div>
             <div class="card-body">
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        @TempData["ErrorMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
                 <form asp-action="Edit" method="post" enctype="multipart/form-data">
                     <input type="hidden" asp-for="CustomerID" />
                     <input type="hidden" asp-for="CreatedAt" />
@@ -252,27 +255,10 @@
                             </div>
                         </div>
 
-                        <!-- Registration Info Tab -->
-                        <div class="tab-pane fade" id="registration" role="tabpanel" aria-labelledby="registration-tab">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="fas fa-file-alt me-2"></i>Registration Details</h6>
-                                    
-                                    <div class="mb-3">
-                                        <label asp-for="RegID" class="form-label">Registration</label>
-                                        <select asp-for="RegID" class="form-select">
-                                            <option value="">Select Registration</option>
-                                            @if (ViewBag.Registrations != null)
-                                            {
-                                                @foreach (var reg in ViewBag.Registrations)
-                                                {
-                                                    <option value="@reg.RegID">@reg.FullName - @reg.RegID</option>
-                                                }
-                                            }
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3">
+                        <!-- Property Allotments Tab -->
+                        <div class="tab-pane fade" id="allotments" role="tabpanel" aria-labelledby="allotments-tab">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
                                         <label asp-for="ProjectID" class="form-label">Project *</label>
                                         <select asp-for="ProjectID" class="form-select" required>
                                             <option value="">Select Project</option>
@@ -285,9 +271,38 @@
                                             }
                                         </select>
                                         <span asp-validation-for="ProjectID" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
+                                    <select asp-for="RegisteredSize" class="form-select">
+                                        <option value="">Select Size</option>
+                                        @if (ViewBag.Sizes != null)
+                                        {
+                                            @foreach (var size in ViewBag.Sizes)
+                                            {
+                                                <option value="@size">@size</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="DealerID" class="form-label">Dealer *</label>
+                                    <select asp-for="DealerID" id="DealerID" class="form-select" required>
+                                        <option value="">Select Dealer</option>
+                                        @if (ViewBag.Dealers != null)
+                                        {
+                                            @foreach (var dealer in ViewBag.Dealers)
+                                            {
+                                                <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="DealerID" class="text-danger"></span>
+                                </div>
                                     </div>
 
-                                    <div class="mb-3">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
                                         <label asp-for="PlanID" class="form-label">Payment Plan</label>
                                         <select asp-for="PlanID" class="form-select">
                                             <option value="">Select Payment Plan</option>
@@ -300,8 +315,7 @@
                                             }
                                         </select>
                                     </div>
-
-                                    <div class="mb-3">
+                                <div class="col-md-4">
                                         <label asp-for="SubProject" class="form-label">Sub Project</label>
                                         <select asp-for="SubProject" class="form-select">
                                             <option value="">Select Sub Project</option>
@@ -314,50 +328,20 @@
                                             }
                                         </select>
                                     </div>
-
-                                    <div class="mb-3">
-                                        <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
-                                        <select asp-for="RegisteredSize" class="form-select">
-                                            <option value="">Select Size</option>
-                                            @if (ViewBag.Sizes != null)
-                                            {
-                                                @foreach (var size in ViewBag.Sizes)
-                                                {
-                                                    <option value="@size">@size</option>
-                                                }
-                                            }
+                                <div class="col-md-4">
+                                    <label for="selectedPropertyEdit" class="form-label">Available Properties</label>
+                                    <select id="selectedPropertyEdit" name="SelectedPropertyID" class="form-select" data-selected="@ViewBag.SelectedPropertyID">
+                                        <option value="">Select project, size, and dealer to view available properties</option>
                                         </select>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label asp-for="DealerID" class="form-label">Dealer *</label>
-                                        <select asp-for="DealerID" class="form-select" required>
-                                            <option value="">Select Dealer</option>
-                                            @if (ViewBag.Dealers != null)
-                                            {
-                                                @foreach (var dealer in ViewBag.Dealers)
-                                                {
-                                                    <option value="@dealer.DealerID">@dealer.DealershipName</option>
-                                                }
-                                            }
-                                        </select>
-                                        <span asp-validation-for="DealerID" class="text-danger"></span>
+                                    <small id="selectedPropertyEditMessage" class="text-muted">Properties are filtered by the selected project, size, and dealer.</small>
                                     </div>
                                 </div>
 
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="fas fa-sticky-note me-2"></i>Additional Information</h6>
-
-                                    <div class="mb-3">
+                            <div class="mb-4">
                                         <label asp-for="AdditionalInfo" class="form-label">Additional Notes</label>
-                                        <textarea asp-for="AdditionalInfo" class="form-control" rows="6" placeholder="Enter any additional information about the customer..."></textarea>
-                                    </div>
-                                </div>
-                            </div>
+                                <textarea asp-for="AdditionalInfo" class="form-control" rows="4" placeholder="Enter any additional information about the customer..."></textarea>
                         </div>
 
-                        <!-- Property Allotments Tab -->
-                        <div class="tab-pane fade" id="allotments" role="tabpanel" aria-labelledby="allotments-tab">
                             @if (Model.Allotments != null && Model.Allotments.Any())
                             {
                             <div class="table-responsive">
@@ -428,111 +412,10 @@
                         }
                         else
                         {
-                            <div id="noAllotmentSection">
-                                <div class="alert alert-info mb-4">
+                                <div class="alert alert-info">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>No Allotment Found</strong><br>
-                                    This customer does not have a property allotted yet. You can start the allotment process below.
+                                    <strong>No allotment found.</strong> Select a matching property above and click <em>Save Changes</em> to create one automatically.
                                 </div>
-
-                                @if (string.IsNullOrEmpty(Model.ProjectID) || string.IsNullOrEmpty(Model.RegisteredSize))
-                                {
-                                    <div class="alert alert-warning">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                        <strong>Cannot Create Allotment:</strong>
-                                        @if (string.IsNullOrEmpty(Model.ProjectID))
-                                        {
-                                            <p>Customer must have a Project assigned.</p>
-                                        }
-                                        @if (string.IsNullOrEmpty(Model.RegisteredSize))
-                                        {
-                                            <p>Customer must have a Registered Size set.</p>
-                                        }
-                                        <p class="mb-0 mt-2">
-                                            <small>Please set the required information in the Registration Info tab above and save the customer first.</small>
-                                        </p>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="card border-primary">
-                                        <div class="card-header bg-primary text-white">
-                                            <h5 class="mb-0">
-                                                <i class="fas fa-plus-circle me-2"></i>Start Allotment Process
-                                            </h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <form id="createAllotmentForm">
-                                                <input type="hidden" id="customerID" value="@Model.CustomerID" />
-                                                <input type="hidden" id="projectID" value="@Model.ProjectID" />
-                                                <input type="hidden" id="registeredSize" value="@Model.RegisteredSize" />
-
-                                                <div class="row">
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label">
-                                                            <i class="fas fa-building me-2"></i>Customer Project
-                                                        </label>
-                                                        <input type="text" class="form-control" value="@(Model.Project?.ProjectName ?? "N/A")" readonly />
-                                                        <small class="text-muted">Properties will be filtered by this project</small>
-                                                    </div>
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label">
-                                                            <i class="fas fa-ruler-combined me-2"></i>Registered Size
-                                                        </label>
-                                                        <input type="text" class="form-control" value="@Model.RegisteredSize" readonly />
-                                                        <small class="text-muted">Properties will be filtered by this size</small>
-                                                    </div>
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label">
-                                                            <i class="fas fa-tag me-2"></i>Allotment Type <span class="text-danger">*</span>
-                                                        </label>
-                                                        <select id="allotmentType" class="form-select" required>
-                                                            <option value="">Select Type</option>
-                                                            @if (ViewBag.AllotmentTypes != null)
-                                                            {
-                                                                @foreach (var type in ViewBag.AllotmentTypes)
-                                                                {
-                                                                    <option value="@type">@type</option>
-                                                                }
-                                                            }
-                                                            else
-                                                            {
-                                                                <option value="Regular">Regular</option>
-                                                                <option value="Transfer">Transfer</option>
-                                                                <option value="Balloting">Balloting</option>
-                                                                <option value="Special">Special</option>
-                                                            }
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-6 mb-3">
-                                                        <label class="form-label">
-                                                            <i class="fas fa-home me-2"></i>Select Property <span class="text-danger">*</span>
-                                                        </label>
-                                                        <select id="propertyID" class="form-select" required>
-                                                            <option value="">Loading properties...</option>
-                                                        </select>
-                                                        <small class="text-muted">Only available properties matching project and size are shown</small>
-                                                    </div>
-                                                    <div class="col-md-12 mb-3">
-                                                        <label class="form-label">
-                                                            <i class="fas fa-comment me-2"></i>Comments
-                                                        </label>
-                                                        <textarea id="comments" class="form-control" rows="3" placeholder="Enter any comments or notes..."></textarea>
-                                                    </div>
-                                                    <div class="col-md-12">
-                                                        <button type="submit" class="btn btn-success">
-                                                            <i class="fas fa-check me-2"></i>Create Allotment
-                                                        </button>
-                                                        <button type="button" class="btn btn-secondary" onclick="loadProperties()">
-                                                            <i class="fas fa-redo me-2"></i>Refresh Properties List
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
                             }
                         </div>
 
@@ -744,63 +627,16 @@
                 loadProperties();
             });
 
-            // Handle form submission
-            $('#createAllotmentForm').on('submit', function(e) {
-                e.preventDefault();
-                
-                var customerID = $('#customerID').val();
-                var propertyID = $('#propertyID').val();
-                var allotmentType = $('#allotmentType').val();
-                var comments = $('#comments').val();
-
-                if (!propertyID || !allotmentType) {
-                    alert('Please select both Property and Allotment Type');
-                    return;
-                }
-
-                // Show loading
-                var submitBtn = $(this).find('button[type="submit"]');
-                var originalText = submitBtn.html();
-                submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
-
-                $.ajax({
-                    url: '@Url.Action("CreateAllotmentFromCustomer", "Allotment")',
-                    method: 'POST',
-                    data: {
-                        customerID: customerID,
-                        propertyID: propertyID,
-                        allotmentType: allotmentType,
-                        comments: comments
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            alert(response.message);
-                            window.location.reload();
-                        } else {
-                            alert('Error: ' + response.message);
-                            submitBtn.prop('disabled', false).html(originalText);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        var errorMessage = 'An error occurred while creating the allotment';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            errorMessage = xhr.responseJSON.message;
-                        } else if (xhr.responseText) {
-                            try {
-                                var response = JSON.parse(xhr.responseText);
-                                if (response.message) {
-                                    errorMessage = response.message;
-                                }
-                            } catch (e) {
-                                errorMessage = 'HTTP Error ' + xhr.status + ': ' + error;
-                            }
-                        }
-                        alert('Error: ' + errorMessage);
-                        console.error('Allotment creation error:', xhr, status, error);
-                        submitBtn.prop('disabled', false).html(originalText);
-                    }
-                });
+            // Refresh hidden filters when project/size change
+            $('#ProjectID, #RegisteredSize').on('change', function() {
+                loadProperties();
             });
+
+            $('#selectedPropertyEdit').on('change', function() {
+                $(this).data('selected', $(this).val());
+            });
+
+            loadProperties();
 
             // Load attachments when attachments tab is shown
             $('#attachments-tab').on('shown.bs.tab', function() {
@@ -994,38 +830,92 @@
         }
 
         function loadProperties() {
-            var customerID = $('#customerID').val();
+            var customerID = customerId;
             if (!customerID) return;
 
-            var propertySelect = $('#propertyID');
+            var selectedProject = $('#ProjectID').val();
+            var selectedSize = $('#RegisteredSize').val();
+            var propertySelect = $('#selectedPropertyEdit');
+            var message = $('#selectedPropertyEditMessage');
+            var dealerId = $('#DealerID').val();
+
+            if (!propertySelect.length) return;
+
+            if (!selectedProject || !selectedSize || !dealerId) {
+                propertySelect.html('<option value="">Select project, size, and dealer to view available properties</option>').data('selected', '');
+                if (message.length) {
+                    message.removeClass('text-danger').addClass('text-muted').text('Properties are filtered by the selected project, size, and dealer.');
+                }
+                return;
+            }
+
             propertySelect.html('<option value="">Loading properties...</option>');
+            propertySelect.data('selected', '');
+            propertySelect.val('');
+            if (message.length) {
+                message.removeClass('text-danger').addClass('text-muted').text('Loading properties for the selected project, size, and dealer...');
+            }
 
             $.ajax({
                 url: '@Url.Action("GetAvailablePropertiesForCustomer", "Customer")',
                 method: 'POST',
-                data: { customerID: customerID },
+                data: { 
+                    customerID: customerID,
+                    projectID: selectedProject,
+                    registeredSize: selectedSize,
+                    dealerID: dealerId || ''
+                },
                 success: function(response) {
                     if (response.success && response.properties.length > 0) {
+                        var previousSelection = propertySelect.data('selected') || null;
                         propertySelect.html('<option value="">Select a Property</option>');
                         $.each(response.properties, function(index, property) {
                             var optionText = property.plotNo;
                             if (property.block) optionText += ' - Block ' + property.block;
                             if (property.street) optionText += ' - ' + property.street;
                             optionText += ' (' + property.size + ')';
+                            if (property.isCurrent) optionText += ' (Current)';
                             
-                            propertySelect.append(
-                                $('<option></option>')
+                            var option = $('<option></option>')
                                     .attr('value', property.propertyID)
-                                    .text(optionText)
-                            );
+                                .text(optionText);
+
+                            if (property.isCurrent) {
+                                option.attr('data-current', 'true');
+                            }
+
+                            propertySelect.append(option);
                         });
+
+                        if (previousSelection) {
+                            propertySelect.val(previousSelection);
+                        }
+                        if (!propertySelect.val()) {
+                            var currentOption = propertySelect.find('option[data-current="true"]').first();
+                            if (currentOption.length) {
+                                propertySelect.val(currentOption.val());
+                            }
+                        }
+
+                        propertySelect.data('selected', propertySelect.val());
+
+                        if (message.length) {
+                            var projectName = response.projectName ? response.projectName : 'selected project';
+                            message.removeClass('text-danger').addClass('text-muted').text('Showing ' + response.properties.length + ' properties for ' + projectName + ' (' + response.registeredSize + '). Dealer filter applied if selected.');
+                        }
                     } else {
-                        var message = response.message || 'No available properties found';
-                        propertySelect.html('<option value="">' + message + '</option>');
+                        var msg = response.message || 'No available properties found for the selected project, size, and dealer.';
+                        propertySelect.html('<option value="">' + msg + '</option>').data('selected', '');
+                        if (message.length) {
+                            message.removeClass('text-muted').addClass('text-danger').text(msg);
+                        }
                     }
                 },
                 error: function() {
-                    propertySelect.html('<option value="">Error loading properties</option>');
+                    propertySelect.html('<option value="">Error loading properties</option>').data('selected', '');
+                    if (message.length) {
+                        message.removeClass('text-muted').addClass('text-danger').text('Error loading properties.');
+                    }
                 }
             });
         }

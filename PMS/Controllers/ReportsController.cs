@@ -34,7 +34,7 @@ namespace PMS.Controllers
 
             foreach (var schedule in defaulters)
             {
-                var totalPaid = schedule.Payments?.Sum(p => p.Amount) ?? 0;
+                var totalPaid = schedule.Payments?.Sum(p => p.Amount) ?? 0m;
                 var amountDue = schedule.Amount;
                 var balance = amountDue - totalPaid;
 
@@ -93,11 +93,11 @@ namespace PMS.Controllers
             foreach (var customer in notAllottedCustomers)
             {
                 var paymentPlan = customer.PaymentPlan;
-                var totalDue = paymentPlan?.TotalAmount ?? 0;
+                var totalDue = paymentPlan?.TotalAmount ?? 0m;
                 var totalPaid = paymentPlan?.PaymentSchedules?
                     .SelectMany(ps => ps.Payments ?? new List<Payment>())
                     .Where(p => p.CustomerID == customer.CustomerID)
-                    .Sum(p => p.Amount) ?? 0;
+                    .Sum(p => p.Amount) ?? 0m;
 
                 var balance = totalDue - totalPaid;
                 var paymentStatus = balance <= 0 ? "Fully Paid" : balance < totalDue ? "Partial" : "Defaulter";

@@ -22,6 +22,14 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            @TempData["ErrorMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
                     <!-- Wizard Progress Bar -->
                     <div class="mb-4">
                         <div class="progress" style="height: 30px;">
@@ -43,7 +51,7 @@
                             </h5>
                             <div class="row">
                                 <!-- Personal Information -->
-                                <div class="col-md-6">
+                                <div class="col-md-6"
                                     <h6 class="mb-3"><i class="fas fa-user me-2"></i>Personal Information</h6>
                                     
                                     <div class="mb-3">
@@ -267,7 +275,7 @@
 
                                     <div class="mb-3">
                                         <label asp-for="RegisteredSize" class="form-label">Registered Size *</label>
-                                        <select asp-for="RegisteredSize" class="form-select" required>
+                                        <select asp-for="RegisteredSize" id="RegisteredSize" class="form-select" required>
                                             <option value="">Select Size</option>
                                             @if (ViewBag.Sizes != null)
                                             {
@@ -282,7 +290,7 @@
 
                                     <div class="mb-3">
                                         <label asp-for="DealerID" class="form-label">Dealer *</label>
-                                        <select asp-for="DealerID" class="form-select" required>
+                                        <select asp-for="DealerID" id="DealerID" class="form-select" required>
                                             <option value="">Select Dealer</option>
                                             @if (ViewBag.Dealers != null)
                                             {
@@ -293,6 +301,14 @@
                                             }
                                         </select>
                                         <span asp-validation-for="DealerID" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="selectedPropertySelect" class="form-label">Available Properties</label>
+                                        <select id="selectedPropertySelect" name="SelectedPropertyID" class="form-select" data-selected="@ViewBag.SelectedPropertyID">
+                                            <option value="">Select project, size, and dealer to view available properties</option>
+                                        </select>
+                                        <small id="availablePropertyHelp" class="text-muted">Properties are filtered by the selected project, size, and dealer.</small>
                                     </div>
                                 </div>
 
@@ -512,6 +528,80 @@
             }
         });
 
+        $('#projectIDSelect, #RegisteredSize, #DealerID').on('change', loadAvailablePropertiesPreview);
+        $('#selectedPropertySelect').on('change', function() {
+            $(this).data('selected', $(this).val());
+        });
+
+        function loadAvailablePropertiesPreview() {
+            var propertySelect = $('#selectedPropertySelect');
+            var helpText = $('#availablePropertyHelp');
+
+            if (!propertySelect.length) {
+                return;
+            }
+
+            var projectId = $('#projectIDSelect').val();
+            var registeredSize = $('#RegisteredSize').val();
+            var dealerId = $('#DealerID').val();
+
+            if (!projectId || !registeredSize || !dealerId) {
+                propertySelect.html('<option value="">Select project, size, and dealer to view available properties</option>');
+                propertySelect.data('selected', '');
+                helpText.removeClass('text-danger').addClass('text-muted').text('Properties are filtered by the selected project, size, and dealer.');
+                return;
+            }
+
+            propertySelect.html('<option value="">Loading properties...</option>');
+            helpText.removeClass('text-danger').addClass('text-muted').text('Loading properties for the selected project, size, and dealer...');
+
+            $.ajax({
+                url: '@Url.Action("GetAvailablePropertiesByProject", "Customer")',
+                method: 'GET',
+                data: {
+                    projectId: projectId,
+                    registeredSize: registeredSize,
+                    dealerId: dealerId || ''
+                },
+                success: function(response) {
+                    if (response.success && response.properties && response.properties.length > 0) {
+                        propertySelect.html('<option value="">Select a Property</option>');
+                        $.each(response.properties, function(index, property) {
+                            var optionText = property.plotNo;
+                            if (property.block) optionText += ' - Block ' + property.block;
+                            if (property.street) optionText += ' - ' + property.street;
+                            optionText += ' (' + property.size + ')';
+                            propertySelect.append(
+                                $('<option></option>')
+                                    .attr('value', property.propertyID)
+                                    .text(optionText)
+                            );
+                        });
+
+                        var preselected = propertySelect.data('selected');
+                        if (preselected) {
+                            propertySelect.val(preselected);
+                        }
+                        propertySelect.data('selected', propertySelect.val());
+
+                        var projectName = response.projectName ? response.projectName : 'selected project';
+                        helpText.removeClass('text-danger').addClass('text-muted').text('Showing ' + response.properties.length + ' properties for ' + projectName + ' (' + response.registeredSize + '). Dealer filter applied if selected.');
+                    } else {
+                        var message = response.message || 'No available properties found for the selected project, size, and dealer.';
+                        propertySelect.html('<option value="">' + message + '</option>');
+                        propertySelect.data('selected', '');
+                        helpText.removeClass('text-muted').addClass('text-danger').text(message);
+                    }
+                },
+                error: function() {
+                    var message = 'Could not load available properties. Please try again.';
+                    propertySelect.html('<option value="">' + message + '</option>');
+                    propertySelect.data('selected', '');
+                    helpText.removeClass('text-muted').addClass('text-danger').text(message);
+                }
+            });
+        }
+
         // Form submission handler
         $('#customerWizardForm').on('submit', function(e) {
             // Only validate if we're on step 3 (final step)
@@ -649,6 +739,7 @@
                 </text>
             }
             updateWizardUI();
+            loadAvailablePropertiesPreview();
         });
     </script>
 }

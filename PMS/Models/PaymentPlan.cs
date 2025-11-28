@@ -19,6 +19,15 @@ namespace PMS.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? TotalAmountUSD { get; set; }
+
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal? ExchangeRate { get; set; }
+
+        [StringLength(10)]
+        public string Currency { get; set; } = "SSP";
+
         public int? DurationMonths { get; set; }
 
         [StringLength(50)]

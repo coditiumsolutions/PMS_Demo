@@ -1,8 +1,20 @@
 @model IEnumerable<PMS.Models.Configuration>
-
+@using System.Linq
 @{
     ViewData["Title"] = "Configuration Settings";
     var categories = Model.GroupBy(c => c.Category ?? "General").OrderBy(g => g.Key);
+}
+
+@functions {
+    private string GetModalId(string key)
+    {
+        var sanitized = new string((key ?? string.Empty).Where(char.IsLetterOrDigit).ToArray());
+        if (string.IsNullOrEmpty(sanitized))
+        {
+            sanitized = "Config";
+        }
+        return $"editModal{sanitized}";
+    }
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -71,6 +83,7 @@
                     <tbody>
                         @foreach (var config in categoryGroup.OrderBy(c => c.ConfigKey))
                         {
+                            var modalId = GetModalId(config.ConfigKey);
                             <tr>
                                 <td>
                                     <code>@config.ConfigKey</code>
@@ -96,7 +109,7 @@
                                         <button type="button" 
                                                 class="btn btn-sm btn-outline-primary" 
                                                 data-bs-toggle="modal" 
-                                                data-bs-target="#editModal@(config.ConfigKey.Replace(" ", ""))"
+                                                data-bs-target="#@modalId"
                                                 title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -111,7 +124,7 @@
                             </tr>
 
                             <!-- Edit Modal -->
-                            <div class="modal fade" id="editModal@(config.ConfigKey.Replace(" ", ""))" tabindex="-1" data-bs-backdrop="false">
+                            <div class="modal fade" id="@modalId" tabindex="-1" data-bs-backdrop="false">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header" style="background: var(--primary);">

@@ -11,6 +11,9 @@ namespace PMS.Models
         public string? PlanName { get; set; }
         public string? ProjectID { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal TotalAmountUSD { get; set; }
+        public decimal ExchangeRate { get; set; }
+        public string Currency { get; set; } = "SSP";
         public int DurationMonths { get; set; }
         public string? Frequency { get; set; }
         public string? Description { get; set; }
@@ -20,8 +23,10 @@ namespace PMS.Models
     {
         public bool IncludeToken { get; set; }
         public decimal? TokenAmount { get; set; }
+        public decimal? TokenAmountUSD { get; set; }
         public int TotalInstallments { get; set; }
         public decimal InstallmentAmount { get; set; }
+        public decimal InstallmentAmountUSD { get; set; }
         public string? Frequency { get; set; }
         public DateTime FirstInstallmentDueDate { get; set; }
         public string? PaymentDescription { get; set; }

@@ -26,4 +26,8 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\uploads\customers\" />
+  </ItemGroup>
+
 </Project>

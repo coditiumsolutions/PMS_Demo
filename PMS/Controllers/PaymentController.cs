@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
 using System.Security.Claims;
+using System.Globalization;
+using System.Linq;
 
 namespace PMS.Controllers
 {
@@ -103,42 +105,76 @@ namespace PMS.Controllers
 
         public async Task<IActionResult> RecordPayment(string scheduleId = null, string customerId = null)
         {
-            // Load customers and schedules for dropdowns
-            ViewBag.Customers = await _context.Customers
+            var customers = await _context.Customers
                 .Where(c => c.Status == "Active")
                 .OrderBy(c => c.FullName)
                 .ToListAsync();
 
-            ViewBag.PaymentSchedules = await _context.PaymentSchedules
+            ViewBag.Customers = customers;
+
+            var allSchedules = await _context.PaymentSchedules
                 .Include(ps => ps.PaymentPlan)
+                    .ThenInclude(pp => pp.Customers)
+                .Include(ps => ps.Payments)
                 .OrderBy(ps => ps.DueDate)
                 .ToListAsync();
 
-            // If scheduleId is provided, pre-select it
+            PaymentSchedule? preSelectedSchedule = null;
+
             if (!string.IsNullOrEmpty(scheduleId))
             {
-                var schedule = await _context.PaymentSchedules
-                    .Include(ps => ps.PaymentPlan)
-                        .ThenInclude(pp => pp.Customers)
-                    .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
+                preSelectedSchedule = allSchedules.FirstOrDefault(ps => ps.ScheduleID == scheduleId);
 
-                if (schedule != null)
+                if (preSelectedSchedule == null)
                 {
-                    ViewBag.Schedule = schedule;
-                    ViewBag.PreSelectedScheduleId = scheduleId;
-                    
-                    // Get customer from the payment plan
-                    var customer = schedule.PaymentPlan?.Customers?.FirstOrDefault();
-                    if (customer != null)
+                    preSelectedSchedule = await _context.PaymentSchedules
+                        .Include(ps => ps.PaymentPlan)
+                            .ThenInclude(pp => pp.Customers)
+                        .Include(ps => ps.Payments)
+                        .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
+
+                    if (preSelectedSchedule != null)
                     {
-                        ViewBag.PreSelectedCustomerId = customer.CustomerID;
+                        allSchedules.Add(preSelectedSchedule);
                     }
+                }
+
+                if (preSelectedSchedule != null)
+                {
+                    ViewBag.Schedule = preSelectedSchedule;
+                    ViewBag.PreSelectedScheduleId = scheduleId;
+
+                    var scheduleCustomer = preSelectedSchedule.PaymentPlan?.Customers?.FirstOrDefault();
+                    if (scheduleCustomer != null)
+                    {
+                        ViewBag.PreSelectedCustomerId = scheduleCustomer.CustomerID;
+                    }
+
+                    var paidAmount = preSelectedSchedule.Payments?.Sum(p => p.Amount) ?? 0m;
+                    ViewBag.ScheduleOutstanding = Math.Max(0m, preSelectedSchedule.Amount - paidAmount);
                 }
             }
             else if (!string.IsNullOrEmpty(customerId))
             {
                 ViewBag.PreSelectedCustomerId = customerId;
             }
+
+            var unpaidSchedules = allSchedules
+                .Where(ps =>
+                {
+                    var paid = ps.Payments?.Sum(p => p.Amount) ?? 0m;
+                    return ps.Amount > paid;
+                })
+                .ToList();
+
+            if (preSelectedSchedule != null && !unpaidSchedules.Any(ps => ps.ScheduleID == preSelectedSchedule.ScheduleID))
+            {
+                unpaidSchedules.Add(preSelectedSchedule);
+            }
+
+            ViewBag.PaymentSchedules = unpaidSchedules
+                .OrderBy(ps => ps.DueDate)
+                .ToList();
 
             return View();
         }
@@ -180,9 +216,10 @@ namespace PMS.Controllers
         }
 
         [HttpGet]
-        public IActionResult CreatePaymentPlan()
+        public async Task<IActionResult> CreatePaymentPlan()
         {
-            ViewBag.Projects = _context.Projects.ToList();
+            ViewBag.Projects = await _context.Projects.ToListAsync();
+            ViewBag.UsdToSspRate = await GetUsdToSspRateAsync();
             return View();
         }
 
@@ -200,9 +237,58 @@ namespace PMS.Controllers
                 var planData = viewModel.PaymentPlan;
                 var scheduleData = viewModel.PaymentSchedules;
 
+                var exchangeRate = planData.ExchangeRate > 0 ? planData.ExchangeRate : await GetUsdToSspRateAsync();
+
+                if (exchangeRate <= 0)
+                {
+                    return Json(new { success = false, message = "Invalid USD to SSP exchange rate configuration." });
+                }
+
+                if (planData.TotalAmount <= 0 && planData.TotalAmountUSD <= 0)
+                {
+                    return Json(new { success = false, message = "Total amount must be provided in either SSP or USD." });
+                }
+
+                if (planData.TotalAmount <= 0)
+                {
+                    planData.TotalAmount = Math.Round(planData.TotalAmountUSD * exchangeRate, 2, MidpointRounding.AwayFromZero);
+                }
+                if (planData.TotalAmountUSD <= 0)
+                {
+                    planData.TotalAmountUSD = Math.Round(planData.TotalAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                }
+
                 // Validate total amount: Token + Installments must not exceed Plan Total Amount
-                decimal totalInstallmentsAmount = scheduleData.TotalInstallments * scheduleData.InstallmentAmount;
-                decimal tokenAmount = scheduleData.IncludeToken && scheduleData.TokenAmount.HasValue ? scheduleData.TokenAmount.Value : 0;
+                var totalInstallments = scheduleData.TotalInstallments;
+                var totalPlanAmount = planData.TotalAmount;
+                var tokenAmount = scheduleData.IncludeToken && scheduleData.TokenAmount.HasValue ? scheduleData.TokenAmount.Value : 0;
+                var tokenAmountUSD = scheduleData.IncludeToken && scheduleData.TokenAmountUSD.HasValue
+                    ? scheduleData.TokenAmountUSD.Value
+                    : (scheduleData.IncludeToken ? Math.Round(tokenAmount / exchangeRate, 2, MidpointRounding.AwayFromZero) : 0);
+
+                if (totalInstallments <= 0)
+                {
+                    return Json(new { success = false, message = "Total installments must be greater than zero." });
+                }
+
+                var distributableAmount = totalPlanAmount - tokenAmount;
+                if (distributableAmount < 0)
+                {
+                    return Json(new { success = false, message = "Token amount cannot exceed total plan amount." });
+                }
+
+                var baseInstallmentAmount = Math.Round(distributableAmount / totalInstallments, 2, MidpointRounding.AwayFromZero);
+                var totalBaseAmount = baseInstallmentAmount * Math.Max(totalInstallments - 1, 0);
+                var lastInstallmentAmount = Math.Round(distributableAmount - totalBaseAmount, 2, MidpointRounding.AwayFromZero);
+                var baseInstallmentAmountUSD = Math.Round(baseInstallmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                var lastInstallmentAmountUSD = Math.Round(lastInstallmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+
+                if (lastInstallmentAmount < 0)
+                {
+                    return Json(new { success = false, message = "Calculated installment amount is negative. Please review the input values." });
+                }
+
+                var totalInstallmentsAmount = totalBaseAmount + lastInstallmentAmount;
                 decimal grandTotal = totalInstallmentsAmount + tokenAmount;
 
                 if (grandTotal > planData.TotalAmount)
@@ -221,6 +307,9 @@ namespace PMS.Controllers
                     PlanName = planData.PlanName,
                     ProjectID = string.IsNullOrEmpty(planData.ProjectID) ? null : planData.ProjectID,
                     TotalAmount = planData.TotalAmount,
+                    TotalAmountUSD = planData.TotalAmountUSD,
+                    ExchangeRate = exchangeRate,
+                    Currency = planData.Currency,
                     DurationMonths = planData.DurationMonths,
                     Frequency = planData.Frequency,
                     Description = planData.Description,
@@ -233,8 +322,6 @@ namespace PMS.Controllers
                 // Create PaymentSchedules
                 var schedules = new List<PaymentSchedule>();
                 var includeToken = scheduleData.IncludeToken;
-                var totalInstallments = scheduleData.TotalInstallments;
-                var installmentAmount = scheduleData.InstallmentAmount;
                 var frequency = scheduleData.Frequency ?? "Monthly";
                 var firstDueDate = scheduleData.FirstInstallmentDueDate;
                 var paymentDescription = scheduleData.PaymentDescription ?? "Installment";
@@ -242,6 +329,23 @@ namespace PMS.Controllers
                 var surchargeRate = scheduleData.SurchargeRate;
 
                 int installmentNo = 0;
+
+                // Precompute installment amounts
+                var installmentAmounts = new List<decimal>();
+                var installmentAmountsUSD = new List<decimal>();
+                for (int i = 0; i < totalInstallments; i++)
+                {
+                    if (i == totalInstallments - 1)
+                    {
+                        installmentAmounts.Add(lastInstallmentAmount);
+                        installmentAmountsUSD.Add(lastInstallmentAmountUSD);
+                    }
+                    else
+                    {
+                        installmentAmounts.Add(baseInstallmentAmount);
+                        installmentAmountsUSD.Add(baseInstallmentAmountUSD);
+                    }
+                }
 
                 // Create Token if included (Installment 0 - no surcharge)
                 if (includeToken && scheduleData.TokenAmount.HasValue)
@@ -254,6 +358,7 @@ namespace PMS.Controllers
                         InstallmentNo = 0,
                         DueDate = firstDueDate,
                         Amount = scheduleData.TokenAmount.Value,
+                        AmountUSD = tokenAmountUSD,
                         SurchargeApplied = false, // Token has no surcharge
                         SurchargeRate = 0m // Token has no surcharge rate
                     };
@@ -273,7 +378,8 @@ namespace PMS.Controllers
                         PaymentDescription = paymentDescription,
                         InstallmentNo = installmentNo,
                         DueDate = dueDate,
-                        Amount = installmentAmount,
+                        Amount = installmentAmounts[i],
+                        AmountUSD = installmentAmountsUSD[i],
                         SurchargeApplied = surchargeApplied,
                         SurchargeRate = surchargeRate
                     };
@@ -308,6 +414,21 @@ namespace PMS.Controllers
                 "Yearly" => firstDueDate.AddYears(installmentIndex),
                 _ => firstDueDate.AddMonths(installmentIndex)
             };
+        }
+
+        private async Task<decimal> GetUsdToSspRateAsync()
+        {
+            const decimal defaultRate = 1m;
+            var config = await _context.Configurations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.ConfigKey == "Currency:USDToSSP");
+
+            if (config != null && decimal.TryParse(config.ConfigValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
+            {
+                return parsed;
+            }
+
+            return defaultRate;
         }
 
         [HttpGet]
@@ -349,6 +470,19 @@ namespace PMS.Controllers
             {
                 var remaining = plan.TotalAmount - existingTotal;
                 ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} SSP.");
+            }
+
+            var amountUsd = schedule.AmountUSD.GetValueOrDefault();
+            var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
+
+            if (amountUsd <= 0 && exchangeRate > 0)
+            {
+                amountUsd = Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                schedule.AmountUSD = amountUsd;
+            }
+            else if (amountUsd > 0 && schedule.Amount <= 0 && exchangeRate > 0)
+            {
+                schedule.Amount = Math.Round(amountUsd * exchangeRate, 2, MidpointRounding.AwayFromZero);
             }
 
             if (!ModelState.IsValid)
@@ -398,6 +532,19 @@ namespace PMS.Controllers
                 if (existingSchedule == null)
                 {
                     return NotFound();
+                }
+
+                var amountUsd = schedule.AmountUSD.GetValueOrDefault();
+                var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
+
+                if (amountUsd <= 0 && exchangeRate > 0)
+                {
+                    amountUsd = Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                    schedule.AmountUSD = amountUsd;
+                }
+                else if (amountUsd > 0 && schedule.Amount <= 0 && exchangeRate > 0)
+                {
+                    schedule.Amount = Math.Round(amountUsd * exchangeRate, 2, MidpointRounding.AwayFromZero);
                 }
 
                 var totalWithoutThis = plan.PaymentSchedules.Where(ps => ps.ScheduleID != schedule.ScheduleID).Sum(ps => ps.Amount);

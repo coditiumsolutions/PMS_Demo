@@ -182,12 +182,13 @@ namespace PMS.Controllers
 
         // POST: Get Available Properties for Customer (matching project and size)
         [HttpPost]
-        public async Task<IActionResult> GetAvailablePropertiesForCustomer(string customerID)
+        public async Task<IActionResult> GetAvailablePropertiesForCustomer(string customerID, string? projectID = null, string? registeredSize = null, int? dealerID = null)
         {
             try
             {
                 var customer = await _context.Customers
                     .Include(c => c.Project)
+                    .Include(c => c.Allotments)
                     .FirstOrDefaultAsync(c => c.CustomerID == customerID);
 
                 if (customer == null)
@@ -195,25 +196,121 @@ namespace PMS.Controllers
                     return Json(new { success = false, message = "Customer not found" });
                 }
 
-                if (string.IsNullOrEmpty(customer.ProjectID))
+                var projectIdToUse = !string.IsNullOrWhiteSpace(projectID) ? projectID : customer.ProjectID;
+                var registeredSizeToUse = !string.IsNullOrWhiteSpace(registeredSize) ? registeredSize : customer.RegisteredSize;
+                var dealerIdToUse = dealerID ?? customer.DealerID;
+
+                if (string.IsNullOrEmpty(projectIdToUse))
                 {
                     return Json(new { success = false, message = "Customer does not have a project assigned" });
                 }
 
-                if (string.IsNullOrEmpty(customer.RegisteredSize))
+                if (string.IsNullOrEmpty(registeredSizeToUse))
                 {
                     return Json(new { success = false, message = "Customer does not have a registered size" });
                 }
 
-                var projectID = customer.ProjectID;
-                var registeredSize = customer.RegisteredSize;
+                // Resolve project for display
+                var projectEntity = customer.Project;
+                if ((projectEntity == null || projectEntity.ProjectID != projectIdToUse) && !string.IsNullOrEmpty(projectIdToUse))
+                {
+                    projectEntity = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectID == projectIdToUse);
+                }
 
-                // Get available properties matching customer's project and size
+                var currentPropertyId = customer.Allotments?
+                    .OrderByDescending(a => a.AllotmentDate)
+                    .Select(a => a.PropertyID)
+                    .FirstOrDefault();
+
+                var availableProperties = await _context.Properties
+                    .Where(p => p.Status == "Available"
+                        && p.ProjectID == projectIdToUse
+                        && p.Size == registeredSizeToUse
+                        && (!dealerIdToUse.HasValue ? true : p.DealerID == dealerIdToUse))
+                    .OrderBy(p => p.PlotNo)
+                    .Select(p => new
+                    {
+                        propertyID = p.PropertyID,
+                        plotNo = p.PlotNo,
+                        block = p.Block,
+                        size = p.Size,
+                        propertyType = p.PropertyType,
+                        street = p.Street,
+                        plotType = p.PlotType,
+                        isCurrent = false
+                    })
+                    .ToListAsync();
+
+                if (!string.IsNullOrEmpty(currentPropertyId))
+                {
+                    var currentProperty = await _context.Properties
+                        .Where(p => p.PropertyID == currentPropertyId)
+                        .Select(p => new
+                        {
+                            propertyID = p.PropertyID,
+                            plotNo = p.PlotNo,
+                            block = p.Block,
+                            propertySize = p.Size,
+                            propertyType = p.PropertyType,
+                            street = p.Street,
+                            plotType = p.PlotType,
+                            projectID = p.ProjectID,
+                            DealerID = p.DealerID
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (currentProperty != null)
+                    {
+                        var matchesFilters = currentProperty.projectID == projectIdToUse &&
+                                             currentProperty.propertySize == registeredSizeToUse &&
+                                             (!dealerIdToUse.HasValue ? true : currentProperty.DealerID == dealerIdToUse);
+
+                        if (matchesFilters && !availableProperties.Any(p => p.propertyID == currentProperty.propertyID))
+                        {
+                            availableProperties.Insert(0, new
+                            {
+                                propertyID = currentProperty.propertyID,
+                                plotNo = currentProperty.plotNo,
+                                block = currentProperty.block,
+                                size = currentProperty.propertySize,
+                                propertyType = currentProperty.propertyType,
+                                street = currentProperty.street,
+                                plotType = currentProperty.plotType,
+                                isCurrent = true
+                            });
+                        }
+                    }
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    properties = availableProperties,
+                    projectName = projectEntity?.ProjectName ?? customer.Project?.ProjectName,
+                    registeredSize = registeredSizeToUse
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailablePropertiesByProject(string projectId, string registeredSize, int? dealerId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(registeredSize))
+                {
+                    return Json(new { success = false, message = "Project and registered size are required." });
+                }
+
                 var properties = await _context.Properties
-                    .Include(p => p.Project)
-                    .Where(p => p.Status == "Available" 
-                        && p.ProjectID == projectID 
-                        && p.Size == registeredSize)
+                    .Where(p => p.Status == "Available"
+                        && p.ProjectID == projectId
+                        && p.Size == registeredSize
+                        && (!dealerId.HasValue ? true : p.DealerID == dealerId))
                     .OrderBy(p => p.PlotNo)
                     .Select(p => new
                     {
@@ -227,11 +324,14 @@ namespace PMS.Controllers
                     })
                     .ToListAsync();
 
-                return Json(new { 
-                    success = true, 
-                    properties = properties,
-                    projectName = customer.Project?.ProjectName,
-                    registeredSize = registeredSize
+                var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectID == projectId);
+
+                return Json(new
+                {
+                    success = true,
+                    properties,
+                    projectName = project?.ProjectName,
+                    registeredSize
                 });
             }
             catch (Exception ex)
@@ -375,13 +475,15 @@ namespace PMS.Controllers
             ViewBag.Nationalities = nationalitiesConfig != null
                 ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
                 : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
+
+            ViewBag.SelectedPropertyID = null;
             
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Customer customer, IFormFile? nomineeNICUpload, IFormFile? nomineePictureUpload)
+        public async Task<IActionResult> Create(Customer customer, IFormFile? nomineeNICUpload, IFormFile? nomineePictureUpload, string? selectedPropertyID)
         {
             var nomineeNicValidationError = ValidateKinFile(nomineeNICUpload);
             if (nomineeNicValidationError != null)
@@ -419,6 +521,18 @@ namespace PMS.Controllers
                 if (!string.IsNullOrEmpty(userId))
                 {
                     await LogActivity(userId, "Create Customer", "Customer", customer.CustomerID);
+                }
+
+                if (!string.IsNullOrWhiteSpace(selectedPropertyID))
+                {
+                    try
+                    {
+                        await AssignCustomerPropertyAsync(customer.CustomerID, selectedPropertyID);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        TempData["ErrorMessage"] = ex.Message;
+                    }
                 }
 
                 // Redirect to Edit page so user can upload attachments
@@ -465,6 +579,8 @@ namespace PMS.Controllers
             ViewBag.Nationalities = nationalitiesConfig != null
                 ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
                 : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
+
+            ViewBag.SelectedPropertyID = selectedPropertyID;
             
             return View(customer);
         }
@@ -535,13 +651,15 @@ namespace PMS.Controllers
             ViewBag.AllotmentTypes = allotmentTypesConfig != null 
                 ? allotmentTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string> { "Regular", "Transfer", "Balloting", "Special" };
+
+            ViewBag.SelectedPropertyID = customer.Allotments?.FirstOrDefault()?.PropertyID;
             
             return View(customer);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(string id, Customer customer, IFormFile? nomineeNICUpload, IFormFile? nomineePictureUpload)
+        public async Task<IActionResult> Edit(string id, Customer customer, IFormFile? nomineeNICUpload, IFormFile? nomineePictureUpload, string? selectedPropertyID)
         {
             if (id != customer.CustomerID)
             {
@@ -598,6 +716,18 @@ namespace PMS.Controllers
                     {
                         await LogActivity(userId, "Update Customer", "Customer", customer.CustomerID);
                     }
+
+                    if (!string.IsNullOrWhiteSpace(selectedPropertyID))
+                    {
+                        try
+                        {
+                            await AssignCustomerPropertyAsync(customer.CustomerID, selectedPropertyID);
+                        }
+                        catch (InvalidOperationException ex)
+                        {
+                            TempData["ErrorMessage"] = ex.Message;
+                        }
+                    }
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -652,6 +782,8 @@ namespace PMS.Controllers
             ViewBag.Nationalities = nationalitiesConfig != null
                 ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
                 : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
+
+            ViewBag.SelectedPropertyID = selectedPropertyID;
             
             return View(customer);
         }
@@ -744,18 +876,15 @@ namespace PMS.Controllers
 
             // Get all existing customers with this project prefix (check both with and without dash for backward compatibility)
             var existingCustomers = await _context.Customers
-                .Include(c => c.Project)
-                .Where(c => c.Project != null && 
-                           c.Project.ProjectID == projectID &&
+                .Where(c => c.ProjectID == projectID &&
                            (c.CustomerID.StartsWith(projectPrefix) || c.CustomerID.StartsWith(projectPrefix + "-")))
+                .Select(c => c.CustomerID)
                 .ToListAsync();
 
             // Extract numeric part from existing CustomerIDs (format: "JSC0001" or "JSC-00001" for backward compatibility)
             int maxNumber = 0;
-            foreach (var existingCustomer in existingCustomers)
+            foreach (var existingCustomerID in existingCustomers)
             {
-                string existingCustomerID = existingCustomer.CustomerID;
-                
                 // Remove prefix to get the number part
                 if (existingCustomerID.StartsWith(projectPrefix))
                 {
@@ -860,6 +989,118 @@ namespace PMS.Controllers
             {
                 System.IO.File.Delete(fullPath);
             }
+        }
+
+        private async Task<string> GenerateAllotmentIdAsync()
+        {
+            var existingIds = await _context.Allotments
+                .Select(a => a.AllotmentID)
+                .ToListAsync();
+
+            int maxNumber = 0;
+            foreach (var id in existingIds)
+            {
+                if (int.TryParse(id, out var numericId))
+                {
+                    if (numericId > maxNumber)
+                    {
+                        maxNumber = numericId;
+                    }
+                }
+                else if (id.StartsWith("ALLOT", StringComparison.OrdinalIgnoreCase) &&
+                         int.TryParse(id.Substring(5), out var prefixedNumericId) &&
+                         prefixedNumericId > maxNumber)
+                {
+                    maxNumber = prefixedNumericId;
+                }
+            }
+
+            return (maxNumber + 1).ToString();
+        }
+
+        private async Task AssignCustomerPropertyAsync(string customerId, string? propertyId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId) || string.IsNullOrWhiteSpace(propertyId))
+            {
+                return;
+            }
+
+            var customer = await _context.Customers
+                .Include(c => c.Allotments)
+                .FirstOrDefaultAsync(c => c.CustomerID == customerId);
+
+            if (customer == null)
+            {
+                throw new InvalidOperationException("Customer could not be found for property assignment.");
+            }
+
+            var selectedProperty = await _context.Properties
+                .Include(p => p.Allotments)
+                .FirstOrDefaultAsync(p => p.PropertyID == propertyId);
+
+            if (selectedProperty == null)
+            {
+                throw new InvalidOperationException("Selected property could not be found.");
+            }
+
+            var existingAllotment = customer.Allotments?.FirstOrDefault();
+
+            if (existingAllotment != null && existingAllotment.PropertyID == propertyId)
+            {
+                // Nothing to change
+                return;
+            }
+
+            if (selectedProperty.Allotments != null && selectedProperty.Allotments.Any(a => a.CustomerID != customerId))
+            {
+                throw new InvalidOperationException("Selected property is already allotted to another customer.");
+            }
+
+            if (!string.Equals(selectedProperty.Status, "Available", StringComparison.OrdinalIgnoreCase) &&
+                (selectedProperty.Allotments == null || !selectedProperty.Allotments.Any()))
+            {
+                throw new InvalidOperationException("Selected property is not available for allotment.");
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "SYSTEM";
+
+            if (existingAllotment != null)
+            {
+                if (!string.IsNullOrEmpty(existingAllotment.PropertyID) && existingAllotment.PropertyID != propertyId)
+                {
+                    var previousProperty = await _context.Properties
+                        .FirstOrDefaultAsync(p => p.PropertyID == existingAllotment.PropertyID);
+                    if (previousProperty != null)
+                    {
+                        previousProperty.Status = "Available";
+                    }
+                }
+
+                existingAllotment.PropertyID = propertyId;
+                existingAllotment.AllottmentType ??= "Regular";
+                existingAllotment.AllottedBy = userId;
+                existingAllotment.AllotmentDate = DateTime.Now;
+                existingAllotment.WorkFlowStatus = "Pending";
+            }
+            else
+            {
+                var allotment = new Allotment
+                {
+                    AllotmentID = await GenerateAllotmentIdAsync(),
+                    CustomerID = customerId,
+                    PropertyID = propertyId,
+                    AllottedBy = userId,
+                    AllotmentDate = DateTime.Now,
+                    AllottmentType = "Regular",
+                    WorkFlowStatus = "Pending"
+                };
+
+                _context.Allotments.Add(allotment);
+            }
+
+            selectedProperty.Status = "Allotted";
+            await _context.SaveChangesAsync();
+            await LogActivity(userId, $"Assigned property {propertyId} to customer {customerId}", "Allotment", propertyId);
         }
 
         // ===========================================================
