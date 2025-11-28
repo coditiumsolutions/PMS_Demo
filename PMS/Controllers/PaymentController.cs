@@ -448,11 +448,9 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreatePaymentSchedule(PaymentSchedule schedule)
         {
-            // Normalize surcharge rate (allow user to input percent)
-            if (schedule.SurchargeRate > 1)
-            {
-                schedule.SurchargeRate = schedule.SurchargeRate / 100m;
-            }
+            // Convert surcharge rate from percentage to decimal
+            // Form always sends percentage values, so always divide by 100
+            schedule.SurchargeRate = schedule.SurchargeRate / 100m;
 
             // Server-side guard: total of installments must not exceed plan total
             var plan = await _context.PaymentPlans
@@ -512,10 +510,8 @@ namespace PMS.Controllers
             try
             {
                 // Convert surcharge rate from percentage to decimal
-                if (schedule.SurchargeRate > 1)
-                {
-                    schedule.SurchargeRate = schedule.SurchargeRate / 100;
-                }
+                // Form always sends percentage values, so always divide by 100
+                schedule.SurchargeRate = schedule.SurchargeRate / 100m;
 
                 // Guard: editing installment should not cause total to exceed plan total
                 var plan = await _context.PaymentPlans
@@ -556,7 +552,22 @@ namespace PMS.Controllers
                     return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
                 }
 
-                _context.Update(schedule);
+                // Update existing schedule properties
+                existingSchedule = await _context.PaymentSchedules.FindAsync(schedule.ScheduleID);
+                if (existingSchedule == null)
+                {
+                    return NotFound();
+                }
+
+                existingSchedule.InstallmentNo = schedule.InstallmentNo;
+                existingSchedule.PaymentDescription = schedule.PaymentDescription;
+                existingSchedule.DueDate = schedule.DueDate;
+                existingSchedule.Amount = schedule.Amount;
+                existingSchedule.AmountUSD = schedule.AmountUSD;
+                existingSchedule.SurchargeRate = schedule.SurchargeRate;
+                existingSchedule.SurchargeApplied = schedule.SurchargeApplied;
+                existingSchedule.Description = schedule.Description;
+
                 await _context.SaveChangesAsync();
 
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -567,9 +578,9 @@ namespace PMS.Controllers
 
                 TempData["Success"] = "Installment updated successfully.";
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                TempData["Error"] = "An error occurred while updating the installment.";
+                TempData["Error"] = $"An error occurred while updating the installment: {ex.Message}";
             }
 
             return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
