@@ -122,7 +122,7 @@
                     
                     // Calculate daily surcharge from DueDate until fully paid or today
                     decimal surcharge = 0m;
-                    if (sch.SurchargeApplied && amountDue > 0)
+                    if (sch.SurchargeApplied)
                     {
                         var dueDate = sch.DueDate.Date;
                         var today = DateTime.Now.Date;
@@ -139,13 +139,22 @@
                         {
                             var daysOverdue = (int)(endDate - dueDate).TotalDays;
                             
-                            // Calculate surcharge: amountDue * daily rate * days overdue
-                            // SurchargeRate is stored as 0.05 which represents 0.05% per day (not 5%)
-                            // So 0.05 in DB = 0.05% = 0.0005 as decimal
-                            // Daily surcharge = Amount Due × 0.0005 × Days Overdue
+                            // Calculate surcharge: Use original due amount (sch.Amount) for fully paid installments,
+                            // or remaining amount due for partially paid installments
+                            // SurchargeRate format: 
+                            //   - Old records: stored as percentage (e.g., 0.05 = 0.05%, need to divide by 100)
+                            //   - New records: stored as decimal (e.g., 0.0005 = 0.05%, use directly)
+                            // Check if value > 1 to determine format (old percentage format vs new decimal format)
+                            var dailySurchargeRate = sch.SurchargeRate > 1m 
+                                ? sch.SurchargeRate / 100m  // Old format: 0.05 → 0.0005
+                                : sch.SurchargeRate;        // New format: 0.0005 → 0.0005
+                            // Daily surcharge = Amount × daily rate × Days Overdue
                             // Example: 100,000 × 0.0005 = 50 per day, × 3 days = 150
-                            var dailySurchargeRate = sch.SurchargeRate / 100m; // Convert 0.05 to 0.0005 (0.05%)
-                            var dailySurchargeAmount = amountDue * dailySurchargeRate; // Amount × 0.0005 per day
+                            
+                            // Use original amount for surcharge calculation (not remaining amount due)
+                            // This ensures late payments are charged surcharge even if now fully paid
+                            var amountForSurcharge = amountPaid >= sch.Amount ? sch.Amount : amountDue;
+                            var dailySurchargeAmount = amountForSurcharge * dailySurchargeRate; // Amount × 0.0005 per day
                             surcharge = Math.Round(dailySurchargeAmount * daysOverdue, 2);
                         }
                     }
@@ -155,16 +164,16 @@
                     totalAmountPaid += amountPaid;
                     totalSurcharge += surcharge;
                     
-                    // Calculate days overdue for display
+                    // Calculate days overdue for display (for both unpaid and late-paid installments)
                     var daysOverdueDisplay = 0;
-                    if (amountDue > 0)
+                    var dueDateDisplay = sch.DueDate.Date;
+                    var endDateDisplay = amountPaid >= sch.Amount && payments.Any() 
+                        ? payments.Last().PaymentDate.Date 
+                        : DateTime.Now.Date;
+                    
+                    if (endDateDisplay > dueDateDisplay)
                     {
-                        var dueDate = sch.DueDate.Date;
-                        var today = DateTime.Now.Date;
-                        if (today > dueDate)
-                        {
-                            daysOverdueDisplay = (int)(today - dueDate).TotalDays;
-                        }
+                        daysOverdueDisplay = (int)(endDateDisplay - dueDateDisplay).TotalDays;
                     }
 
                     <tr>
@@ -184,10 +193,14 @@
                         <td class="text-start">@(payments.LastOrDefault()?.ReferenceNo ?? "-")</td>
                         <td class="text-end">
                             @($"{surcharge:N0}")
-                            @if (sch.SurchargeApplied && amountDue > 0 && daysOverdueDisplay > 0)
+                            @if (sch.SurchargeApplied && daysOverdueDisplay > 0)
                             {
-                                var dailyRatePercent = sch.SurchargeRate; // 0.05 = 0.05%
-                                var dailySurchargeAmount = amountDue * (sch.SurchargeRate / 100m);
+                                // Determine format and calculate display values
+                                var isOldFormat = sch.SurchargeRate > 1m;
+                                var dailyRatePercent = isOldFormat ? sch.SurchargeRate : sch.SurchargeRate * 100m;
+                                var dailyRateDecimal = isOldFormat ? sch.SurchargeRate / 100m : sch.SurchargeRate;
+                                var amountForDisplay = amountPaid >= sch.Amount ? sch.Amount : amountDue;
+                                var dailySurchargeAmount = amountForDisplay * dailyRateDecimal;
                                 <br /><small class="text-muted">(@($"{dailyRatePercent:N2}")% daily = @($"{dailySurchargeAmount:N0}") per day × @daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : ""))</small>
                             }
                         </td>
