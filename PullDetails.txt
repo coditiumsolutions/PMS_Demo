@@ -1,0 +1,108 @@
+# PMS Project - Pull Instructions for New Machine
+
+## Prerequisites
+1. Install Git: https://git-scm.com/downloads
+2. Install .NET 8 SDK: https://dotnet.microsoft.com/download/dotnet/8.0
+3. Install SQL Server (Express, Developer, or full version)
+   - Download: https://www.microsoft.com/en-us/sql-server/sql-server-downloads
+
+## Clone the Repository
+
+```bash
+git clone https://github.com/UmerRana198/PMS.git
+cd PMS/PMS
+```
+
+## Database Setup
+
+### Option 1: Automatic Setup (Recommended for Fresh Start)
+
+The application automatically creates the database and seeds initial data on first run.
+
+1. Update connection string in `appsettings.json`:
+   ```json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Server=YOUR_SERVER;Database=PMS;User Id=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=Mandatory;TrustServerCertificate=true;"
+     }
+   }
+   ```
+   
+   For local SQL Server Express:
+   ```json
+   "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=PMS;Trusted_Connection=True;TrustServerCertificate=true;"
+   ```
+
+2. Run the application - it will:
+   - Create the database automatically
+   - Apply all migrations
+   - Seed initial data (roles, admin user, sample projects, properties, payment plans)
+
+### Option 2: Manual Migration
+
+If you prefer manual control:
+
+```bash
+# Install EF Core tools (if not installed)
+dotnet tool install --global dotnet-ef
+
+# Apply migrations
+dotnet ef database update
+```
+
+### Option 3: Replicate Existing Database (For Production Data)
+
+If you need to copy data from an existing database:
+
+1. **Export from source SQL Server:**
+   - Open SQL Server Management Studio (SSMS)
+   - Right-click database "PMS" → Tasks → Generate Scripts
+   - Select "Schema and Data" in advanced options
+   - Save as .sql file
+
+2. **Or use backup/restore:**
+   ```sql
+   -- On source server
+   BACKUP DATABASE PMS TO DISK = 'C:\Backup\PMS.bak'
+   
+   -- On target server
+   RESTORE DATABASE PMS FROM DISK = 'C:\Backup\PMS.bak'
+   WITH MOVE 'PMS' TO 'C:\SQLData\PMS.mdf',
+        MOVE 'PMS_log' TO 'C:\SQLData\PMS_log.ldf'
+   ```
+
+## Default Login Credentials
+
+After seeding, use these credentials:
+- **Email:** admin@jubasmartcity.com
+- **Password:** Admin@123
+
+## Run the Application
+
+```bash
+dotnet restore
+dotnet build
+dotnet run
+```
+
+## Access the Application
+
+Open browser and navigate to:
+- https://localhost:5001 (or check console for actual port)
+
+## Troubleshooting
+
+### Database Connection Issues
+- Ensure SQL Server is running
+- Check firewall allows SQL Server port (default 1433)
+- Verify connection string credentials
+
+### Migration Errors
+```bash
+# Reset migrations if needed
+dotnet ef database drop
+dotnet ef database update
+```
+
+### Port Conflicts
+Check `Properties/launchSettings.json` for configured ports.

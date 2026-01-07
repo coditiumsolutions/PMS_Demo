@@ -16,9 +16,6 @@ namespace PMS.Services
 
         public async Task SeedAsync()
         {
-            // Ensure database is created
-            await _context.Database.EnsureCreatedAsync();
-
             // Seed ACL Roles
             await SeedRoles();
 

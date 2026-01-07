@@ -13,8 +13,8 @@ namespace PMS.Services
 
             try
             {
-                // Ensure database is created
-                await context.Database.EnsureCreatedAsync();
+                // Apply pending migrations and create database if it doesn't exist
+                await context.Database.MigrateAsync();
                 
                 // Seed initial data
                 await seedService.SeedAsync();
