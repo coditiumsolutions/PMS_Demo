@@ -31,6 +31,7 @@
                         <th>Plot No</th>
                         <th>Project</th>
                         <th>Block</th>
+                        <th>Floor</th>
                         <th>Type</th>
                         <th>Size</th>
                         <th>Status</th>
@@ -62,6 +63,7 @@
                                 }
                             </td>
                             <td>@property.Block</td>
+                            <td>@(property.Floor ?? "—")</td>
                             <td>
                                 <span class="badge bg-primary">@property.PropertyType</span>
                             </td>

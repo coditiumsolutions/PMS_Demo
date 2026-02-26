@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Access Denied";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="text-center" style="max-width: 520px;">
+        <div class="mb-4">
+            <span style="font-size: 5rem; line-height: 1;">🔒</span>
+        </div>
+        <h2 class="fw-bold mb-2" style="color: var(--primary, #487ba5);">Access Denied</h2>
+        <p class="text-muted mb-1 fs-5">You don't have permission to view this page.</p>
+        <p class="text-muted small mb-4">
+            If you think this is a mistake, ask your administrator to update your module rights under
+            <strong>Account &rarr; Edit User &rarr; Module rights</strong>.
+        </p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="@Url.Action("Workspace", "Home")" class="btn btn-primary">
+                <i class="fas fa-th-large me-2"></i>Back to Workspace
+            </a>
+            <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+</div>

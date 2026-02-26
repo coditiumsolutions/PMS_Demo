@@ -18,7 +18,7 @@ namespace PMS.Models
         [StringLength(50)]
         public string? RefType { get; set; }
 
-        [StringLength(10)]
+        [StringLength(100)]
         public string? RefID { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;

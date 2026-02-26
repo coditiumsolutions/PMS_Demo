@@ -120,6 +120,13 @@
                                 <textarea asp-for="Details" class="form-control" rows="3"></textarea>
                                 <span asp-validation-for="Details" class="text-danger"></span>
                             </div>
+
+                            <div class="mb-3">
+                                <label asp-for="IncentivePercentage" class="form-label">Incentive Percentage (%)</label>
+                                <input asp-for="IncentivePercentage" type="number" step="0.01" min="0" max="100" class="form-control" />
+                                <small class="text-muted">Default: 5%</small>
+                                <span asp-validation-for="IncentivePercentage" class="text-danger"></span>
+                            </div>
                         </div>
                     </div>
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
 
 namespace PMS.Controllers
@@ -10,15 +11,36 @@ namespace PMS.Controllers
     [Authorize]
     public class DealerController : Controller
     {
+        private const string ModuleKey = "Dealer";
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public DealerController(PMSDbContext context)
+        public DealerController(PMSDbContext context, IModulePermissionService modulePermission)
         {
             _context = context;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         public async Task<IActionResult> Index()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var dealers = await _context.Dealers
                 .Include(d => d.Customers)
                 .Include(d => d.Properties)
@@ -28,6 +50,8 @@ namespace PMS.Controllers
 
         public async Task<IActionResult> Report()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var dealers = await _context.Dealers
                 .Include(d => d.Customers)
                 .Include(d => d.Properties)
@@ -55,8 +79,10 @@ namespace PMS.Controllers
             return View(dealer);
         }
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             return View();
         }
 
@@ -64,6 +90,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Dealer dealer)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (ModelState.IsValid)
             {
                 _context.Dealers.Add(dealer);
@@ -83,6 +111,8 @@ namespace PMS.Controllers
 
         public async Task<IActionResult> Edit(int? id)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -101,6 +131,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Dealer dealer)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id != dealer.DealerID)
             {
                 return NotFound();
@@ -138,6 +170,8 @@ namespace PMS.Controllers
 
         public async Task<IActionResult> Delete(int? id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -160,6 +194,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var dealer = await _context.Dealers.FindAsync(id);
             if (dealer != null)
             {

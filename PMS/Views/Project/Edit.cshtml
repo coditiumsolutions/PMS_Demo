@@ -38,10 +38,13 @@
                                 <label asp-for="Type" class="form-label">Project Type *</label>
                                 <select asp-for="Type" class="form-select" required>
                                     <option value="">Select Project Type</option>
-                                    <option value="Residential">Residential</option>
-                                    <option value="Commercial">Commercial</option>
-                                    <option value="Mixed">Mixed</option>
-                                    <option value="Industrial">Industrial</option>
+                                    @if (ViewBag.ProjectTypes != null)
+                                    {
+                                        @foreach (var projectType in ViewBag.ProjectTypes)
+                                        {
+                                            <option value="@projectType">@projectType</option>
+                                        }
+                                    }
                                 </select>
                                 <span asp-validation-for="Type" class="text-danger"></span>
                             </div>
@@ -50,6 +53,22 @@
                                 <label asp-for="Location" class="form-label">Location *</label>
                                 <input asp-for="Location" class="form-control" required />
                                 <span asp-validation-for="Location" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Sizes</label>
+                                <div class="d-flex gap-2 flex-wrap align-items-center">
+                                    <input type="text" id="sizeInput" class="form-control" placeholder="e.g. 5 Marla" style="max-width: 200px;" />
+                                    <button type="button" id="btnAddSize" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-plus me-1"></i>Add
+                                    </button>
+                                    <button type="button" id="btnAddMoreSize" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-plus-circle me-1"></i>Add more
+                                    </button>
+                                </div>
+                                <input type="hidden" asp-for="Sizes" id="sizesValue" />
+                                <div id="sizesList" class="mt-2 d-flex flex-wrap gap-1"></div>
+                                <small class="text-muted">Add sizes one by one; stored as comma-separated in database.</small>
                             </div>
                         </div>
 
@@ -83,4 +102,58 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            var sizeInput = document.getElementById('sizeInput');
+            var sizesValue = document.getElementById('sizesValue');
+            var sizesList = document.getElementById('sizesList');
+            var list = (sizesValue.value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
+            function updateHidden() {
+                sizesValue.value = list.join(',');
+            }
+
+            function renderList() {
+                sizesList.innerHTML = '';
+                list.forEach(function (item, idx) {
+                    var span = document.createElement('span');
+                    span.className = 'badge bg-primary me-1 mb-1';
+                    span.innerHTML = item + ' <button type="button" class="btn-close btn-close-white btn-close-sm" style="font-size: 0.6rem; vertical-align: middle;" data-idx="' + idx + '" aria-label="Remove"></button>';
+                    span.querySelector('button').addEventListener('click', function () {
+                        list.splice(parseInt(this.getAttribute('data-idx'), 10), 1);
+                        renderList();
+                        updateHidden();
+                    });
+                    sizesList.appendChild(span);
+                });
+            }
+
+            function addCurrent() {
+                var val = (sizeInput.value || '').trim();
+                if (val && list.indexOf(val) === -1) {
+                    list.push(val);
+                    renderList();
+                    updateHidden();
+                }
+                sizeInput.value = '';
+            }
+
+            renderList();
+
+            document.getElementById('btnAddSize').addEventListener('click', function () {
+                addCurrent();
+            });
+            document.getElementById('btnAddMoreSize').addEventListener('click', function () {
+                addCurrent();
+                sizeInput.focus();
+            });
+            sizeInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCurrent();
+                    sizeInput.focus();
+                }
+            });
+        })();
+    </script>
 }

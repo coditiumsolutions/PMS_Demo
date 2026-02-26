@@ -54,7 +54,7 @@
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 text-muted">Total Outstanding (SSP)</h6>
+                        <h6 class="mb-1 text-muted">Total Outstanding (PKR)</h6>
                         <h4 class="mb-0" data-format-number="@Model.Sum(d => d.Balance)">@Model.Sum(d => d.Balance).ToString("N0")</h4>
                     </div>
                 </div>
@@ -143,9 +143,9 @@
                                         @defaulter.DueDate.ToString("MMM dd, yyyy")
                                     </span>
                                 </td>
-                                <td><strong><span data-format-number="@defaulter.AmountDue">@defaulter.AmountDue.ToString("N0")</span> SSP</strong></td>
-                                <td><span class="text-success"><span data-format-number="@defaulter.AmountPaid">@defaulter.AmountPaid.ToString("N0")</span> SSP</span></td>
-                                <td><strong class="text-danger"><span data-format-number="@defaulter.Balance">@defaulter.Balance.ToString("N0")</span> SSP</strong></td>
+                                <td><strong><span data-format-number="@defaulter.AmountDue">@defaulter.AmountDue.ToString("N0")</span> PKR</strong></td>
+                                <td><span class="text-success"><span data-format-number="@defaulter.AmountPaid">@defaulter.AmountPaid.ToString("N0")</span> PKR</span></td>
+                                <td><strong class="text-danger"><span data-format-number="@defaulter.Balance">@defaulter.Balance.ToString("N0")</span> PKR</strong></td>
                                 <td>
                                     <span class="badge @(defaulter.DaysOverdue > 90 ? "bg-danger" : defaulter.DaysOverdue > 30 ? "bg-warning" : "bg-secondary")">
                                         @defaulter.DaysOverdue days

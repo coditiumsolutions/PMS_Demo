@@ -2,20 +2,10 @@
 @using System.Linq
 @{
     ViewData["Title"] = "Record Payment";
-    var customers = ViewBag.Customers as List<PMS.Models.Customer>;
-    var schedules = ViewBag.PaymentSchedules as List<PMS.Models.PaymentSchedule>;
     var preSelectedCustomerId = ViewBag.PreSelectedCustomerId as string;
     var preSelectedScheduleId = ViewBag.PreSelectedScheduleId as string;
     var schedule = ViewBag.Schedule as PMS.Models.PaymentSchedule;
-    decimal schedulePaidAmount = 0m;
-    decimal scheduleOutstanding = 0m;
-    if (schedule != null)
-    {
-        schedulePaidAmount = schedule.Payments?.Sum(p => p.Amount) ?? 0m;
-        scheduleOutstanding = ViewBag.ScheduleOutstanding != null
-            ? (decimal)ViewBag.ScheduleOutstanding
-            : Math.Max(0m, schedule.Amount - schedulePaidAmount);
-    }
+    decimal scheduleOutstanding = ViewBag.ScheduleOutstanding != null ? (decimal)ViewBag.ScheduleOutstanding : 0m;
 }
 
 <!-- Banner with purple gradient -->
@@ -70,9 +60,9 @@
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Outstanding Amount</small>
-                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @scheduleOutstanding.ToString("N2")</p>
-                            <small class="text-muted d-block">Total: SSP @schedule.Amount.ToString("N2")</small>
-                            <small class="text-muted d-block">Paid: SSP @schedulePaidAmount.ToString("N2")</small>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">PKR @scheduleOutstanding.ToString("N2")</p>
+                            <small class="text-muted d-block">Total: PKR @schedule.Amount.ToString("N2")</small>
+                            <small class="text-muted d-block">Paid: PKR @((schedule.Amount - scheduleOutstanding).ToString("N2"))</small>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Surcharge Rate</small>
@@ -110,101 +100,49 @@
 
                 <form asp-action="RecordPayment" method="post" id="paymentForm">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" id="preSelectedScheduleId" value="@(preSelectedScheduleId ?? "")" />
 
                     <div class="row g-3">
-                        <!-- Customer Selection -->
+                        <!-- Customer ID Search (required first step) -->
                         <div class="col-md-6">
-                            <label for="customerId" class="form-label fw-semibold">
-                                <i class="fas fa-user me-1" style="color: #9C6ADE;"></i>Customer *
+                            <label for="customerIdInput" class="form-label fw-semibold">
+                                <i class="fas fa-user me-1" style="color: #9C6ADE;"></i>Customer ID *
                             </label>
-                            <select name="customerId" id="customerId" class="form-select" required>
-                                <option value="">Select Customer</option>
-                                @if (customers != null)
-                                {
-                                    foreach (var customer in customers)
-                                    {
-                                        if (customer.CustomerID == preSelectedCustomerId)
-                                        {
-                                            <option value="@customer.CustomerID" data-plan="@customer.PlanID" selected>
-                                                @customer.FullName - @customer.CustomerID
-                                            </option>
-                                        }
-                                        else
-                                        {
-                                            <option value="@customer.CustomerID" data-plan="@customer.PlanID">
-                                                @customer.FullName - @customer.CustomerID
-                                            </option>
-                                        }
-                                    }
-                                }
-                            </select>
-                            <small class="text-muted">Select the customer making the payment</small>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="customerIdInput" class="form-control" placeholder="Enter Customer ID" value="@preSelectedCustomerId" autocomplete="off" />
+                                <button type="button" id="btnSearchCustomer" class="btn btn-primary flex-shrink-0">
+                                    <i class="fas fa-search me-1"></i>Search
+                                </button>
+                            </div>
+                            <input type="hidden" name="customerId" id="customerId" value="" />
+                            <div id="customerSearchMessage" class="small mt-1"></div>
+                            <div id="customerNameDisplay" class="alert alert-success py-2 mt-2 mb-0" style="display: none;">
+                                <i class="fas fa-check-circle me-1"></i><strong id="customerNameText"></strong>
+                            </div>
+                            <small class="text-muted">Enter Customer ID and click Search. Installments will load for this customer only.</small>
                         </div>
 
-                        <!-- Schedule/Installment Selection -->
+                        <!-- Schedule/Installment Selection (populated after search) -->
                         <div class="col-md-6">
                             <label for="scheduleId" class="form-label fw-semibold">
                                 <i class="fas fa-calendar-check me-1" style="color: #9C6ADE;"></i>Installment/Schedule *
                             </label>
-                            <select name="scheduleId" id="scheduleId" class="form-select" required>
-                                <option value="">Select Installment</option>
-                                @if (schedules != null)
-                                {
-                                    foreach (var sched in schedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
-                                    {
-                                        var paid = sched.Payments?.Sum(p => p.Amount) ?? 0m;
-                                        var outstanding = sched.Amount - paid;
-                                        if (outstanding <= 0m && sched.ScheduleID != preSelectedScheduleId)
-                                        {
-                                            continue;
-                                        }
-
-                                        var outstandingDisplay = outstanding > 0m ? outstanding : 0m;
-                                        var optionText = $"[{sched.PaymentPlan?.PlanName}] - Installment #{(sched.InstallmentNo?.ToString() ?? "N/A")} - Outstanding SSP {outstandingDisplay.ToString("N2")}";
-                                        var dataAmount = outstandingDisplay.ToString("0.##", CultureInfo.InvariantCulture);
-                                        var dataTotal = sched.Amount.ToString("0.##", CultureInfo.InvariantCulture);
-                                        var dataPaid = paid.ToString("0.##", CultureInfo.InvariantCulture);
-
-                                        if (sched.ScheduleID == preSelectedScheduleId)
-                                        {
-                                            <option value="@sched.ScheduleID"
-                                                    data-amount="@dataAmount"
-                                                    data-total="@dataTotal"
-                                                    data-paid="@dataPaid"
-                                                    data-description="@sched.PaymentDescription"
-                                                    data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
-                                                    data-plan="@sched.PlanID"
-                                                    selected>
-                                                @optionText
-                                            </option>
-                                        }
-                                        else
-                                        {
-                                            <option value="@sched.ScheduleID"
-                                                    data-amount="@dataAmount"
-                                                    data-total="@dataTotal"
-                                                    data-paid="@dataPaid"
-                                                    data-description="@sched.PaymentDescription"
-                                                    data-duedate="@sched.DueDate.ToString("MMM dd, yyyy")"
-                                                    data-plan="@sched.PlanID">
-                                                @optionText
-                                            </option>
-                                        }
-                                    }
-                                }
+                            <select name="scheduleId" id="scheduleId" class="form-select" required disabled>
+                                <option value="">Search by Customer ID first</option>
                             </select>
-                            <small class="text-muted">Select the installment being paid</small>
+                            <small class="text-muted" id="scheduleHint">Select customer first to see due installments</small>
                         </div>
 
-                        <!-- Amount -->
+                        <!-- Amount (editable for partial payments; must not exceed Total Due) -->
                         <div class="col-md-6">
                             <label for="amount" class="form-label fw-semibold">
-                                <i class="fas fa-coins me-1" style="color: #9C6ADE;"></i>Amount Received (SSP) *
+                                <i class="fas fa-coins me-1" style="color: #9C6ADE;"></i>Amount Received (PKR) *
                             </label>
-                            <input type="number" name="amount" id="amount" step="0.01" class="form-control" 
-                                   placeholder="Enter amount received" 
-                                   value="@(schedule != null && scheduleOutstanding > 0m ? scheduleOutstanding.ToString("0.##", CultureInfo.InvariantCulture) : string.Empty)" readonly required />
-                            <small class="text-muted" id="amountHint">Enter the payment amount</small>
+                            <input type="number" name="amount" id="amount" step="0.01" min="0.01" class="form-control" 
+                                   placeholder="Enter amount" value="" required disabled 
+                                   inputmode="decimal" />
+                            <small class="text-muted" id="amountHint">You can enter a partial amount (e.g. two payments of 500 for 1000)</small>
+                            <div id="amountValidationError" class="invalid-feedback d-block" style="display: none !important;"></div>
                         </div>
 
                         <!-- Payment Method -->
@@ -214,6 +152,7 @@
                             </label>
                             <select name="method" id="method" class="form-select" required>
                                 <option value="">Select Payment Method</option>
+                                <option value="DD/DS" selected>DD/DS</option>
                                 <option value="Cash">💵 Cash</option>
                                 <option value="Bank Transfer">🏦 Bank Transfer</option>
                                 <option value="Cheque">📝 Cheque</option>
@@ -232,16 +171,19 @@
                             <small class="text-muted" id="refHint">Enter transaction reference number</small>
                         </div>
 
-                        <!-- Payment Status -->
+                        <!-- Payment Status (Paid only when amount = total due; Partially Paid only when amount < total due) -->
                         <div class="col-md-6">
                             <label for="status" class="form-label fw-semibold">
                                 <i class="fas fa-check-circle me-1" style="color: #9C6ADE;"></i>Payment Status *
                             </label>
                             <select name="status" id="status" class="form-select" required>
-                                <option value="Completed" selected>✅ Completed</option>
-                                <option value="Pending">⏳ Pending Verification</option>
-                                <option value="Processing">🔄 Processing</option>
+                                @{ var paymentStatusList = ViewBag.PaymentStatuses as IEnumerable<string> ?? new[] { "Pending", "Paid", "Partially Paid" }; }
+                                @foreach (var s in paymentStatusList)
+                                {
+                                    <option value="@s">@s</option>
+                                }
                             </select>
+                            <small class="text-muted" id="statusHint">Full payment → Paid; partial → Partially Paid</small>
                         </div>
 
                         <!-- Remarks -->
@@ -272,17 +214,21 @@
                                 <small class="text-muted d-block">Paid: <span id="infoPaid">-</span></small>
                             </div>
                         </div>
+                        <div id="surchargeWarning" class="mt-2 p-2 rounded" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); display: none;">
+                            <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                            <span id="surchargeWarningText"></span>
+                        </div>
                     </div>
 
                     <div class="alert alert-info mt-3" style="background: rgba(156, 106, 222, 0.08); border: 1px solid rgba(156, 106, 222, 0.2);">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Note:</strong> Payment will be recorded with the selected status. Ensure all details are correct before submitting.
+                        <strong>Note:</strong> You can record multiple partial payments for the same installment (e.g. two entries of PKR 500 for a PKR 1000 installment). Amount can be edited.
                     </div>
 
                     <hr class="my-4">
 
                     <div class="d-flex justify-content-end gap-2">
-                        <button type="submit" class="btn btn-lg" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; border: none;">
+                        <button type="submit" id="btnSubmitPayment" class="btn btn-lg" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; border: none;" disabled>
                             <i class="fas fa-check me-2"></i>Record Payment
                         </button>
                         <a asp-action="CustomerPayments" class="btn btn-lg btn-outline-secondary">
@@ -314,11 +260,11 @@
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">Surcharge (@((schedule.SurchargeRate * 100).ToString("N1"))%)</small>
-                            <p class="fw-bold text-warning mb-0">SSP @surchargeAmount</p>
+                            <p class="fw-bold text-warning mb-0">PKR @surchargeAmount</p>
                         </div>
                         <div class="col-md-4">
                             <small class="text-muted">Total Amount Due</small>
-                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">SSP @totalWithSurcharge</p>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">PKR @totalWithSurcharge</p>
                         </div>
                     </div>
                 </div>
@@ -329,106 +275,235 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    
     <script>
         $(document).ready(function() {
-            // Update reference placeholder based on payment method
-            $('#method').on('change', function() {
-                var method = $(this).val();
-                var refInput = $('#referenceNo');
-                var refHint = $('#refHint');
-                
-                if (method === 'Cash') {
-                    refInput.attr('placeholder', 'Receipt Number (optional)');
-                    refHint.text('Enter receipt number if available');
-                } else if (method === 'Bank Transfer') {
-                    refInput.attr('placeholder', 'Transaction Reference Number');
-                    refHint.text('Enter bank transaction reference');
-                } else if (method === 'Cheque') {
-                    refInput.attr('placeholder', 'Cheque Number');
-                    refHint.text('Enter cheque number');
-                } else if (method === 'Online') {
-                    refInput.attr('placeholder', 'Online Transaction ID');
-                    refHint.text('Enter online payment transaction ID');
-                } else if (method === 'Mobile Money') {
-                    refInput.attr('placeholder', 'Mobile Money Transaction ID');
-                    refHint.text('Enter mobile money transaction ID');
-                }
-            });
-
             var formatCurrency = function(value) {
                 var numeric = Number(value || 0);
                 return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             };
 
-            // Update schedule info when schedule is selected
+            var schedulesData = []; // store schedule objects from last search for schedule change handler
+
+            function setSubmitState() {
+                var hasCustomer = $('#customerId').val();
+                var hasSchedule = $('#scheduleId').val() && !$('#scheduleId').prop('disabled');
+                var hasAmount = parseFloat($('#amount').val()) > 0;
+                $('#btnSubmitPayment').prop('disabled', !hasCustomer || !hasSchedule || !hasAmount);
+            }
+
+            // Search customer
+            $('#btnSearchCustomer').on('click', function() {
+                var input = $('#customerIdInput').val().trim();
+                var $msg = $('#customerSearchMessage');
+                var $nameDisplay = $('#customerNameDisplay');
+                var $scheduleSelect = $('#scheduleId');
+                var $amount = $('#amount');
+
+                $msg.removeClass('text-danger text-success').text('');
+                $nameDisplay.hide();
+                $('#customerId').val('');
+                $scheduleSelect.prop('disabled', true).find('option:not(:first)').remove();
+                $scheduleSelect.find('option:first').text('Search by Customer ID first');
+                $amount.val('').prop('disabled', true);
+                $('#scheduleInfo').hide();
+                schedulesData = [];
+                setSubmitState();
+
+                if (!input) {
+                    $msg.addClass('text-danger').text('Please enter a Customer ID.');
+                    return;
+                }
+
+                $('#btnSearchCustomer').prop('disabled', true);
+                // #region agent log
+                var _logPayload = function(hid, msg, d) {
+                    var pl = { hypothesisId: hid, location: 'RecordPayment.cshtml:Search', message: msg, data: d || {}, timestamp: Date.now(), runId: 'run1' };
+                    fetch('http://127.0.0.1:7242/ingest/cc130dc8-453b-402a-adc9-30e483adfe54', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pl) }).catch(function() {});
+                };
+                // #endregion
+                $.get('@Url.Action("GetCustomerPaymentInfo", "Payment")', { customerId: input })
+                    .done(function(data) {
+                        _logPayload('H5', 'done', { found: data.found, message: data.message });
+                        if (data.found) {
+                            $('#customerId').val(data.customerId);
+                            $('#customerIdInput').val(data.customerId);
+                            $('#customerNameText').text(data.fullName + ' (' + data.customerId + ')');
+                            $nameDisplay.show();
+                            $msg.addClass('text-success').text('Customer found. Select an installment below.');
+                            schedulesData = data.schedules || [];
+                            $scheduleSelect.prop('disabled', false);
+                            if (schedulesData.length === 0) {
+                                $scheduleSelect.find('option:first').text('No due installments');
+                            } else {
+                                $scheduleSelect.find('option:first').text('Select Installment');
+                                schedulesData.forEach(function(s) {
+                                    var outstandingLabel = (s.isOverdue ? ' (Outstanding)' : '');
+                                    var optText = '[' + (s.planName || '') + '] Installment #' + (s.installmentNo != null ? s.installmentNo : 'N/A') + ' - Due ' + (s.dueDate || '') + ' - PKR ' + formatCurrency(s.outstanding) + outstandingLabel;
+                                    var opt = $('<option></option>')
+                                        .val(s.scheduleId)
+                                        .text(optText)
+                                        .data('amount', s.outstanding)
+                                        .data('total', s.amount)
+                                        .data('paid', s.paid)
+                                        .data('description', s.paymentDescription)
+                                        .data('duedate', s.dueDate)
+                                        .data('surchargeApplied', s.surchargeApplied)
+                                        .data('surchargeRate', s.surchargeRate)
+                                        .data('isOverdue', s.isOverdue);
+                                    $scheduleSelect.append(opt);
+                                });
+                                var preSel = $('#preSelectedScheduleId').val();
+                                if (preSel) {
+                                    $scheduleSelect.val(preSel);
+                                    if ($scheduleSelect.val() === preSel) $scheduleSelect.trigger('change');
+                                }
+                            }
+                        } else {
+                            $msg.addClass('text-danger').text(data.message || 'Customer not found.');
+                        }
+                    })
+                    .fail(function(jqXHR, textStatus, errorThrown) {
+                        var rt = (jqXHR && jqXHR.responseText) ? String(jqXHR.responseText).substring(0, 500) : '';
+                        _logPayload('H2', 'fail', { status: jqXHR && jqXHR.status, statusText: jqXHR && jqXHR.statusText, textStatus: textStatus, errorThrown: errorThrown, responsePreview: rt });
+                        $msg.addClass('text-danger').text('Search failed. Please try again.');
+                    })
+                    .always(function() {
+                        $('#btnSearchCustomer').prop('disabled', false);
+                    });
+            });
+
+            $('#customerIdInput').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    $('#btnSearchCustomer').click();
+                }
+            });
+
+            // Schedule selection: show info, pre-fill amount (editable), enable amount
             $('#scheduleId').on('change', function() {
+                var val = $(this).val();
+                if (!val) {
+                    $('#scheduleInfo').hide();
+                    $('#amount').val('').prop('disabled', true);
+                    setSubmitState();
+                    return;
+                }
                 var selected = $(this).find('option:selected');
                 var amount = parseFloat(selected.data('amount')) || 0;
                 var total = parseFloat(selected.data('total')) || 0;
                 var paid = parseFloat(selected.data('paid')) || 0;
                 var description = selected.data('description');
                 var dueDate = selected.data('duedate');
+                var surchargeApplied = selected.data('surchargeApplied');
+                var surchargeRate = selected.data('surchargeRate');
+                var isOverdue = selected.data('isOverdue');
 
-                if ($(this).val()) {
-                    $('#scheduleInfo').show();
-                    $('#infoDescription').text(description || '-');
-                    $('#infoDueDate').text(dueDate || '-');
-                    $('#infoAmount').text('SSP ' + formatCurrency(amount));
-                    $('#infoTotal').text('SSP ' + formatCurrency(total));
-                    $('#infoPaid').text('SSP ' + formatCurrency(paid));
+                $('#scheduleInfo').show();
+                $('#infoDescription').text(description || '-');
+                $('#infoDueDate').text(dueDate || '-');
+                $('#infoAmount').text('PKR ' + formatCurrency(amount));
+                $('#infoTotal').text('PKR ' + formatCurrency(total));
+                $('#infoPaid').text('PKR ' + formatCurrency(paid));
 
-                    if (amount > 0) {
-                        $('#amount').val(amount.toFixed(2));
-                        $('#amountHint').text('Outstanding amount: SSP ' + formatCurrency(amount));
-                    } else {
-                        $('#amount').val('');
-                        $('#amountHint').text('Installment is fully paid. Please verify before recording another payment.');
-                    }
+                if (surchargeApplied && isOverdue && surchargeRate > 0) {
+                    var surchargeAmount = total * surchargeRate;
+                    var totalWithSurcharge = total + surchargeAmount;
+                    $('#surchargeWarning').show();
+                    $('#surchargeWarningText').text('Late payment surcharge ' + (surchargeRate * 100).toFixed(1) + '% may apply. Total with surcharge: PKR ' + formatCurrency(totalWithSurcharge));
                 } else {
-                    $('#scheduleInfo').hide();
-                    $('#amount').val('');
-                    $('#amountHint').text('Enter the payment amount');
+                    $('#surchargeWarning').hide();
+                }
+
+                $('#amount').prop('disabled', false).attr('max', amount).removeClass('is-invalid');
+                $('#amountValidationError').hide().removeClass('text-danger').text('');
+                if (amount > 0) {
+                    $('#amount').val(amount.toFixed(2));
+                    $('#amountHint').text('Total Due: PKR ' + formatCurrency(amount) + '. You can enter a partial amount; must not exceed this.');
+                }
+                updateStatusOptions();
+                setSubmitState();
+            });
+
+            function updateStatusOptions() {
+                var maxDue = parseFloat($('#scheduleId').find('option:selected').data('amount')) || 0;
+                var amount = parseFloat($('#amount').val()) || 0;
+                var $status = $('#status');
+                $status.find('option').prop('disabled', false).end().removeClass('is-invalid');
+                if (maxDue <= 0) return;
+                var isFullPayment = (amount >= maxDue);
+                if (isFullPayment) {
+                    $status.find('option[value="Partially Paid"]').prop('disabled', true);
+                    $status.val('Paid');
+                } else {
+                    $status.find('option[value="Paid"]').prop('disabled', true);
+                    $status.val('Partially Paid');
+                }
+            }
+
+            $('#amount').on('input', function() {
+                setSubmitState();
+                var maxDue = parseFloat($('#scheduleId').find('option:selected').data('amount')) || 0;
+                var val = parseFloat($(this).val()) || 0;
+                var $err = $('#amountValidationError');
+                if (maxDue > 0 && val > maxDue) {
+                    $err.css('display', 'block').addClass('text-danger').text('Amount must not exceed Total Due (PKR ' + formatCurrency(maxDue) + ').');
+                    $('#amount').addClass('is-invalid');
+                } else {
+                    $err.hide().removeClass('text-danger').text('');
+                    $('#amount').removeClass('is-invalid');
+                }
+                updateStatusOptions();
+            });
+
+            // Form submit: ensure amount does not exceed Total Due and status matches full/partial
+            $('#paymentForm').on('submit', function(e) {
+                var $schedule = $('#scheduleId').find('option:selected');
+                var maxDue = parseFloat($schedule.data('amount')) || 0;
+                var amount = parseFloat($('#amount').val()) || 0;
+                var status = $('#status').val();
+                if (maxDue > 0 && amount > maxDue) {
+                    e.preventDefault();
+                    $('#amountValidationError').css('display', 'block').addClass('text-danger')
+                        .text('Amount must not exceed Total Due (PKR ' + formatCurrency(maxDue) + ').');
+                    $('#amount').addClass('is-invalid').focus();
+                    return false;
+                }
+                var isFullPayment = (amount >= maxDue && maxDue > 0);
+                if (isFullPayment && status === 'Partially Paid') {
+                    e.preventDefault();
+                    $('#status').addClass('is-invalid').focus();
+                    alert('Full payment amount must be recorded as Paid, not Partially Paid.');
+                    return false;
+                }
+                if (!isFullPayment && maxDue > 0 && status === 'Paid') {
+                    e.preventDefault();
+                    $('#status').addClass('is-invalid').focus();
+                    alert('Partial payment amount must be recorded as Partially Paid, not Paid.');
+                    return false;
                 }
             });
 
-            // Filter schedules based on selected customer's plan
-            $('#customerId').on('change', function() {
-                var selectedPlan = $(this).find('option:selected').data('plan');
-                
-                $('#scheduleId option').each(function() {
-                    var schedulePlan = $(this).data('plan');
-                    
-                    if ($(this).val() === '') {
-                        $(this).show();
-                    } else if (selectedPlan && schedulePlan === selectedPlan) {
-                        $(this).show();
-                    } else if (!selectedPlan) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-                
-                // Reset schedule selection
-                $('#scheduleId').val('');
-                $('#scheduleInfo').hide();
-                $('#amount').val('');
-                $('#amountHint').text('Enter the payment amount');
+            // Payment method placeholder
+            $('#method').on('change', function() {
+                var method = $(this).val();
+                var refInput = $('#referenceNo');
+                var refHint = $('#refHint');
+                if (method === 'Cash') refInput.attr('placeholder', 'Receipt Number (optional)');
+                else if (method === 'DD/DS') refInput.attr('placeholder', 'DD/DS Reference Number');
+                else if (method === 'Bank Transfer') refInput.attr('placeholder', 'Transaction Reference Number');
+                else if (method === 'Cheque') refInput.attr('placeholder', 'Cheque Number');
+                else if (method === 'Online') refInput.attr('placeholder', 'Online Transaction ID');
+                else if (method === 'Mobile Money') refInput.attr('placeholder', 'Mobile Money Transaction ID');
+                else refInput.attr('placeholder', 'Transaction/Receipt/Cheque Number');
             });
+            $('#method').trigger('change'); // set default DD/DS placeholder on load
 
-            // Trigger change if pre-selected
+            // Pre-fill from URL (e.g. from Payment Schedule link)
             @if (!string.IsNullOrEmpty(preSelectedCustomerId))
             {
                 <text>
-                $('#customerId').trigger('change');
-                </text>
-            }
-            @if (!string.IsNullOrEmpty(preSelectedScheduleId))
-            {
-                <text>
-                $('#scheduleId').val('@preSelectedScheduleId');
-                $('#scheduleId').trigger('change');
+                $('#customerIdInput').val('@Html.Raw(System.Net.WebUtility.HtmlEncode(preSelectedCustomerId))');
+                $('#btnSearchCustomer').click();
                 </text>
             }
         });

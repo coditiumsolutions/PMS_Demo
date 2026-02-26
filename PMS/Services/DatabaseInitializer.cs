@@ -1,4 +1,5 @@
 using PMS.Data;
+using Microsoft.EntityFrameworkCore;
 using PMS.Services;
 
 namespace PMS.Services
@@ -14,8 +15,8 @@ namespace PMS.Services
             try
             {
                 // Apply pending migrations and create database if it doesn't exist
-                await context.Database.MigrateAsync();
-                
+                context.Database.Migrate();
+
                 // Seed initial data
                 await seedService.SeedAsync();
             }

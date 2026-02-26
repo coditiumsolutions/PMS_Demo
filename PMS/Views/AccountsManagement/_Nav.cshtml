@@ -1,0 +1,20 @@
+@{
+    var action = ViewContext.RouteData.Values["Action"]?.ToString() ?? "";
+    string active(string a) => action == a ? "active" : "";
+}
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-sm btn-outline-primary @active("Index")" asp-controller="AccountsManagement" asp-action="Index">
+        <i class="fas fa-chart-pie me-1"></i>Overview
+    </a>
+    <a class="btn btn-sm btn-outline-primary @active("BankWiseCollections")" asp-controller="AccountsManagement" asp-action="BankWiseCollections">
+        <i class="fas fa-university me-1"></i>Bank-wise Collections
+    </a>
+    <a class="btn btn-sm btn-outline-primary @active("ReceivablesThisMonth")" asp-controller="AccountsManagement" asp-action="ReceivablesThisMonth">
+        <i class="fas fa-calendar-check me-1"></i>Receivables This Month
+    </a>
+    <a class="btn btn-sm btn-outline-primary @active("OverdueAging")" asp-controller="AccountsManagement" asp-action="OverdueAging">
+        <i class="fas fa-hourglass-half me-1"></i>Overdue Aging
+    </a>
+</div>
+

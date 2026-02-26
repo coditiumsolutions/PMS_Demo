@@ -87,12 +87,10 @@ namespace PMS.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("AllottedBy")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("AllottmentType")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -104,17 +102,14 @@ namespace PMS.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CustomerID")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("PropertyID")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("WorkFlowStatus")
-                        .IsRequired()
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
@@ -192,8 +187,8 @@ namespace PMS.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("RefID")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("RefType")
                         .HasMaxLength(50)
@@ -241,6 +236,52 @@ namespace PMS.Migrations
                     b.HasIndex("ProjectID");
 
                     b.ToTable("Balloting");
+                });
+
+            modelBuilder.Entity("PMS.Models.BlockingLog", b =>
+                {
+                    b.Property<int>("BlockingLogID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BlockingLogID"));
+
+                    b.Property<DateTime>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AttachmentPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("CustomerID")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("NewStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserID")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("BlockingLogID");
+
+                    b.HasIndex("CustomerID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("BlockingLogs");
                 });
 
             modelBuilder.Entity("PMS.Models.Configuration", b =>
@@ -291,10 +332,12 @@ namespace PMS.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("City")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Country")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -305,8 +348,11 @@ namespace PMS.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("DealerID")
-                        .IsRequired()
                         .HasColumnType("int");
+
+                    b.Property<string>("DealerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Email")
                         .HasMaxLength(150)
@@ -324,7 +370,12 @@ namespace PMS.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("IsDealerRegistered")
+                        .HasColumnType("int")
+                        .HasColumnName("isDealerRegistered");
+
                     b.Property<string>("MailingAddress")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -365,12 +416,10 @@ namespace PMS.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PlanID")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("ProjectID")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
@@ -379,17 +428,14 @@ namespace PMS.Migrations
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("RegisteredSize")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Status")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("SubProject")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -466,6 +512,9 @@ namespace PMS.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<double>("IncentivePercentage")
+                        .HasColumnType("float");
+
                     b.Property<string>("MembershipType")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -514,8 +563,18 @@ namespace PMS.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<bool>("AllPaymentClear")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Comments")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("CustomerID")
                         .HasMaxLength(10)
@@ -523,6 +582,9 @@ namespace PMS.Migrations
 
                     b.Property<DateTime>("IssuedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("NDCExpiryDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("NDCType")
                         .HasMaxLength(100)
@@ -535,6 +597,12 @@ namespace PMS.Migrations
                     b.Property<string>("Title")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("TotalDueAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("TotalDueInstallments")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("WorkFlowStatus")
                         .HasMaxLength(500)
@@ -583,20 +651,39 @@ namespace PMS.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("AuditRemarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AuditStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<DateTime?>("AuditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AuditedBy")
+                        .HasMaxLength(10)
+                        .HasColumnType("char(10)");
+
                     b.Property<string>("CustomerID")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("Method")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("PaymentMethod");
 
                     b.Property<DateTime>("PaymentDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ReferenceNo")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("ReferenceNumber");
 
                     b.Property<string>("Remarks")
                         .HasMaxLength(255)
@@ -611,6 +698,8 @@ namespace PMS.Migrations
                         .HasColumnType("nvarchar(250)");
 
                     b.HasKey("PaymentID");
+
+                    b.HasIndex("AuditedBy");
 
                     b.HasIndex("CustomerID");
 
@@ -629,7 +718,6 @@ namespace PMS.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Currency")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
@@ -799,6 +887,14 @@ namespace PMS.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("PropertyTypes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Sizes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Type")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -826,6 +922,10 @@ namespace PMS.Migrations
 
                     b.Property<int?>("DealerID")
                         .HasColumnType("int");
+
+                    b.Property<string>("Floor")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PlotNo")
                         .HasMaxLength(50)
@@ -978,33 +1078,63 @@ namespace PMS.Migrations
                 {
                     b.Property<string>("RefundID")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("char(10)");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("ApprovedBy")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("char(10)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(10)
+                        .HasColumnType("char(10)");
+
                     b.Property<string>("CustomerID")
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("char(10)");
+
+                    b.Property<decimal>("DeductionAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("RefundType")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("RefundedAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SelectedPaymentIDs")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WorkflowStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("Initiated");
 
                     b.HasKey("RefundID");
 
                     b.HasIndex("ApprovedBy");
+
+                    b.HasIndex("CreatedBy");
 
                     b.HasIndex("CustomerID");
 
@@ -1032,52 +1162,353 @@ namespace PMS.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("PassportNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("ProjectID")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Size")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Status")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
                     b.HasKey("RegID");
 
+                    b.HasIndex("ProjectID");
+
                     b.ToTable("Registration");
+                });
+
+            modelBuilder.Entity("PMS.Models.Rental", b =>
+                {
+                    b.Property<string>("RentalID")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("AdvanceRent")
+                        .IsRequired()
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("PKR");
+
+                    b.Property<int>("DurationMonths")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("MonthlyRent")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PaymentDueDayOfMonth")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<string>("PropertyID")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("char(10)");
+
+                    b.Property<decimal?>("SecurityDeposit")
+                        .IsRequired()
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Active");
+
+                    b.Property<string>("TenantAddress")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("TenantCNIC")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TenantEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TenantName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TenantPhone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("RentalID");
+
+                    b.HasIndex("PropertyID")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Active'");
+
+                    b.HasIndex("Status", "StartDate");
+
+                    b.ToTable("Rental");
+                });
+
+            modelBuilder.Entity("PMS.Models.RentalPayment", b =>
+                {
+                    b.Property<string>("RentalPaymentID")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("AmountDue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("BillingMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BillingYear")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("PaidOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ReferenceNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("RentalID")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
+                    b.HasKey("RentalPaymentID");
+
+                    b.HasIndex("RentalID");
+
+                    b.HasIndex("BillingYear", "BillingMonth");
+
+                    b.HasIndex("Status", "DueDate");
+
+                    b.ToTable("RentalPayments");
+                });
+
+            modelBuilder.Entity("PMS.Models.Ticket", b =>
+                {
+                    b.Property<string>("TicketID")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("AssignedTo")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("CROComments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Contact")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("CustomerID")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("TicketClosingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("TicketID");
+
+                    b.ToTable("Tickets");
                 });
 
             modelBuilder.Entity("PMS.Models.Transfer", b =>
                 {
                     b.Property<string>("TransferID")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AccountsComments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BuyerAddress")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerAttachments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BuyerBiometric")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BuyerCNIC")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerCity")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerContact")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerCountry")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerFatherName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerPassportNo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CROComments")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("FromCustomerID")
+                    b.Property<string>("CustomerID")
+                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<string>("PropertyID")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Status")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<string>("PaymentChallanNo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("ToCustomerID")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<DateTime?>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentMode")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SellerAddress")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SellerAttachments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SellerBiometric")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SellerCNIC")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SellerContact")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SellerFatherName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SellerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TransferComments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("TransferFeeDue")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("TransferFeePaid")
+                        .HasColumnType("float");
+
+                    b.Property<string>("WorkFlowStatus")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("TransferID");
 
-                    b.HasIndex("FromCustomerID");
-
-                    b.HasIndex("PropertyID");
-
-                    b.HasIndex("ToCustomerID");
+                    b.HasIndex("CustomerID");
 
                     b.ToTable("Transfer");
                 });
@@ -1090,6 +1521,14 @@ namespace PMS.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Designation")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("Email")
                         .HasMaxLength(150)
@@ -1110,6 +1549,10 @@ namespace PMS.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<string>("UserType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("UserID");
 
                     b.HasIndex("Email")
@@ -1119,6 +1562,28 @@ namespace PMS.Migrations
                     b.HasIndex("RoleID");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("PMS.Models.UserModulePermission", b =>
+                {
+                    b.Property<string>("UserID")
+                        .HasMaxLength(10)
+                        .HasColumnType("char(10)")
+                        .HasColumnOrder(0);
+
+                    b.Property<string>("ModuleKey")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnOrder(1);
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("UserID", "ModuleKey");
+
+                    b.ToTable("UserModulePermission");
                 });
 
             modelBuilder.Entity("PMS.Models.UserSession", b =>
@@ -1200,20 +1665,17 @@ namespace PMS.Migrations
                     b.HasOne("PMS.Models.User", "AllottedByUser")
                         .WithMany()
                         .HasForeignKey("AllottedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PMS.Models.Customer", "Customer")
                         .WithMany("Allotments")
                         .HasForeignKey("CustomerID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PMS.Models.Property", "Property")
                         .WithMany("Allotments")
                         .HasForeignKey("PropertyID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("AllottedByUser");
 
@@ -1248,6 +1710,25 @@ namespace PMS.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("PMS.Models.BlockingLog", b =>
+                {
+                    b.HasOne("PMS.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PMS.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PMS.Models.Configuration", b =>
                 {
                     b.HasOne("PMS.Models.User", "UpdatedByUser")
@@ -1263,20 +1744,16 @@ namespace PMS.Migrations
                     b.HasOne("PMS.Models.Dealer", "Dealer")
                         .WithMany("Customers")
                         .HasForeignKey("DealerID")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("PMS.Models.PaymentPlan", "PaymentPlan")
                         .WithMany("Customers")
                         .HasForeignKey("PlanID")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("PMS.Models.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("ProjectID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ProjectID");
 
                     b.HasOne("PMS.Models.Registration", "Registration")
                         .WithMany("Customers")
@@ -1324,6 +1801,11 @@ namespace PMS.Migrations
 
             modelBuilder.Entity("PMS.Models.Payment", b =>
                 {
+                    b.HasOne("PMS.Models.User", "AuditedByUser")
+                        .WithMany()
+                        .HasForeignKey("AuditedBy")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("PMS.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerID")
@@ -1333,6 +1815,8 @@ namespace PMS.Migrations
                         .WithMany("Payments")
                         .HasForeignKey("ScheduleID")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AuditedByUser");
 
                     b.Navigation("Customer");
 
@@ -1425,7 +1909,12 @@ namespace PMS.Migrations
                     b.HasOne("PMS.Models.User", "ApprovedByUser")
                         .WithMany()
                         .HasForeignKey("ApprovedBy")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("PMS.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("PMS.Models.Customer", "Customer")
                         .WithMany("Refunds")
@@ -1434,31 +1923,52 @@ namespace PMS.Migrations
 
                     b.Navigation("ApprovedByUser");
 
+                    b.Navigation("CreatedByUser");
+
                     b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("PMS.Models.Registration", b =>
+                {
+                    b.HasOne("PMS.Models.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("PMS.Models.Rental", b =>
+                {
+                    b.HasOne("PMS.Models.Property", "Property")
+                        .WithMany("Rentals")
+                        .HasForeignKey("PropertyID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("PMS.Models.RentalPayment", b =>
+                {
+                    b.HasOne("PMS.Models.Rental", "Rental")
+                        .WithMany("RentalPayments")
+                        .HasForeignKey("RentalID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rental");
                 });
 
             modelBuilder.Entity("PMS.Models.Transfer", b =>
                 {
-                    b.HasOne("PMS.Models.Customer", "FromCustomer")
-                        .WithMany("FromTransfers")
-                        .HasForeignKey("FromCustomerID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("PMS.Models.Property", "Property")
+                    b.HasOne("PMS.Models.Customer", "Customer")
                         .WithMany("Transfers")
-                        .HasForeignKey("PropertyID")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("CustomerID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
-                    b.HasOne("PMS.Models.Customer", "ToCustomer")
-                        .WithMany("ToTransfers")
-                        .HasForeignKey("ToCustomerID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("FromCustomer");
-
-                    b.Navigation("Property");
-
-                    b.Navigation("ToCustomer");
+                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("PMS.Models.User", b =>
@@ -1469,6 +1979,17 @@ namespace PMS.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("PMS.Models.UserModulePermission", b =>
+                {
+                    b.HasOne("PMS.Models.User", "User")
+                        .WithMany("ModulePermissions")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PMS.Models.UserSession", b =>
@@ -1504,8 +2025,6 @@ namespace PMS.Migrations
 
                     b.Navigation("CustomerLogs");
 
-                    b.Navigation("FromTransfers");
-
                     b.Navigation("NDCs");
 
                     b.Navigation("Penalties");
@@ -1514,7 +2033,7 @@ namespace PMS.Migrations
 
                     b.Navigation("Refunds");
 
-                    b.Navigation("ToTransfers");
+                    b.Navigation("Transfers");
 
                     b.Navigation("Waivers");
                 });
@@ -1555,7 +2074,7 @@ namespace PMS.Migrations
 
                     b.Navigation("PropertyLogs");
 
-                    b.Navigation("Transfers");
+                    b.Navigation("Rentals");
                 });
 
             modelBuilder.Entity("PMS.Models.Registration", b =>
@@ -1563,9 +2082,16 @@ namespace PMS.Migrations
                     b.Navigation("Customers");
                 });
 
+            modelBuilder.Entity("PMS.Models.Rental", b =>
+                {
+                    b.Navigation("RentalPayments");
+                });
+
             modelBuilder.Entity("PMS.Models.User", b =>
                 {
                     b.Navigation("ActivityLogs");
+
+                    b.Navigation("ModulePermissions");
 
                     b.Navigation("Notifications");
 

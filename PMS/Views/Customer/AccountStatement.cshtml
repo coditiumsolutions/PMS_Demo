@@ -35,7 +35,7 @@
         <div class="a4-header text-center">
             <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
             <div class="a4-title">Account Statement</div>
-            <div class="a4-subtitle">JUBA Smart City Property Management System</div>
+            <div class="a4-subtitle">ZKB - Property Management System</div>
             <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy")</div>
         </div>
 
@@ -80,7 +80,7 @@
                     </div>
                     <div class="a4-info-row">
                         <span class="a4-info-label">Total Amount:</span>
-                        <span class="a4-info-value">@(plan != null ? plan.TotalAmount.ToString("N0") + " SSP" : "-")</span>
+                        <span class="a4-info-value">@(plan != null ? plan.TotalAmount.ToString("N0") + " " + (plan.Currency ?? "PKR") : "-")</span>
                     </div>
                 </div>
             </div>
@@ -225,7 +225,7 @@
         <div class="a4-footer">
             <div>This is a system generated report and does not require a signature.</div>
             <div style="margin-top: 10px;">
-                <strong>JUBA Smart City Property Management System</strong><br>
+                <strong>ZKB - Property Management System</strong><br>
                 Generated on: @DateTime.Now.ToString("MMMM dd, yyyy at hh:mm tt")
             </div>
         </div>

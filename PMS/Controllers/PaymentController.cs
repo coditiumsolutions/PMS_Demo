@@ -3,24 +3,47 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 
 namespace PMS.Controllers
 {
     [Authorize]
     public class PaymentController : Controller
     {
+        private const string ModuleKey = "Payment";
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public PaymentController(PMSDbContext context)
+        public PaymentController(PMSDbContext context, IModulePermissionService modulePermission)
         {
             _context = context;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         public async Task<IActionResult> Index()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var payments = await _context.Payments
                 .Include(p => p.PaymentSchedule)
                     .ThenInclude(ps => ps.PaymentPlan)
@@ -31,6 +54,8 @@ namespace PMS.Controllers
         // Payment Plans (Batches) Management
         public async Task<IActionResult> PaymentPlans()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var paymentPlans = await _context.PaymentPlans
                 .Include(pp => pp.Project)
                 .Include(pp => pp.Customers)
@@ -42,6 +67,8 @@ namespace PMS.Controllers
         // Payment Schedules (Installments) Management
         public async Task<IActionResult> Schedules()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var schedules = await _context.PaymentSchedules
                 .Include(ps => ps.PaymentPlan)
                     .ThenInclude(pp => pp.Customers)
@@ -54,6 +81,8 @@ namespace PMS.Controllers
         // Customer Payments - All payments received from customers  
         public async Task<IActionResult> CustomerPayments(string customerId = null)
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             // If customerId is provided, show specific customer
             if (!string.IsNullOrEmpty(customerId))
             {
@@ -83,8 +112,33 @@ namespace PMS.Controllers
             return View(payments);
         }
 
+        /// <summary>Print-friendly payment receipt. Opens in new tab for printing.</summary>
+        [HttpGet]
+        public async Task<IActionResult> Receipt(string id)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(id))
+                return NotFound();
+
+            var payment = await _context.Payments
+                .Include(p => p.Customer)
+                .Include(p => p.PaymentSchedule)
+                    .ThenInclude(ps => ps!.PaymentPlan)
+                        .ThenInclude(pp => pp!.Project)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PaymentID == id);
+
+            if (payment == null)
+                return NotFound();
+
+            return View(payment);
+        }
+
         public async Task<IActionResult> PaymentSchedule(string planId)
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             if (string.IsNullOrEmpty(planId))
             {
                 return NotFound();
@@ -103,96 +157,243 @@ namespace PMS.Controllers
             return View(paymentPlan);
         }
 
+        /// <summary>
+        /// AJAX: Returns customer info and due installments for the Record Payment form. Call after user enters Customer ID and clicks Search.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerPaymentInfo(string customerId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            // #region agent log
+            var _logPath = @"d:\PMS\PMS\PMS\.cursor\debug.log";
+            void _agentLog(string hypothesisId, string message, object? data = null)
+            {
+                try
+                {
+                    var payload = new { runId = "run1", hypothesisId, location = "PaymentController.GetCustomerPaymentInfo", message, data, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() };
+                    System.IO.File.AppendAllText(_logPath, JsonSerializer.Serialize(payload) + Environment.NewLine);
+                }
+                catch { }
+            }
+            // #endregion
+
+            _agentLog("H1", "GetCustomerPaymentInfo entry", new { customerId, trimmed = customerId?.Trim() });
+
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                _agentLog("H1", "Return: empty customerId");
+                return Json(new { found = false, message = "Please enter a Customer ID." });
+            }
+
+            try
+            {
+                var customer = await _context.Customers
+                    .AsNoTracking()
+                    .Where(c => c.CustomerID == customerId.Trim() && (c.Status ?? "Active") == "Active")
+                    .Select(c => new { c.CustomerID, c.FullName, c.PlanID })
+                    .FirstOrDefaultAsync();
+
+                _agentLog("H1", "Customer lookup result", customer == null ? new { found = false } : new { found = true, planId = customer.PlanID });
+
+                if (customer == null)
+                {
+                    _agentLog("H1", "Return: customer not found");
+                    return Json(new { found = false, message = "Customer not found or inactive." });
+                }
+
+                if (string.IsNullOrWhiteSpace(customer.PlanID))
+                {
+                    _agentLog("H1", "Return: no plan");
+                    return Json(new { found = false, message = "Customer has no payment plan assigned." });
+                }
+
+                _agentLog("H4", "Before schedules query", new { planId = customer.PlanID });
+
+                // Load schedules without Payments nav to avoid selecting new audit columns (works when DB has no CreatedBy/CreatedAt/LastModified yet)
+                var schedules = await _context.PaymentSchedules
+                    .AsNoTracking()
+                    .Include(ps => ps.PaymentPlan)
+                    .Where(ps => ps.PlanID == customer.PlanID)
+                    .OrderBy(ps => ps.DueDate)
+                    .ToListAsync();
+
+                var scheduleIds = schedules.Select(ps => ps.ScheduleID).ToList();
+                var customerIdTrimmed = customerId.Trim();
+                // Only sum payments made by this customer for each schedule (not all customers)
+                var paidBySchedule = await _context.Payments
+                    .AsNoTracking()
+                    .Where(p => scheduleIds.Contains(p.ScheduleID) && p.CustomerID == customerIdTrimmed)
+                    .GroupBy(p => p.ScheduleID)
+                    .Select(g => new { ScheduleID = g.Key, TotalPaid = g.Sum(p => p.Amount) })
+                    .ToListAsync();
+                var paidLookup = paidBySchedule.ToDictionary(x => x.ScheduleID!, x => x.TotalPaid);
+
+                var dueSchedules = schedules
+                    .Select(ps =>
+                    {
+                        var paid = paidLookup.TryGetValue(ps.ScheduleID, out var p) ? p : 0m;
+                        var outstanding = Math.Max(0m, ps.Amount - paid);
+                        return new
+                        {
+                            scheduleId = ps.ScheduleID,
+                            planName = ps.PaymentPlan?.PlanName,
+                            paymentDescription = ps.PaymentDescription,
+                            installmentNo = ps.InstallmentNo,
+                            dueDate = ps.DueDate.ToString("MMM dd, yyyy"),
+                            isOverdue = ps.DueDate.Date < DateTime.Today,
+                            amount = ps.Amount,
+                            paid = paid,
+                            outstanding = outstanding,
+                            surchargeApplied = ps.SurchargeApplied,
+                            surchargeRate = ps.SurchargeRate
+                        };
+                    })
+                    .Where(x => x.outstanding > 0)
+                    .ToList();
+
+                _agentLog("H4", "Return: found true", new { scheduleCount = dueSchedules.Count });
+                return Json(new
+                {
+                    found = true,
+                    customerId = customer.CustomerID,
+                    fullName = string.IsNullOrWhiteSpace(customer.FullName) ? "(No Name)" : customer.FullName,
+                    schedules = dueSchedules
+                });
+            }
+            catch (Exception ex)
+            {
+                _agentLog("H1", "Exception", new { exType = ex.GetType().FullName, exMessage = ex.Message });
+                throw;
+            }
+        }
+
         public async Task<IActionResult> RecordPayment(string scheduleId = null, string customerId = null)
         {
-            var customers = await _context.Customers
-                .Where(c => c.Status == "Active")
-                .OrderBy(c => c.FullName)
-                .ToListAsync();
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            // Pre-fill from link (e.g. from Payment Schedule page): load schedule for info card and pass IDs for view to run search on load
+            ViewBag.PreSelectedCustomerId = null;
+            ViewBag.PreSelectedScheduleId = null;
+            ViewBag.Schedule = null;
+            ViewBag.ScheduleOutstanding = 0m;
 
-            ViewBag.Customers = customers;
-
-            var allSchedules = await _context.PaymentSchedules
-                .Include(ps => ps.PaymentPlan)
-                    .ThenInclude(pp => pp.Customers)
-                .Include(ps => ps.Payments)
-                .OrderBy(ps => ps.DueDate)
-                .ToListAsync();
-
-            PaymentSchedule? preSelectedSchedule = null;
-
-            if (!string.IsNullOrEmpty(scheduleId))
+            if (!string.IsNullOrWhiteSpace(scheduleId))
             {
-                preSelectedSchedule = allSchedules.FirstOrDefault(ps => ps.ScheduleID == scheduleId);
-
-                if (preSelectedSchedule == null)
-                {
-                    preSelectedSchedule = await _context.PaymentSchedules
-                        .Include(ps => ps.PaymentPlan)
-                            .ThenInclude(pp => pp.Customers)
-                        .Include(ps => ps.Payments)
-                        .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
-
-                    if (preSelectedSchedule != null)
-                    {
-                        allSchedules.Add(preSelectedSchedule);
-                    }
-                }
+                var preSelectedSchedule = await _context.PaymentSchedules
+                    .AsNoTracking()
+                    .Include(ps => ps.PaymentPlan)
+                    .Include(ps => ps.Payments)
+                    .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
 
                 if (preSelectedSchedule != null)
                 {
                     ViewBag.Schedule = preSelectedSchedule;
                     ViewBag.PreSelectedScheduleId = scheduleId;
-
-                    var scheduleCustomer = preSelectedSchedule.PaymentPlan?.Customers?.FirstOrDefault();
-                    if (scheduleCustomer != null)
-                    {
-                        ViewBag.PreSelectedCustomerId = scheduleCustomer.CustomerID;
-                    }
-
                     var paidAmount = preSelectedSchedule.Payments?.Sum(p => p.Amount) ?? 0m;
                     ViewBag.ScheduleOutstanding = Math.Max(0m, preSelectedSchedule.Amount - paidAmount);
+
+                    if (!string.IsNullOrWhiteSpace(preSelectedSchedule.PlanID))
+                    {
+                        var preSelectedCustomerId = await _context.Customers
+                            .AsNoTracking()
+                            .Where(c => c.PlanID == preSelectedSchedule.PlanID && (c.Status ?? "Active") == "Active")
+                            .OrderBy(c => c.CustomerID)
+                            .Select(c => c.CustomerID)
+                            .FirstOrDefaultAsync();
+                        if (!string.IsNullOrWhiteSpace(preSelectedCustomerId))
+                            ViewBag.PreSelectedCustomerId = preSelectedCustomerId;
+                    }
                 }
             }
-            else if (!string.IsNullOrEmpty(customerId))
+            else if (!string.IsNullOrWhiteSpace(customerId))
             {
                 ViewBag.PreSelectedCustomerId = customerId;
             }
 
-            var unpaidSchedules = allSchedules
-                .Where(ps =>
-                {
-                    var paid = ps.Payments?.Sum(p => p.Amount) ?? 0m;
-                    return ps.Amount > paid;
-                })
-                .ToList();
-
-            if (preSelectedSchedule != null && !unpaidSchedules.Any(ps => ps.ScheduleID == preSelectedSchedule.ScheduleID))
-            {
-                unpaidSchedules.Add(preSelectedSchedule);
-            }
-
-            ViewBag.PaymentSchedules = unpaidSchedules
-                .OrderBy(ps => ps.DueDate)
-                .ToList();
+            ViewBag.PaymentStatuses = new List<string> { "Pending", "Paid", "Partially Paid" };
 
             return View();
         }
 
+        // Backward-compatible route alias for mistyped/deployed links.
+        [HttpGet]
+        public IActionResult RecordPaymentv(string scheduleId = null, string customerId = null)
+        {
+            return RedirectToAction(nameof(RecordPayment), new { scheduleId, customerId });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RecordPayment(string customerId, string scheduleId, decimal amount, string method, string referenceNo, string remarks, string status = "Completed")
+        public async Task<IActionResult> RecordPayment(string customerId, string scheduleId, decimal amount, string method, string referenceNo, string remarks, string status = "Paid")
         {
-            if (string.IsNullOrEmpty(customerId) || string.IsNullOrEmpty(scheduleId) || amount <= 0)
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(customerId) || string.IsNullOrWhiteSpace(scheduleId))
             {
-                TempData["Error"] = "Please fill all required fields.";
+                TempData["Error"] = "Customer and installment are required. Search by Customer ID first and select an installment.";
                 return RedirectToAction(nameof(RecordPayment));
+            }
+
+            if (amount <= 0)
+            {
+                TempData["Error"] = "Amount must be greater than zero.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+
+            var customer = await _context.Customers
+                .AsNoTracking()
+                .Where(c => c.CustomerID == customerId.Trim() && (c.Status ?? "Active") == "Active")
+                .Select(c => new { c.CustomerID, c.PlanID })
+                .FirstOrDefaultAsync();
+
+            if (customer == null)
+            {
+                TempData["Error"] = "Customer not found or inactive. Please search again.";
+                return RedirectToAction(nameof(RecordPayment));
+            }
+
+            var schedule = await _context.PaymentSchedules
+                .AsNoTracking()
+                .Include(ps => ps.Payments)
+                .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
+
+            if (schedule == null)
+            {
+                TempData["Error"] = "Installment not found.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId });
+            }
+
+            if (schedule.PlanID != customer.PlanID)
+            {
+                TempData["Error"] = "Selected installment does not belong to this customer's plan.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId });
+            }
+
+            var paidSoFar = schedule.Payments?.Where(p => p.CustomerID == customerId.Trim()).Sum(p => p.Amount) ?? 0m;
+            var totalDue = Math.Max(0m, schedule.Amount - paidSoFar);
+            if (amount > totalDue)
+            {
+                TempData["Error"] = $"Amount Received (PKR {amount:N2}) must not exceed Total Due for this installment (PKR {totalDue:N2}). You can record multiple partial payments.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+
+            var isFullPayment = (amount >= totalDue);
+            if (isFullPayment && string.Equals(status, "Partially Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "When paying the full amount (Total Due = Total Paid), status cannot be Partially Paid. Use Paid.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+            if (!isFullPayment && string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "When paying a partial amount (Total Due ≠ Total Paid), status cannot be Paid. Use Partially Paid.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
             }
 
             var payment = new Payment
             {
                 PaymentID = GenerateID(),
-                CustomerID = customerId,
+                CustomerID = customerId.Trim(),
                 ScheduleID = scheduleId,
                 PaymentDate = DateTime.Now,
                 Amount = amount,
@@ -206,20 +407,286 @@ namespace PMS.Controllers
             await _context.SaveChangesAsync();
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
-                await LogActivity(userId, "Record Payment", "Payment", payment.PaymentID);
+                var actionText = string.IsNullOrEmpty(userName)
+                    ? "Record Payment"
+                    : $"Record Payment - {userName}";
+                await LogActivity(userId, actionText, "Payment", payment.PaymentID);
             }
 
-            TempData["Success"] = "Payment recorded successfully!";
+            TempData["Success"] = $"Payment of PKR {amount:N2} recorded. Outstanding for this installment: PKR {totalDue - amount:N2}. You can record another payment if needed.";
+            return RedirectToAction(nameof(RecordPayment), new { customerId = customerId.Trim(), scheduleId });
+        }
+
+        // ─── Multiple Payments ────────────────────────────────────────────────────
+
+        [HttpGet]
+        public async Task<IActionResult> MultiplePayments(string? customerId = null)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            ViewBag.PreSelectedCustomerId = customerId;
+            return View();
+        }
+
+        public class MultiPaymentRow
+        {
+            public string? ScheduleId { get; set; }
+            public decimal Amount { get; set; }
+        }
+
+        public class MultiPaymentRequest
+        {
+            public string? CustomerId { get; set; }
+            public decimal TotalAmount { get; set; }
+            public string? ReferenceNo { get; set; }
+            public string? Method { get; set; }
+            public string? Remarks { get; set; }
+            public DateTime PaymentDate { get; set; }
+            public List<MultiPaymentRow>? Payments { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MultiplePayments([FromBody] MultiPaymentRequest request)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.CustomerId))
+                    return Json(new { success = false, message = "Customer ID is required." });
+
+                if (request.Payments == null || !request.Payments.Any(p => p.Amount > 0))
+                    return Json(new { success = false, message = "At least one payment row with amount > 0 is required." });
+
+                var rows = request.Payments.Where(p => p.Amount > 0).ToList();
+
+                // Validate sum equals total
+                var sumRows = rows.Sum(p => p.Amount);
+                if (Math.Abs(sumRows - request.TotalAmount) > 0.01m)
+                    return Json(new { success = false, message = $"Sum of installment amounts (PKR {sumRows:N2}) must equal Total Payment (PKR {request.TotalAmount:N2})." });
+
+                var customer = await _context.Customers.AsNoTracking()
+                    .Where(c => c.CustomerID == request.CustomerId.Trim() && (c.Status ?? "Active") == "Active")
+                    .Select(c => new { c.CustomerID, c.PlanID })
+                    .FirstOrDefaultAsync();
+
+                if (customer == null)
+                    return Json(new { success = false, message = "Customer not found or inactive." });
+
+                var scheduleIds = rows.Select(r => r.ScheduleId).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+
+                var schedules = await _context.PaymentSchedules.AsNoTracking()
+                    .Include(ps => ps.Payments)
+                    .Where(ps => scheduleIds.Contains(ps.ScheduleID) && ps.PlanID == customer.PlanID)
+                    .ToListAsync();
+
+                if (schedules.Count != scheduleIds.Count)
+                    return Json(new { success = false, message = "One or more selected installments do not belong to this customer's plan." });
+
+                var paymentDate = request.PaymentDate == default ? DateTime.Now : request.PaymentDate;
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
+                var savedIds = new List<string>();
+
+                foreach (var row in rows)
+                {
+                    var schedule = schedules.First(s => s.ScheduleID == row.ScheduleId);
+                    var paidSoFar = schedule.Payments?.Where(p => p.CustomerID == request.CustomerId.Trim()).Sum(p => p.Amount) ?? 0m;
+                    var outstanding = Math.Max(0m, schedule.Amount - paidSoFar);
+
+                    if (row.Amount > outstanding + 0.01m)
+                        return Json(new { success = false, message = $"Amount for Installment #{schedule.InstallmentNo} (PKR {row.Amount:N2}) exceeds outstanding (PKR {outstanding:N2})." });
+
+                    var isFullPayment = row.Amount >= outstanding - 0.01m;
+                    var status = isFullPayment ? "Paid" : "Partially Paid";
+
+                    var payment = new Payment
+                    {
+                        PaymentID   = GenerateID(),
+                        CustomerID  = request.CustomerId.Trim(),
+                        ScheduleID  = row.ScheduleId,
+                        PaymentDate = paymentDate,
+                        Amount      = row.Amount,
+                        Method      = request.Method,
+                        ReferenceNo = request.ReferenceNo,
+                        Status      = status,
+                        Remarks     = request.Remarks
+                    };
+
+                    _context.Payments.Add(payment);
+                    savedIds.Add(payment.PaymentID);
+                }
+
+                await _context.SaveChangesAsync();
+
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var actionText = string.IsNullOrEmpty(userName)
+                        ? $"Record Multiple Payments ({rows.Count} installments)"
+                        : $"Record Multiple Payments ({rows.Count} installments) - {userName}";
+                    foreach (var pid in savedIds)
+                        await LogActivity(userId, actionText, "Payment", pid);
+                }
+
+                return Json(new { success = true, count = savedIds.Count, message = $"{savedIds.Count} payment(s) recorded successfully (PKR {sumRows:N2} total)." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePayment(string paymentId)
+        {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(paymentId))
+            {
+                TempData["Error"] = "Payment ID is required.";
+                return RedirectToAction(nameof(CustomerPayments));
+            }
+
+            var payment = await _context.Payments.FindAsync(paymentId);
+            if (payment == null)
+            {
+                TempData["Error"] = "Payment not found.";
+                return RedirectToAction(nameof(CustomerPayments));
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var actionText = $"Delete Payment. CustomerID: {payment.CustomerID ?? ""}";
+                await LogActivity(userId, actionText, "Payment", payment.PaymentID);
+            }
+
+            _context.Payments.Remove(payment);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Payment deleted successfully.";
+            return RedirectToAction(nameof(CustomerPayments));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditPayment(string paymentId)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(paymentId))
+            {
+                TempData["Error"] = "Payment ID is required.";
+                return RedirectToAction(nameof(CustomerPayments));
+            }
+
+            var payment = await _context.Payments
+                .Include(p => p.Customer)
+                .Include(p => p.PaymentSchedule)
+                    .ThenInclude(ps => ps.PaymentPlan)
+                .FirstOrDefaultAsync(p => p.PaymentID == paymentId);
+
+            if (payment == null)
+            {
+                TempData["Error"] = "Payment not found.";
+                return RedirectToAction(nameof(CustomerPayments));
+            }
+
+            if (payment.PaymentSchedule != null)
+            {
+                var otherPaymentsSum = await _context.Payments
+                    .Where(p => p.ScheduleID == payment.ScheduleID && p.PaymentID != paymentId)
+                    .SumAsync(p => p.Amount);
+                ViewBag.MaxAmount = payment.PaymentSchedule.Amount - otherPaymentsSum;
+            }
+            else
+            {
+                ViewBag.MaxAmount = payment.Amount;
+            }
+
+            ViewBag.PaymentStatuses = new List<string> { "Pending", "Paid", "Partially Paid" };
+
+            return View(payment);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPayment(string paymentId, DateTime paymentDate, decimal amount, string method, string referenceNo, string status, string remarks)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(paymentId))
+            {
+                TempData["Error"] = "Payment ID is required.";
+                return RedirectToAction(nameof(CustomerPayments));
+            }
+
+            var payment = await _context.Payments
+                .Include(p => p.PaymentSchedule)
+                    .ThenInclude(ps => ps.PaymentPlan)
+                .FirstOrDefaultAsync(p => p.PaymentID == paymentId);
+
+            if (payment == null)
+            {
+                TempData["Error"] = "Payment not found.";
+                return RedirectToAction(nameof(CustomerPayments));
+            }
+
+            if (amount <= 0)
+            {
+                TempData["Error"] = "Amount must be greater than zero.";
+                return RedirectToAction(nameof(EditPayment), new { paymentId });
+            }
+
+            var schedule = payment.PaymentSchedule;
+            if (schedule != null)
+            {
+                var otherPaymentsSum = await _context.Payments
+                    .Where(p => p.ScheduleID == schedule.ScheduleID && p.PaymentID != paymentId)
+                    .SumAsync(p => p.Amount);
+                var maxAllowed = schedule.Amount - otherPaymentsSum;
+                if (amount > maxAllowed)
+                {
+                    TempData["Error"] = $"Amount (PKR {amount:N2}) must not exceed the remaining due for this installment (PKR {maxAllowed:N2}).";
+                    return RedirectToAction(nameof(EditPayment), new { paymentId });
+                }
+            }
+
+            payment.PaymentDate = paymentDate;
+            payment.Amount = amount;
+            payment.Method = method;
+            payment.ReferenceNo = referenceNo;
+            payment.Status = status;
+            payment.Remarks = remarks;
+
+            await _context.SaveChangesAsync();
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
+                var actionText = string.IsNullOrEmpty(userName) ? "Edit Payment" : $"Edit Payment - {userName}";
+                await LogActivity(userId, actionText, "Payment", payment.PaymentID);
+            }
+
+            TempData["Success"] = "Payment updated successfully.";
             return RedirectToAction(nameof(CustomerPayments));
         }
 
         [HttpGet]
         public async Task<IActionResult> CreatePaymentPlan()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             ViewBag.Projects = await _context.Projects.ToListAsync();
-            ViewBag.UsdToSspRate = await GetUsdToSspRateAsync();
+            ViewBag.UsdToPkrRate = await GetUsdToPkrRateAsync();
             return View();
         }
 
@@ -227,6 +694,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreatePaymentPlan([FromBody] PaymentPlanCreateViewModel viewModel)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             try
             {
                 if (viewModel?.PaymentPlan == null || viewModel?.PaymentSchedules == null)
@@ -235,18 +704,22 @@ namespace PMS.Controllers
                 }
 
                 var planData = viewModel.PaymentPlan;
+                if (string.IsNullOrWhiteSpace(planData.ProjectID))
+                {
+                    return Json(new { success = false, message = "Project is required." });
+                }
                 var scheduleData = viewModel.PaymentSchedules;
 
-                var exchangeRate = planData.ExchangeRate > 0 ? planData.ExchangeRate : await GetUsdToSspRateAsync();
+                var exchangeRate = planData.ExchangeRate > 0 ? planData.ExchangeRate : await GetUsdToPkrRateAsync();
 
                 if (exchangeRate <= 0)
                 {
-                    return Json(new { success = false, message = "Invalid USD to SSP exchange rate configuration." });
+                    return Json(new { success = false, message = "Invalid USD to PKR exchange rate configuration." });
                 }
 
                 if (planData.TotalAmount <= 0 && planData.TotalAmountUSD <= 0)
                 {
-                    return Json(new { success = false, message = "Total amount must be provided in either SSP or USD." });
+                    return Json(new { success = false, message = "Total amount must be provided in either PKR or USD." });
                 }
 
                 if (planData.TotalAmount <= 0)
@@ -296,7 +769,7 @@ namespace PMS.Controllers
                     decimal excess = grandTotal - planData.TotalAmount;
                     return Json(new { 
                         success = false, 
-                        message = $"Total Installments Amount (SSP {totalInstallmentsAmount:N2}) + Token Amount (SSP {tokenAmount:N2}) = SSP {grandTotal:N2} exceeds Parent Total Amount (SSP {planData.TotalAmount:N2}). Excess: SSP {excess:N2}." 
+                        message = $"Total Installments Amount (PKR {totalInstallmentsAmount:N2}) + Token Amount (PKR {tokenAmount:N2}) = PKR {grandTotal:N2} exceeds Parent Total Amount (PKR {planData.TotalAmount:N2}). Excess: PKR {excess:N2}." 
                     });
                 }
 
@@ -416,12 +889,12 @@ namespace PMS.Controllers
             };
         }
 
-        private async Task<decimal> GetUsdToSspRateAsync()
+        private async Task<decimal> GetUsdToPkrRateAsync()
         {
             const decimal defaultRate = 1m;
             var config = await _context.Configurations
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.ConfigKey == "Currency:USDToSSP");
+                .FirstOrDefaultAsync(c => c.ConfigKey == "Currency:USDToPKR");
 
             if (config != null && decimal.TryParse(config.ConfigValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
             {
@@ -434,6 +907,8 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> CreatePaymentSchedule(string planId)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             var paymentPlan = await _context.PaymentPlans.FindAsync(planId);
             if (paymentPlan == null)
             {
@@ -448,6 +923,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreatePaymentSchedule(PaymentSchedule schedule)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             // Convert surcharge rate from percentage to decimal
             // Form always sends percentage values, so always divide by 100
             schedule.SurchargeRate = schedule.SurchargeRate / 100m;
@@ -467,7 +944,7 @@ namespace PMS.Controllers
             if (projectedTotal > plan.TotalAmount)
             {
                 var remaining = plan.TotalAmount - existingTotal;
-                ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} SSP.");
+                ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} PKR.");
             }
 
             var amountUsd = schedule.AmountUSD.GetValueOrDefault();
@@ -507,6 +984,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditPaymentSchedule(PaymentSchedule schedule)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             try
             {
                 // Convert surcharge rate from percentage to decimal
@@ -548,7 +1027,7 @@ namespace PMS.Controllers
                 if (projectedTotal > plan.TotalAmount)
                 {
                     var remaining = plan.TotalAmount - totalWithoutThis;
-                    TempData["Error"] = $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} SSP.";
+                    TempData["Error"] = $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} PKR.";
                     return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
                 }
 
@@ -590,6 +1069,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeletePaymentSchedule(string scheduleId, string planId)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var schedule = await _context.PaymentSchedules.FindAsync(scheduleId);
             if (schedule != null)
             {
@@ -611,6 +1092,8 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> Penalties()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var penalties = await _context.Penalties
                 .Include(p => p.Customer)
                 .ToListAsync();
@@ -622,6 +1105,8 @@ namespace PMS.Controllers
         [HttpPost]
         public async Task<IActionResult> AddPenalty(string customerId, decimal amount, string reason)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (string.IsNullOrEmpty(customerId) || amount <= 0)
             {
                 return BadRequest();
@@ -651,6 +1136,8 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> Waivers()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var waivers = await _context.Waivers
                 .Include(w => w.Customer)
                 .Include(w => w.ApprovedByUser)
@@ -663,6 +1150,8 @@ namespace PMS.Controllers
         [HttpPost]
         public async Task<IActionResult> AddWaiver(string customerId, decimal amount, string reason)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (string.IsNullOrEmpty(customerId) || amount <= 0)
             {
                 return BadRequest();

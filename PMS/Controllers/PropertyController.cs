@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Hosting;
@@ -12,17 +13,38 @@ namespace PMS.Controllers
     [Authorize]
     public class PropertyController : Controller
     {
+        private const string ModuleKey = "Property";
         private readonly PMSDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly IModulePermissionService _modulePermission;
 
-        public PropertyController(PMSDbContext context, IWebHostEnvironment environment)
+        public PropertyController(PMSDbContext context, IWebHostEnvironment environment, IModulePermissionService modulePermission)
         {
             _context = context;
             _environment = environment;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         public async Task<IActionResult> Index()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var properties = await _context.Properties
                 .Include(p => p.Project)
                 .Include(p => p.Allotments)
@@ -44,7 +66,6 @@ namespace PMS.Controllers
                     .ThenInclude(a => a.Customer)
                 .Include(p => p.Possessions)
                     .ThenInclude(po => po.Customer)
-                .Include(p => p.Transfers)
                 .FirstOrDefaultAsync(p => p.PropertyID == id);
 
             if (property == null)
@@ -55,19 +76,53 @@ namespace PMS.Controllers
             return View(property);
         }
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             ViewBag.Projects = _context.Projects.ToList();
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
-            
-            // Load sizes from Configuration table
-            var sizesConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "sizes");
-            ViewBag.Sizes = sizesConfig != null 
-                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+
+            // Plot Type from Configuration
+            var plotTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.Category == "PlotTypes" || c.ConfigKey == "PlotTypes");
+            ViewBag.PlotTypes = (plotTypesConfig?.ConfigValue != null)
+                ? plotTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList()
+                : new List<string> { "Residential", "Commercial", "Industrial", "Agricultural" };
+
+            // Property Type from Configuration
+            var propertyTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "propertytypes");
+            ViewBag.PropertyTypes = (propertyTypesConfig?.ConfigValue != null)
+                ? propertyTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList()
                 : new List<string>();
-            
+
             return View();
+        }
+
+        /// <summary>Returns Sizes and PropertyTypes for the selected project (for Property/Create dropdowns).</summary>
+        [HttpGet]
+        public IActionResult GetProjectDetails(string projectId)
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                return Json(new { sizes = Array.Empty<string>(), propertyTypes = Array.Empty<string>() });
+
+            var project = _context.Projects.AsNoTracking().FirstOrDefault(p => p.ProjectID == projectId);
+            if (project == null)
+                return Json(new { sizes = Array.Empty<string>(), propertyTypes = Array.Empty<string>() });
+
+            var sizes = (project.Sizes ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToArray();
+            var propertyTypes = (project.PropertyTypes ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToArray();
+
+            return Json(new { sizes, propertyTypes });
         }
 
         [HttpPost]
@@ -94,19 +149,15 @@ namespace PMS.Controllers
 
             ViewBag.Projects = _context.Projects.ToList();
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
-            
-            // Reload sizes from Configuration table
-            var sizesConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "sizes");
-            ViewBag.Sizes = sizesConfig != null 
-                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
-                : new List<string>();
-            
+            var plotTypesConfig = _context.Configurations.FirstOrDefault(c => c.Category == "PlotTypes" || c.ConfigKey == "PlotTypes");
+            ViewBag.PlotTypes = (plotTypesConfig?.ConfigValue != null) ? plotTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList() : new List<string> { "Residential", "Commercial", "Industrial", "Agricultural" };
             return View(property);
         }
 
         public async Task<IActionResult> Edit(string id)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -120,14 +171,6 @@ namespace PMS.Controllers
 
             ViewBag.Projects = _context.Projects.ToList();
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
-            
-            // Load sizes from Configuration table
-            var sizesConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "sizes");
-            ViewBag.Sizes = sizesConfig != null 
-                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
-                : new List<string>();
-            
             return View(property);
         }
 
@@ -135,6 +178,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(string id, Property property)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id != property.PropertyID)
             {
                 return NotFound();
@@ -173,7 +218,7 @@ namespace PMS.Controllers
             // Reload sizes from Configuration table
             var sizesConfig = _context.Configurations
                 .FirstOrDefault(c => c.ConfigKey == "sizes");
-            ViewBag.Sizes = sizesConfig != null 
+            ViewBag.Sizes = (sizesConfig?.ConfigValue != null)
                 ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
             
@@ -247,6 +292,8 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -270,6 +317,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var property = await _context.Properties.FindAsync(id);
             if (property != null)
             {
@@ -417,8 +466,8 @@ namespace PMS.Controllers
                 // Validate projects exist - ALL ProjectIDs must exist
                 var projectIds = properties.Select(p => p.ProjectID).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct().ToList();
                 var existingProjects = await _context.Projects
-                    .Where(p => projectIds.Contains(p.ProjectID))
-                    .Select(p => p.ProjectID)
+                    .Where(p => p.ProjectID != null && projectIds.Contains(p.ProjectID))
+                    .Select(p => p.ProjectID!)
                     .ToListAsync();
 
                 // Track invalid ProjectIDs
@@ -500,12 +549,12 @@ namespace PMS.Controllers
             // Re-validate ProjectIDs before import - ALL must exist
             var projectIds = properties.Select(p => p.ProjectID).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct().ToList();
             var existingProjects = await _context.Projects
-                .Where(p => projectIds.Contains(p.ProjectID))
-                .Select(p => p.ProjectID)
+                .Where(p => p.ProjectID != null && projectIds.Contains(p.ProjectID))
+                .Select(p => p.ProjectID!)
                 .ToListAsync();
 
             // Check if any ProjectID is missing or invalid
-            var invalidProjectIds = projectIds.Where(pid => !existingProjects.Contains(pid)).ToList();
+            var invalidProjectIds = projectIds.Where(pid => pid != null && !existingProjects.Contains(pid)).Select(p => p!).ToList();
             if (invalidProjectIds.Any())
             {
                 TempData["Error"] = $"Import blocked: The following ProjectIDs do not exist in Projects table: {string.Join(", ", invalidProjectIds)}. All ProjectIDs must be valid before import.";
@@ -564,6 +613,7 @@ namespace PMS.Controllers
                         Street = prop.Street,
                         PlotType = prop.PlotType,
                         Block = prop.Block,
+                        Floor = prop.Floor,
                         PropertyType = prop.PropertyType,
                         Size = prop.Size,
                         AdditionalInfo = prop.AdditionalInfo,
@@ -575,7 +625,7 @@ namespace PMS.Controllers
                     _context.Properties.Add(property);
                     importedCount++;
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     skippedCount++;
                     continue;
@@ -610,7 +660,7 @@ namespace PMS.Controllers
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     var columns = ParseCsvLine(line);
-                    if (columns.Count >= 7) // At least 7 columns (8th is optional)
+                    if (columns.Count >= 7) // At least 7 columns (Floor col 8, AdditionalInfo col 9 optional)
                     {
                         properties.Add(new PropertyImportViewModel
                         {
@@ -622,7 +672,8 @@ namespace PMS.Controllers
                             Block = columns[4]?.Trim() ?? string.Empty,
                             PropertyType = columns[5]?.Trim() ?? string.Empty,
                             Size = columns[6]?.Trim() ?? string.Empty,
-                            AdditionalInfo = columns.Count > 7 ? columns[7]?.Trim() ?? string.Empty : string.Empty
+                            Floor = columns.Count > 7 ? columns[7]?.Trim() ?? string.Empty : string.Empty,
+                            AdditionalInfo = columns.Count > 8 ? columns[8]?.Trim() ?? string.Empty : string.Empty
                         });
                     }
                     rowNumber++;
@@ -692,7 +743,8 @@ namespace PMS.Controllers
                             Block = GetCellValue(worksheet, row.RowNumber(), 5) ?? string.Empty,
                             PropertyType = GetCellValue(worksheet, row.RowNumber(), 6) ?? string.Empty,
                             Size = GetCellValue(worksheet, row.RowNumber(), 7) ?? string.Empty,
-                            AdditionalInfo = GetCellValue(worksheet, row.RowNumber(), 8) ?? string.Empty
+                            Floor = GetCellValue(worksheet, row.RowNumber(), 8) ?? string.Empty,
+                            AdditionalInfo = GetCellValue(worksheet, row.RowNumber(), 9) ?? string.Empty
                         });
                         rowNumber++;
                     }
@@ -814,7 +866,7 @@ namespace PMS.Controllers
                     _context.PropertyLogs.Add(log);
                     updatedCount++;
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     skippedCount++;
                     continue;

@@ -57,19 +57,45 @@
             <table class="table table-hover" id="usersTable">
                 <thead>
                     <tr>
+                        <th>Actions</th>
                         <th>User ID</th>
                         <th>Full Name</th>
                         <th>Email</th>
+                        <th>Designation</th>
+                        <th>Department</th>
+                        <th>User Type</th>
                         <th>Role</th>
                         <th>Status</th>
                         <th>Created Date</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var user in Model.OrderBy(u => u.FullName))
                     {
                         <tr>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-info" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#userModal@(user.UserID)"
+                                            title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary" 
+                                            onclick="editUser('@user.UserID')"
+                                            title="Edit User">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")" 
+                                            onclick="toggleUserStatus('@user.UserID', @user.IsActive.ToString().ToLower())"
+                                            title="@(user.IsActive ? "Deactivate" : "Activate")">
+                                        <i class="fas fa-@(user.IsActive ? "ban" : "check")"></i>
+                                    </button>
+                                </div>
+                            </td>
                             <td>
                                 <code>@user.UserID</code>
                             </td>
@@ -84,6 +110,18 @@
                             <td>
                                 <i class="fas fa-envelope me-2 text-muted"></i>
                                 @user.Email
+                            </td>
+                            <td>@(user.Designation ?? "—")</td>
+                            <td>@(user.Department ?? "—")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(user.UserType))
+                                {
+                                    <span class="badge bg-info">@user.UserType</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
                             </td>
                             <td>
                                 @if (user.Role != null)
@@ -117,29 +155,6 @@
                                     @user.CreatedAt.ToString("MMM dd, yyyy")
                                 </small>
                             </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-info" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#userModal@(user.UserID)"
-                                            title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-primary" 
-                                            onclick="editUser('@user.UserID')"
-                                            title="Edit User">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" 
-                                            class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")" 
-                                            onclick="toggleUserStatus('@user.UserID', @user.IsActive.ToString().ToLower())"
-                                            title="@(user.IsActive ? "Deactivate" : "Activate")">
-                                        <i class="fas fa-@(user.IsActive ? "ban" : "check")"></i>
-                                    </button>
-                                </div>
-                            </td>
                         </tr>
 
                         <!-- User Details Modal -->
@@ -168,6 +183,18 @@
                                             <div class="col-12 mb-3">
                                                 <label class="text-muted small">Email Address</label>
                                                 <p>@user.Email</p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Designation</label>
+                                                <p>@(user.Designation ?? "—")</p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">Department</label>
+                                                <p>@(user.Department ?? "—")</p>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label class="text-muted small">User Type</label>
+                                                <p>@(user.UserType ?? "—")</p>
                                             </div>
                                             <div class="col-6 mb-3">
                                                 <label class="text-muted small">Role</label>
@@ -284,9 +311,9 @@
         $(document).ready(function() {
             $('#usersTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 1, "asc" ]],
+                "order": [[ 2, "asc" ]],
                 "columnDefs": [
-                    { "orderable": false, "targets": 6 }
+                    { "orderable": false, "targets": 0 }
                 ]
             });
 

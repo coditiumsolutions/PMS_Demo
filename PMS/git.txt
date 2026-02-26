@@ -1,1 +1,4 @@
-https://github.com/UmerRana198/PMS.git
+https://github.com/pakabbas/PMS_ZKB.git
+
+cd d:\PMS\PMS\PMS
+.\DeployToIIS.bat

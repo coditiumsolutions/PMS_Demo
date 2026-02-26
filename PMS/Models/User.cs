@@ -22,6 +22,15 @@ namespace PMS.Models
         [StringLength(10)]
         public string? RoleID { get; set; }
 
+        [StringLength(150)]
+        public string? Designation { get; set; }
+
+        [StringLength(150)]
+        public string? Department { get; set; }
+
+        [StringLength(50)]
+        public string? UserType { get; set; }  // Admin, Manager, CRO
+
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -33,5 +42,6 @@ namespace PMS.Models
         public virtual ICollection<UserSession> UserSessions { get; set; } = new List<UserSession>();
         public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
         public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public virtual ICollection<UserModulePermission> ModulePermissions { get; set; } = new List<UserModulePermission>();
     }
 }

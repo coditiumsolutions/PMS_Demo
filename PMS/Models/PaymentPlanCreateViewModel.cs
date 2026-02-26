@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PMS.Models
 {
     public class PaymentPlanCreateViewModel
@@ -9,6 +11,7 @@ namespace PMS.Models
     public class PaymentPlanData
     {
         public string? PlanName { get; set; }
+        [Required(ErrorMessage = "Project is required.")]
         public string? ProjectID { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal TotalAmountUSD { get; set; }

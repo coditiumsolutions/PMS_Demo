@@ -86,6 +86,12 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <div class="detail-field">
+                            <label><i class="fas fa-passport me-2"></i>Passport Number</label>
+                            <p>@(Model.PassportNo ?? "N/A")</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
                             <label><i class="fas fa-phone me-2"></i>Phone</label>
                             <p>@Model.Phone</p>
                         </div>
@@ -94,6 +100,18 @@
                         <div class="detail-field">
                             <label><i class="fas fa-envelope me-2"></i>Email</label>
                             <p>@(Model.Email ?? "N/A")</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-building me-2"></i>Project</label>
+                            <p>@(Model.Project?.ProjectName ?? "N/A")</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
+                            <label><i class="fas fa-ruler-combined me-2"></i>Size</label>
+                            <p>@(Model.Size ?? "N/A")</p>
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
@@ -159,30 +177,33 @@
         @if (Model.Customers != null && Model.Customers.Any())
         {
             var customer = Model.Customers.FirstOrDefault();
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0">
-                        <i class="fas fa-user-check me-2"></i>Customer Created
-                    </h6>
+            @if (customer != null)
+            {
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-user-check me-2"></i>Customer Created
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-user-circle fa-3x" style="color: #6f42c1;"></i>
+                        </div>
+                        <div class="detail-field mb-2">
+                            <label>Customer ID</label>
+                            <p><code>@(customer.CustomerID ?? "")</code></p>
+                        </div>
+                        <div class="detail-field mb-3">
+                            <label>Full Name</label>
+                            <p><strong>@(customer.FullName ?? "")</strong></p>
+                        </div>
+                        <a asp-controller="Customer" asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")" 
+                           class="btn btn-success w-100">
+                            <i class="fas fa-eye me-2"></i>View Customer Details
+                        </a>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="text-center mb-3">
-                        <i class="fas fa-user-circle fa-3x" style="color: #6f42c1;"></i>
-                    </div>
-                    <div class="detail-field mb-2">
-                        <label>Customer ID</label>
-                        <p><code>@customer.CustomerID</code></p>
-                    </div>
-                    <div class="detail-field mb-3">
-                        <label>Full Name</label>
-                        <p><strong>@customer.FullName</strong></p>
-                    </div>
-                    <a asp-controller="Customer" asp-action="Details" asp-route-id="@customer.CustomerID" 
-                       class="btn btn-success w-100">
-                        <i class="fas fa-eye me-2"></i>View Customer Details
-                    </a>
-                </div>
-            </div>
+            }
         }
         else
         {

@@ -14,24 +14,48 @@ builder.Services.AddDbContext<PMSDbContext>(options =>
 
 // Add services
 builder.Services.AddScoped<SeedDataService>();
+builder.Services.AddScoped<PMS.Services.IModulePermissionService, PMS.Services.ModulePermissionService>();
 
 // Add session support
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.IdleTimeout = TimeSpan.FromDays(7); // 7 days session timeout
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
 });
 
-// Add authentication
+// Add authentication with persistent cookies (NO SESSION for auth)
 builder.Services.AddAuthentication("Cookies")
     .AddCookie("Cookies", options =>
     {
         options.LoginPath = "/Account/Login";
         options.LogoutPath = "/Account/Logout";
         options.AccessDeniedPath = "/Account/AccessDenied";
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
-        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromDays(30); // 30 days cookie expiration
+        options.SlidingExpiration = true; // Reset expiration on each request (extends 30 days from last activity)
+        options.Cookie.Name = ".PMS.Auth"; // Explicit cookie name
+        options.Cookie.HttpOnly = true; // Prevent XSS attacks
+        options.Cookie.IsEssential = true; // Required for authentication
+        options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+        options.Cookie.Path = "/"; // Available site-wide
+        options.Cookie.MaxAge = TimeSpan.FromDays(30); // Explicit max age for cookie persistence
+        
+        // Ensure cookie validation events don't interfere with persistence
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            // With sliding expiration, this will refresh the cookie on each request
+            // This ensures the user stays logged in as long as they're active
+            if (context.ShouldRenew)
+            {
+                context.ShouldRenew = true;
+            }
+        };
+        
+        // Cookie will persist for 30 days, survives browser restart
+        // With SlidingExpiration=true, cookie refreshes on each request, extending the 30-day period
     });
 
 builder.Services.AddAuthorization();

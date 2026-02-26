@@ -11,9 +11,12 @@
     <h2>
         <!-- <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plans (Batches) -->
     </h2>
+    @if (ViewBag.CanCreate == true)
+    {
     <a asp-action="CreatePaymentPlan" class="btn btn-primary">
         <i class="fas fa-plus me-2"></i>Create New Plan
     </a>
+    }
 </div>
 
 <!-- Statistics -->
@@ -35,7 +38,7 @@
     <div class="col-md-3">
         <div class="stats-card">
             <div class="stats-number" data-format-number="@totalValueSsp">
-                SSP @($"{totalValueSsp:N0}")
+                PKR @($"{totalValueSsp:N0}")
                 <div class="text-muted small">USD @($"{totalValueUsd:N2}")</div>
             </div>
             <div class="stats-label">Total Value</div>
@@ -100,13 +103,13 @@
                             </td>
                             <td>
                                 <strong style="color: var(--primary-green);">
-                                    SSP <span data-format-number="@plan.TotalAmount">@($"{plan.TotalAmount:N0}")</span><br />
+                                    PKR <span data-format-number="@plan.TotalAmount">@($"{plan.TotalAmount:N0}")</span><br />
                                     <small class="text-muted">USD @($"{planUsd:N2}")</small>
                                 </strong>
                                 @if (plan.ExchangeRate > 0)
                                 {
                                     <div class="mt-1">
-                                        <span class="badge bg-light text-dark">1 USD = @($"{plan.ExchangeRate:N4}") SSP</span>
+                                        <span class="badge bg-light text-dark">1 USD = @($"{plan.ExchangeRate:N4}") PKR</span>
                                     </div>
                                 }
                             </td>
@@ -185,7 +188,7 @@
                         </div>
                         <div class="col-6 mb-3">
                             <label class="text-muted small">Total Amount</label>
-                            <p><strong style="color: var(--primary-green);">@($"{plan.TotalAmount:N2}") SSP</strong></p>
+                            <p><strong style="color: var(--primary-green);">@($"{plan.TotalAmount:N2}") PKR</strong></p>
                         </div>
                         <div class="col-6 mb-3">
                             <label class="text-muted small">Total Amount (USD)</label>
@@ -193,7 +196,7 @@
                         </div>
                         <div class="col-6 mb-3">
                             <label class="text-muted small">Exchange Rate</label>
-                            <p>1 USD = @($"{plan.ExchangeRate:N4}") SSP</p>
+                            <p>1 USD = @($"{plan.ExchangeRate:N4}") PKR</p>
                         </div>
                         <div class="col-6 mb-3">
                             <label class="text-muted small">Primary Currency</label>

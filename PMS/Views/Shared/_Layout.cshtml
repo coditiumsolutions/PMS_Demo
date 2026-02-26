@@ -1,9 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Juba Smart City PMS</title>
+    <link rel="icon" href="~/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/juba-theme.css" asp-append-version="true" />
@@ -12,25 +13,94 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" />
     <style>
-        :root {
-            --primary:rgb(104, 167, 226);
-            --primary-light:rgb(72, 123, 165);
-            --primary-bg:rgb(255, 255, 255);
-            --surface:rgb(224, 229, 233);
+        /* Original (default) theme */
+        :root,
+        [data-theme="original"] {
+            --primary: rgb(104, 167, 226);
+            --primary-light: rgb(72, 123, 165);
+            --primary-bg: rgb(255, 255, 255);
+            --surface: rgb(224, 229, 233);
             --text-primary: #1E1E2D;
-            --text-secondary:rgb(107, 108, 128);
-            --accent:rgb(5, 66, 102);
+            --text-secondary: rgb(107, 108, 128);
+            --accent: rgb(5, 66, 102);
             --border: #E5E7EB;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --sidebar-bg: rgb(8, 45, 80);
-            --sidebar-active-bg:rgb(255, 255, 255);
-            --sidebar-font-color:rgb(0, 0, 0);
-            --sidebar-bg: rgb(11, 56, 99);
-            --sidebar-active-bg:rgb(255, 255, 255);
-            --sidebar-active-font-color:rgb(0, 0, 0);
-            --sidebar-font-color:rgb(255, 255, 255);
+            --sidebar-bg: rgb(72, 123, 165);
+            --sidebar-active-bg: rgb(255, 255, 255);
+            --sidebar-active-font-color: rgb(0, 0, 0);
+            --sidebar-font-color: rgb(255, 255, 255);
+        }
+
+        /* Dark theme */
+        [data-theme="dark"] {
+            --primary: #5b9bd5;
+            --primary-light: #7eb3e8;
+            --primary-bg: #0f172a;
+            --surface: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #60a5fa;
+            --border: #334155;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --sidebar-bg: #0c1222;
+            --sidebar-active-bg: #1e293b;
+            --sidebar-active-font-color: #f1f5f9;
+            --sidebar-font-color: #cbd5e1;
+        }
+
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] input[type="text"],
+        [data-theme="dark"] input[type="email"],
+        [data-theme="dark"] input[type="password"],
+        [data-theme="dark"] input[type="number"],
+        [data-theme="dark"] input[type="date"],
+        [data-theme="dark"] input[type="search"],
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select {
+            background-color: #1e293b !important;
+            border: 1px solid #475569 !important;
+            color: #f1f5f9 !important;
+        }
+
+        [data-theme="dark"] label,
+        [data-theme="dark"] .form-label,
+        [data-theme="dark"] .control-label {
+            color: #e2e8f0 !important;
+        }
+
+        [data-theme="dark"] .card {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        [data-theme="dark"] .card-header {
+            background: #0f172a;
+            border-color: #334155;
+            color: #f1f5f9;
+        }
+
+        /* Modern theme */
+        [data-theme="modern"] {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-bg: #f8fafc;
+            --surface: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent: #0ea5e9;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --sidebar-bg: #1e293b;
+            --sidebar-active-bg: #f1f5f9;
+            --sidebar-active-font-color: #0f172a;
+            --sidebar-font-color: #e2e8f0;
         }
 
         body {
@@ -163,12 +233,12 @@
         }
 
         .brand-logo-img {
-            max-width: 200px;
+            max-width: 180px;
             height: auto;
             filter: drop-shadow(2px 2px 4px rgba(117, 188, 255, 0.3));
             transition: transform 0.2s ease-in-out;
-            background: white;
-            padding: 3px 30px 3px 30px;
+            background: transparent;
+            padding: 0;
             border-radius: 10px;
         }
 
@@ -219,6 +289,12 @@
             margin-top: 25px;
             margin-right: 45px;
             border-radius: 12px;
+        }
+
+        [data-theme="dark"] .content-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
         }
 
         .content-header h1, 
@@ -459,36 +535,26 @@
             padding: 8px 12px;
         }
 
-        /* Dark Mode Compatibility */
-        @@media (prefers-color-scheme: dark) {
-            .form-control,
-            .form-select {
-                background-color: #ffffff !important;
-                border: 1px solid #dee2e6 !important;
-                color: #212529 !important;
-            }
-        }
-
-        /* Override any theme conflicts */
-        .form-control,
-        .form-select,
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="number"],
-        input[type="date"],
-        input[type="search"],
-        textarea,
-        select {
+        /* Override any theme conflicts (only when not using dark theme) */
+        html:not([data-theme="dark"]) .form-control,
+        html:not([data-theme="dark"]) .form-select,
+        html:not([data-theme="dark"]) input[type="text"],
+        html:not([data-theme="dark"]) input[type="email"],
+        html:not([data-theme="dark"]) input[type="password"],
+        html:not([data-theme="dark"]) input[type="number"],
+        html:not([data-theme="dark"]) input[type="date"],
+        html:not([data-theme="dark"]) input[type="search"],
+        html:not([data-theme="dark"]) textarea,
+        html:not([data-theme="dark"]) select {
             background-color: #ffffff !important;
             border: 1px solid #dee2e6 !important;
             color: #212529 !important;
         }
 
-        /* Ensure labels are always visible */
-        label,
-        .form-label,
-        .control-label {
+        /* Ensure labels are always visible (dark theme has its own label color) */
+        html:not([data-theme="dark"]) label,
+        html:not([data-theme="dark"]) .form-label,
+        html:not([data-theme="dark"]) .control-label {
             color: #212529 !important;
             font-weight: 600;
         }
@@ -870,7 +936,7 @@
 
         /* Dropdown menu styling for sidebar */
         .sidebar .dropdown-menu {
-            background: rgb(11, 56, 99);
+            background: var(--sidebar-bg);
             border: 1px solid var(--border);
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -882,7 +948,7 @@
             padding: 8px 16px;
             font-size: 13px;
             transition: all 0.2s ease-in-out;
-            background: var(--sidebar-bg);
+            background: transparent;
         }
 
         .sidebar .dropdown-item:hover {
@@ -937,33 +1003,48 @@
     </style>
 </head>
 <body>
+    <script>
+        (function () {
+            var saved = localStorage.getItem('pms-theme');
+            var theme = (saved === 'dark' || saved === 'modern' || saved === 'original') ? saved : 'original';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <div class="container-fluid">
         <div class="row">
                     <!-- Sidebar -->
                     <nav class="col-md-3 col-lg-3 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="brand-section" style="background: var(--sidebar-bg);">
-                        <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="brand-logo-img mb-2" />
+                        <img src="~/images/PMS.png" alt="PMS Logo" class="brand-logo-img mb-2" />
                         <!-- <div class="brand-logo">JUBA Smart City</div> -->
                         <div style="color: white; font-weight: 600;" class="brand-subtitle">Property Management System</div>
                     </div>
                     
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")" 
+                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")" 
                                asp-controller="Home" asp-action="Index">
                                 <i class="fas fa-tachometer-alt"></i>
                                 Dashboard
                             </a>
                         </li>
                         
-                       @*  <li class="nav-item">
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Workspace" ? "active" : "")" 
+                               asp-controller="Home" asp-action="Workspace">
+                                <i class="fas fa-th-large"></i>
+                                Workspace
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Registration" ? "active" : "")" 
                                asp-controller="Registration" asp-action="Index">
                                 <i class="fas fa-file-alt"></i>
-                                Registrations
+                                Registration
                             </a>
-                        </li> *@
+                        </li>
                         
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Customer" ? "active" : "")" 
@@ -972,7 +1053,20 @@
                                 Customers
                             </a>
                         </li>
-                        
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Transfer" ? "active" : "")" 
+                               asp-controller="Transfer" asp-action="Index">
+                                <i class="fas fa-exchange-alt"></i>
+                                Transfers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "NDC" ? "active" : "")"
+                               asp-controller="NDC" asp-action="Index">
+                                <i class="fas fa-certificate"></i>
+                                NDC
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Project" ? "active" : "")" 
                                asp-controller="Project" asp-action="Index">
@@ -996,15 +1090,7 @@
                                 Properties
                             </a>
                         </li>
-                        
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Allotment" ? "active" : "")" 
-                               asp-controller="Allotment" asp-action="Index">
-                                <i class="fas fa-hand-holding"></i>
-                                Allotment
-                            </a>
-                        </li>
-                        
+
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && (ViewContext.RouteData.Values["Action"]?.ToString() == "PaymentPlans" || ViewContext.RouteData.Values["Action"]?.ToString() == "CreatePaymentPlan") ? "active" : "")" 
                                asp-controller="Payment" asp-action="PaymentPlans">
@@ -1023,7 +1109,7 @@
                             </a>
                         </li>
                         
-                        @* <!-- Sales & Leads Section -->
+                        <!-- Sales & Leads Section -->
                         <li class="nav-item mt-3">
                             <h6 class="px-3 text-white">Sales & Leads</h6>
                         </li>
@@ -1035,7 +1121,6 @@
                                 Sales Inquiries
                             </a>
                         </li>
-                        *@
                         
                         <!-- Reports Section -->
                         <li class="nav-item mt-3">
@@ -1095,6 +1180,7 @@
                                     Configuration
                                 </a>
                             </li>
+
                         }
                         
                         <li class="nav-item mt-4">
@@ -1122,7 +1208,8 @@
 
                     <!-- Main content -->
                     <main class="col-md-9 ms-sm-auto col-lg-9 main-content" style="margin-left: 15px !important;">
-                @if (ViewContext.RouteData.Values["Controller"]?.ToString() != "Home")
+                @if (ViewContext.RouteData.Values["Controller"]?.ToString() != "Home" &&
+                     !(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() == "RecordPayment"))
                 {
                     <div class="content-header">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
@@ -1136,6 +1223,12 @@
                                     {
                                         case "Customer":
                                             icon = "fas fa-users";
+                                            break;
+                                        case "AccountsManagement":
+                                            icon = "fas fa-calculator";
+                                            break;
+                                        case "Rental":
+                                            icon = "fas fa-key";
                                             break;
                                         case "Project":
                                             icon = "fas fa-building";

@@ -49,7 +49,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="PlotNo" class="form-label">Plot Number *</label>
+                                <label asp-for="PlotNo" class="form-label">Plot/Unit Number *</label>
                                 <input asp-for="PlotNo" class="form-control" required />
                                 <span asp-validation-for="PlotNo" class="text-danger"></span>
                             </div>
@@ -64,6 +64,12 @@
                                 <label asp-for="Block" class="form-label">Block *</label>
                                 <input asp-for="Block" class="form-control" required />
                                 <span asp-validation-for="Block" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Floor" class="form-label">Floor</label>
+                                <input asp-for="Floor" class="form-control" placeholder="e.g. G, 1, 2, Basement" />
+                                <span asp-validation-for="Floor" class="text-danger"></span>
                             </div>
                         </div>
 
@@ -102,15 +108,8 @@
 
                             <div class="mb-3">
                                 <label asp-for="Size" class="form-label">Size *</label>
-                                <select asp-for="Size" class="form-select" required>
+                                <select asp-for="Size" class="form-select" required id="size">
                                     <option value="">Select Size</option>
-                                    @if (ViewBag.Sizes != null)
-                                    {
-                                        @foreach (var size in ViewBag.Sizes)
-                                        {
-                                            <option value="@size">@size</option>
-                                        }
-                                    }
                                 </select>
                                 <span asp-validation-for="Size" class="text-danger"></span>
                             </div>
@@ -179,5 +178,56 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            var projectSelect = document.getElementById('ProjectID');
+            var sizeSelect = document.getElementById('size');
+            var getProjectDetailsUrl = '@Url.Action("GetProjectDetails", "Property")';
+            var savedSize = '@Html.Raw(Model?.Size ?? "")';
+
+            function fillSizeOptions(sizes) {
+                var current = sizeSelect.value || savedSize;
+                sizeSelect.innerHTML = '<option value="">Select Size</option>';
+                (sizes || []).forEach(function (v) {
+                    var opt = document.createElement('option');
+                    opt.value = v;
+                    opt.textContent = v;
+                    if (v === current) opt.selected = true;
+                    sizeSelect.appendChild(opt);
+                });
+                // If the saved value wasn't in the list, still keep it visible
+                if (current && !sizes.includes(current)) {
+                    var opt = document.createElement('option');
+                    opt.value = current;
+                    opt.textContent = current;
+                    opt.selected = true;
+                    sizeSelect.appendChild(opt);
+                }
+            }
+
+            function loadProjectSizes() {
+                var projectId = projectSelect && projectSelect.value;
+                if (!projectId) {
+                    sizeSelect.innerHTML = '<option value="">Select Project first</option>';
+                    return;
+                }
+                fetch(getProjectDetailsUrl + '?projectId=' + encodeURIComponent(projectId))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) { fillSizeOptions(data.sizes || []); })
+                    .catch(function () {
+                        sizeSelect.innerHTML = '<option value="">Select Project first</option>';
+                    });
+            }
+
+            if (projectSelect) {
+                projectSelect.addEventListener('change', function () {
+                    savedSize = '';   // clear saved value when project changes
+                    loadProjectSizes();
+                });
+                // On page load, populate sizes for the already-selected project
+                if (projectSelect.value) loadProjectSizes();
+            }
+        })();
+    </script>
 }
 

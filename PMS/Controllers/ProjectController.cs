@@ -3,27 +3,62 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace PMS.Controllers
 {
     [Authorize]
     public class ProjectController : Controller
     {
+        private const string ModuleKey = "Project";
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public ProjectController(PMSDbContext context)
+        public ProjectController(PMSDbContext context, IModulePermissionService modulePermission)
         {
             _context = context;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         public async Task<IActionResult> Index()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var projects = await _context.Projects
                 .Include(p => p.Properties)
                 .Include(p => p.PaymentPlans)
                 .Include(p => p.Ballotings)
                 .ToListAsync();
+            
+            // Get customer counts for each project
+            var projectIds = projects.Select(p => p.ProjectID).ToList();
+            var customerCounts = await _context.Customers
+                .Where(c => c.ProjectID != null && projectIds.Contains(c.ProjectID))
+                .GroupBy(c => c.ProjectID!)
+                .Select(g => new { ProjectID = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ProjectID, x => x.Count);
+            
+            ViewBag.CustomerCounts = customerCounts;
+            
             return View(projects);
         }
 
@@ -48,8 +83,17 @@ namespace PMS.Controllers
             return View(project);
         }
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            // Load project types from Configuration table
+            var projectTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "projecttypes");
+            ViewBag.ProjectTypes = projectTypesConfig != null 
+                ? projectTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string> { "Residential", "Commercial", "Mixed", "Industrial" };
+            
             return View();
         }
 
@@ -57,6 +101,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Project project)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             // Check if Prefix already exists
             if (!string.IsNullOrEmpty(project.Prefix))
             {
@@ -86,11 +132,20 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Reload project types for validation errors
+            var projectTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "projecttypes");
+            ViewBag.ProjectTypes = projectTypesConfig != null 
+                ? projectTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string> { "Residential", "Commercial", "Mixed", "Industrial" };
+
             return View(project);
         }
 
         public async Task<IActionResult> Edit(string id)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -102,6 +157,13 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
+            // Load project types from Configuration table
+            var projectTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "projecttypes");
+            ViewBag.ProjectTypes = projectTypesConfig != null 
+                ? projectTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string> { "Residential", "Commercial", "Mixed", "Industrial" };
+
             return View(project);
         }
 
@@ -109,6 +171,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(string id, Project project)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id != project.ProjectID)
             {
                 return NotFound();
@@ -153,11 +217,20 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Reload project types for validation errors
+            var projectTypesConfig = _context.Configurations
+                .FirstOrDefault(c => c.ConfigKey == "projecttypes");
+            ViewBag.ProjectTypes = projectTypesConfig != null 
+                ? projectTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
+                : new List<string> { "Residential", "Commercial", "Mixed", "Industrial" };
+
             return View(project);
         }
 
         public async Task<IActionResult> Delete(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -176,6 +249,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var project = await _context.Projects.FindAsync(id);
             if (project != null)
             {
@@ -195,6 +270,8 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> ConductBalloting(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -214,6 +291,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConductBalloting(string projectId, string remarks)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             if (string.IsNullOrEmpty(projectId))
             {
                 return BadRequest();
@@ -238,6 +317,62 @@ namespace PMS.Controllers
             }
 
             return RedirectToAction(nameof(Details), new { id = projectId });
+        }
+
+        /// <summary>Floor Plan: projects with at least one property that has Floor set. When projectId is selected, shows visual floor plan.</summary>
+        [HttpGet]
+        public async Task<IActionResult> FloorPlan(string? projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            var projectIdsWithFloor = await _context.Properties
+                .Where(p => p.Floor != null && p.Floor != "")
+                .Select(p => p.ProjectID)
+                .Where(pid => pid != null)
+                .Distinct()
+                .ToListAsync();
+
+            var projectsWithFloor = await _context.Projects
+                .Where(p => projectIdsWithFloor.Contains(p.ProjectID))
+                .OrderBy(p => p.ProjectName)
+                .ToListAsync();
+
+            ViewBag.ProjectsWithFloor = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
+                projectsWithFloor,
+                "ProjectID",
+                "ProjectName",
+                projectId);
+
+            if (string.IsNullOrEmpty(projectId) || projectsWithFloor.All(p => p.ProjectID != projectId))
+            {
+                return View(new FloorPlanViewModel { SelectedProjectID = projectId });
+            }
+
+            var project = await _context.Projects
+                .Include(p => p.Properties)
+                .FirstOrDefaultAsync(p => p.ProjectID == projectId);
+            if (project == null)
+                return NotFound();
+
+            var propertiesByFloor = project.Properties
+                .Where(p => p.Floor != null && p.Floor != "")
+                .GroupBy(p => p.Floor!)
+                .Select(g => new FloorGroupViewModel
+                {
+                    FloorName = g.Key,
+                    Properties = g.OrderBy(p => p.PropertyID).ToList()
+                })
+                .OrderBy(f => f.FloorName == "G" ? 0 : (int.TryParse(f.FloorName, out var n) ? n : 999))
+                .ToList();
+
+            var model = new FloorPlanViewModel
+            {
+                Project = project,
+                SelectedProjectID = projectId,
+                Floors = propertiesByFloor
+            };
+
+            return View(model);
         }
 
         private bool ProjectExists(string id)

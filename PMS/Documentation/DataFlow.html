@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMS – Full System Data Flow</title>
+    <style>
+        @media print {
+            body { margin: 0; padding: 10px; }
+            .page-break { page-break-before: always; }
+            .no-break { page-break-inside: avoid; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11px;
+            color: #222;
+            background: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { font-size: 18px; margin: 0 0 6px 0; border-bottom: 2px solid #2563eb; padding-bottom: 6px; }
+        .subtitle { font-size: 11px; color: #555; margin-bottom: 24px; }
+        .module-section { margin-top: 36px; padding-top: 20px; border-top: 2px solid #e5e7eb; }
+
+        /* ── Flow layout ── */
+        .flow-wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 10px; }
+        .flow-col  { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 200px; }
+        .flow-box  {
+            border: 2px solid #334155; padding: 10px 14px; min-width: 190px; max-width: 230px;
+            text-align: center; background: #fff; page-break-inside: avoid;
+        }
+        .flow-box.form   { background: #fef3c7; border-color: #d97706; }
+        .flow-box.entity { background: #ecfdf5; border-color: #059669; }
+        .flow-box.action { background: #e0e7ff; border-color: #2563eb; }
+        .flow-box.result { background: #fce7f3; border-color: #db2777; }
+        .flow-box-title  { font-weight: bold; font-size: 11px; margin-bottom: 3px; }
+        .flow-box-detail { font-size: 10px; color: #555; line-height: 1.4; }
+        .arrow { font-size: 22px; color: #2563eb; text-align: center; margin: 4px 0; line-height: 1; }
+        .flow-label { font-size: 10px; color: #64748b; font-style: italic; margin: 2px 0 4px; text-align: center; }
+
+        /* ── Tables ── */
+        .section-title { font-size: 13px; font-weight: bold; margin: 16px 0 8px; color: #1e40af; }
+        table.dt { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 8px; }
+        table.dt th, table.dt td { border: 1px solid #999; padding: 5px 8px; text-align: left; vertical-align: top; }
+        table.dt th { background: #e0e7ff; font-weight: 600; }
+        table.dt tr:nth-child(even) { background: #f9fafb; }
+        td.note { color: #555; font-style: italic; }
+
+        /* ── Legend ── */
+        .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0 20px; font-size: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-box { width: 14px; height: 14px; border: 2px solid #333; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<h1>PMS – Full System Data Flow</h1>
+<p class="subtitle">Property Management System · All modules in logical order · Print to PDF for documentation</p>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-box" style="background:#fef3c7;border-color:#d97706;"></div> User Form / Input</div>
+    <div class="legend-item"><div class="legend-box" style="background:#ecfdf5;border-color:#059669;"></div> Database Table / Record</div>
+    <div class="legend-item"><div class="legend-box" style="background:#e0e7ff;border-color:#2563eb;"></div> System Action / Workflow Step</div>
+    <div class="legend-item"><div class="legend-box" style="background:#fce7f3;border-color:#db2777;"></div> Outcome / Side Effect</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     1. SALES INQUIRY
+═══════════════════════════════════════════════ -->
+<div class="section-title">1. Sales Inquiry</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box form">
+            <div class="flow-box-title">Inquiry Received</div>
+            <div class="flow-box-detail">/SalesInquiry/Create</div>
+            <div class="flow-box-detail">FullName, Phone, Email, InquiryType, Message</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">PropertyInquiry Table</div>
+            <div class="flow-box-detail">Status = New, IsContacted = false</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Lifecycle Actions</div>
+            <div class="flow-box-detail">Assign To → Follow-up → Contacted</div>
+            <div class="flow-box-detail">New → Contacted → Follow-up → Converted / Closed</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Converted Lead</div>
+            <div class="flow-box-detail">Status = Converted → Create Registration (Section 2)</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+            <tbody>
+                <tr><td>Status</td><td class="note">New → Contacted → Follow-up → Converted / Closed</td></tr>
+                <tr><td>AssignedTo</td><td class="note">Sales agent name from active users</td></tr>
+                <tr><td>FollowUpDate</td><td class="note">Set when status moves to Follow-up</td></tr>
+                <tr><td>IsContacted</td><td class="note">True once MarkAsContacted is called</td></tr>
+                <tr><td>Notes</td><td class="note">Timestamped, additive comments</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     2. REGISTRATION → CUSTOMER
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">2. Registration → Customer</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box form">
+            <div class="flow-box-title">Registration Create</div>
+            <div class="flow-box-detail">/Registration/Create</div>
+            <div class="flow-box-detail">FullName, CNIC, Phone, Email</div>
+            <div class="flow-box-detail">ProjectID, Size (optional)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Registration Table</div>
+            <div class="flow-box-detail">RegID (auto: REG0000001), Status = Pending</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Admin Review</div>
+            <div class="flow-box-detail">Pending → Approved / Rejected</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-label">If Approved: select RegID on Customer Create</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Customer Create</div>
+            <div class="flow-box-detail">/Customer/Create</div>
+            <div class="flow-box-detail">RegID → auto-fills FullName, CNIC, Phone, Email</div>
+            <div class="flow-box-detail">PlanID, ProjectID, FatherName, Address, Nominee…</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Customers Table</div>
+            <div class="flow-box-detail">CustomerID (Prefix + 5-digit seq), RegID (FK, nullable)</div>
+            <div class="flow-box-detail">Status = Active</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Registration Field</th><th>Customer Field</th></tr></thead>
+            <tbody>
+                <tr><td>RegID</td><td>RegID (FK, nullable)</td></tr>
+                <tr><td>FullName</td><td>FullName (auto-filled)</td></tr>
+                <tr><td>CNIC</td><td>CNIC (auto-filled)</td></tr>
+                <tr><td>Phone</td><td>Phone (auto-filled)</td></tr>
+                <tr><td>Email</td><td>Email (auto-filled)</td></tr>
+                <tr><td>ProjectID</td><td>ProjectID (user may override)</td></tr>
+                <tr><td>Size</td><td>RegisteredSize (user may override)</td></tr>
+            </tbody>
+        </table>
+        <p style="font-size:10px;color:#555;margin-top:6px;">Customer can also be created without Registration. One Registration can link to multiple Customers.</p>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     3. PAYMENT PLAN & SCHEDULE
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">3. Payment Plan &amp; Schedule</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box form">
+            <div class="flow-box-title">Create Payment Plan</div>
+            <div class="flow-box-detail">/Payment/CreatePaymentPlan</div>
+            <div class="flow-box-detail">ProjectID, PlanName, TotalAmount (PKR/USD)</div>
+            <div class="flow-box-detail">DurationMonths, Frequency, TokenAmount</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Auto-Calculation</div>
+            <div class="flow-box-detail">distributable = TotalAmount − TokenAmount</div>
+            <div class="flow-box-detail">installmentAmount = distributable ÷ N</div>
+            <div class="flow-box-detail">Last installment absorbs rounding remainder</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">PaymentPlan Table</div>
+            <div class="flow-box-detail">PlanID (auto), ProjectID, TotalAmount, TotalAmountUSD</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">PaymentSchedule Table</div>
+            <div class="flow-box-detail">ScheduleID per installment (Token #0 + #1…N)</div>
+            <div class="flow-box-detail">DueDate spaced by Frequency</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Assigned to Customer</div>
+            <div class="flow-box-detail">PlanID stored on Customers.PlanID</div>
+            <div class="flow-box-detail">Customer pays against each ScheduleID</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Frequency</th><th>Due Date Interval</th></tr></thead>
+            <tbody>
+                <tr><td>Monthly</td><td>+1 month</td></tr>
+                <tr><td>Quarterly</td><td>+3 months</td></tr>
+                <tr><td>Half Yearly</td><td>+6 months</td></tr>
+                <tr><td>Yearly</td><td>+12 months</td></tr>
+            </tbody>
+        </table>
+        <br>
+        <table class="dt">
+            <thead><tr><th>Validation Rule</th></tr></thead>
+            <tbody>
+                <tr><td>Token + all installments ≤ TotalAmount</td></tr>
+                <tr><td>SurchargeRate stored ÷ 100 (form sends %)</td></tr>
+                <tr><td>USD auto-calculated if only PKR given (exchange rate from Config)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     4. PROPERTY & ALLOTMENT
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">4. Property &amp; Allotment</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box form">
+            <div class="flow-box-title">Property Create / Bulk Import</div>
+            <div class="flow-box-detail">/Property/Create or /Property/Import</div>
+            <div class="flow-box-detail">ProjectID, PlotNo, Block, Floor, PropertyType, Size</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Property Table</div>
+            <div class="flow-box-detail">PropertyID (GUID-based), Status = Available</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Allot Property</div>
+            <div class="flow-box-detail">/Property/Allot — link to Customer</div>
+            <div class="flow-box-detail">WorkFlowStatus = Pending</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Allotment Table</div>
+            <div class="flow-box-detail">AllotmentID, PropertyID, CustomerID, AllottedBy</div>
+            <div class="flow-box-detail">WorkFlowStatus: Pending → Approved</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Property Status Updated</div>
+            <div class="flow-box-detail">Status = Allotted (or Sold when assigned via Customer Create)</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Status</th><th>Set By</th></tr></thead>
+            <tbody>
+                <tr><td>Available</td><td>Default on creation / rental closed</td></tr>
+                <tr><td>Allotted</td><td>Allot action from Property module</td></tr>
+                <tr><td>Sold</td><td>Customer Create/Edit (selectedPropertyID)</td></tr>
+                <tr><td>Rented</td><td>Rental agreement created</td></tr>
+            </tbody>
+        </table>
+        <br>
+        <table class="dt">
+            <thead><tr><th>Bulk Import Columns</th></tr></thead>
+            <tbody>
+                <tr><td>ProjectID, PlotNo, Street, PlotType, Block</td></tr>
+                <tr><td>PropertyType, Size, Floor, AdditionalInfo</td></tr>
+                <tr><td>Duplicates (ProjectID + PlotNo + Block) are skipped</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     5. CUSTOMER PAYMENT
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">5. Customer Payment</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box action">
+            <div class="flow-box-title">Prerequisite</div>
+            <div class="flow-box-detail">Customer exists with PlanID → PaymentSchedule installments</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Record Payment</div>
+            <div class="flow-box-detail">/Payment/RecordPayment</div>
+            <div class="flow-box-detail">Select CustomerID → AJAX loads outstanding installments</div>
+            <div class="flow-box-detail">Select ScheduleID, enter Amount, Method, ReferenceNo</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Validation</div>
+            <div class="flow-box-detail">Amount &gt; 0 and ≤ Outstanding balance for that installment</div>
+            <div class="flow-box-detail">Outstanding = Schedule.Amount − SUM(existing payments)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Payments Table</div>
+            <div class="flow-box-detail">PaymentID, ScheduleID (FK), CustomerID (FK)</div>
+            <div class="flow-box-detail">Amount, Method, ReferenceNo, Status</div>
+            <div class="flow-box-detail">AuditStatus = Pending (default)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Status Auto-Set</div>
+            <div class="flow-box-detail">Paid — if payment covers full outstanding</div>
+            <div class="flow-box-detail">Partially Paid — otherwise</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Feature</th><th>Notes</th></tr></thead>
+            <tbody>
+                <tr><td>Single Payment</td><td class="note">One installment, one record</td></tr>
+                <tr><td>Multiple (Bulk)</td><td class="note">JSON payload; each row = separate Payment record; sum must equal stated total</td></tr>
+                <tr><td>Penalty</td><td class="note">Extra charge added to customer (Penalties table)</td></tr>
+                <tr><td>Waiver</td><td class="note">Discount/forgiveness (Waivers table, records ApprovedBy)</td></tr>
+                <tr><td>Delete Payment</td><td class="note">Admin only; permanent; logged</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     6. PAYMENT AUDIT / VERIFICATION
+═══════════════════════════════════════════════ -->
+<div class="module-section">
+<div class="section-title">6. Payment Audit / Verification</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box entity">
+            <div class="flow-box-title">Payment Record</div>
+            <div class="flow-box-detail">AuditStatus = Pending (default on every new payment)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Auditor Reviews</div>
+            <div class="flow-box-detail">/PaymentAudit/Audit</div>
+            <div class="flow-box-detail">Enters remarks, chooses Approved or Declined</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Audit Fields Updated (no amount change)</div>
+            <div class="flow-box-detail">AuditStatus, AuditedBy, AuditedAt, AuditRemarks</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Reset (Admin only)</div>
+            <div class="flow-box-detail">Clears audit fields → AuditStatus = Pending for re-review</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Action</th><th>Permission</th><th>Effect</th></tr></thead>
+            <tbody>
+                <tr><td>Approve</td><td>Edit</td><td class="note">Stamps Approved + auditor info. Payment unchanged.</td></tr>
+                <tr><td>Decline</td><td>Edit</td><td class="note">Stamps Declined. Payment unchanged.</td></tr>
+                <tr><td>Reset</td><td>Admin</td><td class="note">Clears audit stamp; not logged to ActivityLog.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     7. RENTAL MODULE
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">7. Rental (Organisation-owned Properties)</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box action">
+            <div class="flow-box-title">Prerequisite</div>
+            <div class="flow-box-detail">Property Status = Available; no active rental on this property</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Rental Create</div>
+            <div class="flow-box-detail">/Rental/Create</div>
+            <div class="flow-box-detail">PropertyID (AJAX validated), TenantName, CNIC, Phone</div>
+            <div class="flow-box-detail">MonthlyRent, SecurityDeposit, StartDate, DurationMonths</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Rental Table</div>
+            <div class="flow-box-detail">RentalID (RNT-YYYYMMDD-NNNN), Status = Active</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Auto-Generate Monthly Schedule</div>
+            <div class="flow-box-detail">One RentalPayment row per month</div>
+            <div class="flow-box-detail">AmountDue = MonthlyRent, Status = Pending</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Property Status → Rented</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Record Monthly Payment</div>
+            <div class="flow-box-detail">AmountPaid, PaymentMethod, ReferenceNo</div>
+            <div class="flow-box-detail">Auto-status: Paid / Partially Paid</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Close Rental (Admin)</div>
+            <div class="flow-box-detail">Status → Completed or Cancelled</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Property Status → Available</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Rule</th></tr></thead>
+            <tbody>
+                <tr><td>One active rental per property (unique index)</td></tr>
+                <tr><td>Property must be Available before renting</td></tr>
+                <tr><td>Tenant CNIC: XXXXX-XXXXXXX-X format</td></tr>
+                <tr><td>PaymentDueDayOfMonth capped at 28</td></tr>
+                <tr><td>Tenants are NOT linked to the Customers table</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     8. TRANSFER (OWNERSHIP)
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">8. Transfer (Property Ownership)</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box action">
+            <div class="flow-box-title">Prerequisite</div>
+            <div class="flow-box-detail">Customer (seller) with active NDC</div>
+            <div class="flow-box-detail">(current date between NDC IssuedDate and NDCExpiryDate)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Transfer Create</div>
+            <div class="flow-box-detail">/Transfer/Create</div>
+            <div class="flow-box-detail">CustomerID → AJAX fetches Seller info + NDC status</div>
+            <div class="flow-box-detail">Enter Buyer details, TransferFeeDue, PaymentDate</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Transfer Table</div>
+            <div class="flow-box-detail">TransferID (TRF-YYYYMMDD-NNNN), WorkFlowStatus = Created</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-label">Created → At the Desk of Accounts → At the Desk of Transfer Approval → Approved</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Approval Gate</div>
+            <div class="flow-box-detail">TransferFeeDue must equal TransferFeePaid</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Customer Record Overwritten with Buyer</div>
+            <div class="flow-box-detail">FullName, FatherName, CNIC, Phone, Address, City, Country</div>
+            <div class="flow-box-detail">Buyer becomes new owner of record. Transfer locked.</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Customer → Transfer (Seller Auto-fill)</th></tr></thead>
+            <tbody>
+                <tr><td>FullName → SellerName</td></tr>
+                <tr><td>FatherName → SellerFatherName</td></tr>
+                <tr><td>CNIC → SellerCNIC</td></tr>
+                <tr><td>Phone → SellerContact</td></tr>
+                <tr><td>MailingAddress → SellerAddress</td></tr>
+            </tbody>
+        </table>
+        <br>
+        <table class="dt">
+            <thead><tr><th>Transfer → Customer (On Approval)</th></tr></thead>
+            <tbody>
+                <tr><td>BuyerName → FullName</td></tr>
+                <tr><td>BuyerFatherName → FatherName</td></tr>
+                <tr><td>BuyerCNIC → CNIC</td></tr>
+                <tr><td>BuyerContact → Phone</td></tr>
+                <tr><td>BuyerAddress/City/Country → Address fields</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     9. REFUND
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">9. Refund</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box action">
+            <div class="flow-box-title">Prerequisite</div>
+            <div class="flow-box-detail">Customer with Payments not already refunded</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box form">
+            <div class="flow-box-title">Refund Create</div>
+            <div class="flow-box-detail">/Refund/Create</div>
+            <div class="flow-box-detail">Search Customer → AJAX returns eligible payments</div>
+            <div class="flow-box-detail">Select one or more Payments, enter DeductionAmount, Reason</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Auto-Calculation</div>
+            <div class="flow-box-detail">PaidAmount = SUM of selected payments</div>
+            <div class="flow-box-detail">RefundedAmount = PaidAmount − DeductionAmount (min 0)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Refund Table</div>
+            <div class="flow-box-detail">RefundID (RFD0000001), WorkflowStatus = Initiated</div>
+            <div class="flow-box-detail">SelectedPaymentIDs stored as JSON array</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-label">Initiated → Approved (payments deleted) / Declined (no change)</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">On Approval</div>
+            <div class="flow-box-detail">All SelectedPaymentIDs permanently deleted from Payments table</div>
+            <div class="flow-box-detail">Each deletion logged in ActivityLog</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Action</th><th>Permission</th><th>Effect</th></tr></thead>
+            <tbody>
+                <tr><td>Approve</td><td>Admin</td><td class="note">Deletes selected payments. Irreversible.</td></tr>
+                <tr><td>Decline</td><td>Edit</td><td class="note">Status → Declined. Payments untouched.</td></tr>
+            </tbody>
+        </table>
+        <br>
+        <table class="dt">
+            <thead><tr><th>Refund Field</th><th>Source</th></tr></thead>
+            <tbody>
+                <tr><td>PaidAmount</td><td>SUM of selected Payments.Amount</td></tr>
+                <tr><td>DeductionAmount</td><td>User input (default 0)</td></tr>
+                <tr><td>RefundedAmount</td><td>Auto: PaidAmount − DeductionAmount</td></tr>
+                <tr><td>SelectedPaymentIDs</td><td>JSON array; deleted on approval</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     10. TICKETS
+═══════════════════════════════════════════════ -->
+<div class="module-section page-break">
+<div class="section-title">10. Ticket (Customer Care / CRO)</div>
+<div class="flow-wrap">
+    <div class="flow-col no-break">
+        <div class="flow-box form">
+            <div class="flow-box-title">Create Ticket</div>
+            <div class="flow-box-detail">/Ticket/Create</div>
+            <div class="flow-box-detail">CustomerID (optional), Email, Contact, Title, Description</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box entity">
+            <div class="flow-box-title">Tickets Table</div>
+            <div class="flow-box-detail">TicketID (GUID-based), Status = Pending</div>
+            <div class="flow-box-detail">CreatedBy = logged-in user</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box action">
+            <div class="flow-box-title">Lifecycle Actions</div>
+            <div class="flow-box-detail">Assign To → add CRO Comments → Update Status</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box result">
+            <div class="flow-box-title">Closed</div>
+            <div class="flow-box-detail">Resolved / Discarded / Duplicate → TicketClosingDate set</div>
+        </div>
+    </div>
+    <div style="min-width:220px;">
+        <table class="dt">
+            <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+            <tbody>
+                <tr><td>Pending</td><td class="note">Awaiting assignment</td></tr>
+                <tr><td>Assigned</td><td class="note">Assigned to a user</td></tr>
+                <tr><td>Ongoing</td><td class="note">Work in progress</td></tr>
+                <tr><td>Resolved</td><td class="note">Closed; TicketClosingDate set</td></tr>
+                <tr><td>Discarded</td><td class="note">Not actionable; TicketClosingDate set</td></tr>
+                <tr><td>Duplicate</td><td class="note">Already tracked; TicketClosingDate set</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+<p style="margin-top:30px; font-size:10px; color:#666;">PMS Data Flow · All 10 modules · Generated from Documentation/*.md</p>
+
+</body>
+</html>

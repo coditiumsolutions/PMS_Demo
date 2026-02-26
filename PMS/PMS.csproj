@@ -7,6 +7,7 @@
     <RootNamespace>PMS</RootNamespace>
     <AssemblyName>PMS</AssemblyName>
     <UserSecretsId>PMS-Secret-Key</UserSecretsId>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +29,13 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\uploads\customers\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Scripts\**" />
+    <Content Remove="Scripts\**" />
+    <EmbeddedResource Remove="Scripts\**" />
+    <None Remove="Scripts\**" />
   </ItemGroup>
 
 </Project>

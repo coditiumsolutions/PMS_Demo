@@ -1,0 +1,407 @@
+@model PMS.Models.Transfer
+
+@{
+    ViewData["Title"] = "Edit Transfer";
+    var isApproved = Model.WorkFlowStatus == "Approved";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Transfer</h2>
+    <a asp-action="Details" asp-route-id="@Model.TransferID" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to Details</a>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+        <h5 class="mb-0 text-white">@Model.TransferID — Customer: @Model.CustomerID</h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="TransferID" />
+            <input type="hidden" asp-for="CustomerID" />
+            <input type="hidden" asp-for="CreatedAt" />
+            <input type="hidden" asp-for="SellerAttachments" id="SellerAttachments" />
+            <input type="hidden" asp-for="BuyerAttachments" id="BuyerAttachments" />
+            <input type="hidden" asp-for="SellerBiometric" id="SellerBiometric" />
+            <input type="hidden" asp-for="BuyerBiometric" id="BuyerBiometric" />
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Workflow Status</label>
+                    <select asp-for="WorkFlowStatus" class="form-select">
+                        @foreach (var s in (string[])ViewBag.WorkflowStatuses)
+                        {
+                            <option value="@s" selected="@(Model.WorkFlowStatus == s)">@s</option>
+                        }
+                    </select>
+                    <small class="text-muted">Setting to Approved will lock this record and update the customer file with buyer details.</small>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs customer-tabs" id="editTabs" role="tablist">
+                <li class="nav-item"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#seller" role="tab">Seller</button></li>
+                <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#buyer" role="tab">Buyer</button></li>
+                <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#payment" role="tab">Payment & Fee</button></li>
+                <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#comments" role="tab">Comments</button></li>
+                <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#attachments" role="tab"><i class="fas fa-paperclip me-1"></i>Attachments</button></li>
+            </ul>
+            <div class="tab-content border border-top-0 p-3" id="editTabContent">
+                <div class="tab-pane fade show active" id="seller" role="tabpanel">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Seller Name</label>
+                            <input asp-for="SellerName" id="SellerName" class="form-control" placeholder="Letters only" />
+                            <span asp-validation-for="SellerName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Father Name</label>
+                            <input asp-for="SellerFatherName" id="SellerFatherName" class="form-control" placeholder="Letters only" />
+                            <span asp-validation-for="SellerFatherName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">CNIC</label>
+                            <input asp-for="SellerCNIC" id="SellerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
+                            <small class="text-muted">Digits only — hyphens auto-inserted</small>
+                            <span asp-validation-for="SellerCNIC" class="text-danger small d-block"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact</label>
+                            <input asp-for="SellerContact" id="SellerContact" class="form-control" placeholder="Digits and + only" />
+                            <span asp-validation-for="SellerContact" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12"><label class="form-label">Address</label><input asp-for="SellerAddress" class="form-control" /></div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="buyer" role="tabpanel">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Buyer Name</label>
+                            <input asp-for="BuyerName" id="BuyerName" class="form-control" placeholder="Letters only" />
+                            <span asp-validation-for="BuyerName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Father Name</label>
+                            <input asp-for="BuyerFatherName" id="BuyerFatherName" class="form-control" placeholder="Letters only" />
+                            <span asp-validation-for="BuyerFatherName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">CNIC</label>
+                            <input asp-for="BuyerCNIC" id="BuyerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
+                            <small class="text-muted">Digits only — hyphens auto-inserted. Either CNIC or Passport required.</small>
+                            <span asp-validation-for="BuyerCNIC" class="text-danger small d-block"></span>
+                            <span id="buyerCnicError" class="text-danger small d-none"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Passport Number</label>
+                            <input asp-for="BuyerPassportNo" id="BuyerPassportNo" class="form-control" placeholder="e.g. AB1234567" />
+                            <small class="text-muted">Alphanumeric only. Provide if no CNIC.</small>
+                            <span asp-validation-for="BuyerPassportNo" class="text-danger small d-block"></span>
+                            <span id="buyerPassportError" class="text-danger small d-none"></span>
+                        </div>
+                        <div id="buyerCnicPassportRule" class="col-12 d-none">
+                            <div class="alert alert-warning small py-2 mb-0"><i class="fas fa-exclamation-triangle me-1"></i>Either Buyer CNIC or Passport Number must be provided.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact</label>
+                            <input asp-for="BuyerContact" id="BuyerContact" class="form-control" placeholder="Digits and + only" />
+                            <span asp-validation-for="BuyerContact" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12"><label class="form-label">Address</label><input asp-for="BuyerAddress" class="form-control" /></div>
+                        <div class="col-md-6"><label class="form-label">City</label><input asp-for="BuyerCity" class="form-control" /></div>
+                        <div class="col-md-6"><label class="form-label">Country</label><input asp-for="BuyerCountry" class="form-control" /></div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="payment" role="tabpanel">
+                    <div class="row g-2">
+                        <div class="col-md-6"><label class="form-label">Transfer Fee Due</label><input asp-for="TransferFeeDue" type="number" step="0.01" class="form-control" /></div>
+                        <div class="col-md-6"><label class="form-label">Transfer Fee Paid</label><input asp-for="TransferFeePaid" type="number" step="0.01" class="form-control" /></div>
+                        <div class="col-md-6"><label class="form-label">Payment Date</label><input asp-for="PaymentDate" type="date" class="form-control" /></div>
+                        <div class="col-md-6">
+                            <label class="form-label">Payment Mode</label>
+                            <select asp-for="PaymentMode" class="form-select">
+                                <option value="">Select Payment Mode</option>
+                                @if (ViewBag.PaymentMethods != null)
+                                {
+                                    @foreach (var pm in (IEnumerable<string>)ViewBag.PaymentMethods)
+                                    {
+                                        <option value="@pm">@pm</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6"><label class="form-label">Challan No</label><input asp-for="PaymentChallanNo" class="form-control" /></div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="comments" role="tabpanel">
+                    <div class="mb-2"><label class="form-label">Details</label><textarea asp-for="Details" class="form-control" rows="2"></textarea></div>
+                    <div class="mb-2"><label class="form-label">CRO Comments</label><textarea asp-for="CROComments" class="form-control" rows="2"></textarea></div>
+                    <div class="mb-2"><label class="form-label">Accounts Comments</label><textarea asp-for="AccountsComments" class="form-control" rows="2"></textarea></div>
+                    <div class="mb-2"><label class="form-label">Transfer Comments</label><textarea asp-for="TransferComments" class="form-control" rows="2"></textarea></div>
+                </div>
+                <div class="tab-pane fade" id="attachments" role="tabpanel">
+                    <p class="text-muted small mb-3">Upload documents for Seller or Buyer. Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file.</p>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Seller Attachments</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Upload file</label>
+                                        <input type="file" id="sellerFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                                        <input type="text" id="sellerDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                        <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadSellerBtn">
+                                            <i class="fas fa-upload me-1"></i>Upload
+                                        </button>
+                                    </div>
+                                    <div id="sellerAttachmentsList" class="transfer-att-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <h6 class="mb-0"><i class="fas fa-user-plus me-2"></i>Buyer Attachments</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Upload file</label>
+                                        <input type="file" id="buyerFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                                        <input type="text" id="buyerDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                        <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBuyerBtn">
+                                            <i class="fas fa-upload me-1"></i>Upload
+                                        </button>
+                                    </div>
+                                    <div id="buyerAttachmentsList" class="transfer-att-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <hr class="my-3" />
+                            <h6 class="mb-2"><i class="fas fa-fingerprint me-2"></i>Biometric (fingerprint)</h6>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small">Seller biometric</label>
+                            <div class="input-group input-group-sm">
+                                <div class="form-control bg-light" id="sellerBiometricStatus">@(string.IsNullOrEmpty(Model.SellerBiometric) ? "Not captured" : "Stored")</div>
+                                <button type="button" class="btn btn-outline-primary" id="btnScanSellerBiometric" title="Scan seller fingerprint">
+                                    <i class="fas fa-fingerprint me-1"></i>Scan
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small">Buyer biometric</label>
+                            <div class="input-group input-group-sm">
+                                <div class="form-control bg-light" id="buyerBiometricStatus">@(string.IsNullOrEmpty(Model.BuyerBiometric) ? "Not captured" : "Stored")</div>
+                                <button type="button" class="btn btn-outline-primary" id="btnScanBuyerBiometric" title="Scan buyer fingerprint">
+                                    <i class="fas fa-fingerprint me-1"></i>Scan
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-12 mb-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestBiometric">
+                                <i class="fas fa-vial me-1"></i>Test (fill both with demo data)
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <div id="biometricDemoMessage" class="alert alert-info small py-2 mb-0" style="display:none;">Demo biometric data loaded. Click <strong>Save</strong> to persist.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save</button>
+                <a asp-action="Details" asp-route-id="@Model.TransferID" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .customer-tabs { border-bottom: 2px solid rgb(72, 123, 165); background: linear-gradient(135deg, #f8f9fa 0%, #e8eef5 100%); padding: 0.5rem 1rem 0; }
+    .customer-tabs .nav-link { border: none; color: var(--text-secondary); font-weight: 500; }
+    .customer-tabs .nav-link.active { color: rgb(72, 123, 165); border-bottom: 2px solid rgb(72, 123, 165); background: transparent; }
+    .transfer-att-list .att-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
+    .transfer-att-list .att-item:last-child { border-bottom: none; }
+</style>
+@section Scripts {
+<script>
+(function() {
+    var transferId = '@Model.TransferID';
+    var token = document.querySelector('input[name="__RequestVerificationToken"]');
+    function getToken() { return token ? token.value : ''; }
+
+    function loadAttachments() {
+        $.ajax({
+            url: '@Url.Action("GetAttachments", "Transfer")',
+            method: 'GET',
+            data: { transferId: transferId },
+            success: function(res) {
+                if (res.success && res.attachments) {
+                    renderList('sellerAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Seller'; }));
+                    renderList('buyerAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Buyer'; }));
+                }
+            }
+        });
+    }
+
+    function renderList(containerId, items) {
+        var $c = $('#' + containerId);
+        $c.empty();
+        if (!items || items.length === 0) {
+            $c.html('<p class="text-muted mb-0 small"><i class="fas fa-inbox me-1"></i>No attachments</p>');
+            return;
+        }
+        items.forEach(function(a) {
+            var isImg = a.fileType && a.fileType.indexOf('image') === 0;
+            var isPdf = a.fileType && a.fileType.indexOf('pdf') >= 0;
+            var icon = isImg ? 'fa-image' : (isPdf ? 'fa-file-pdf text-danger' : 'fa-file');
+            var row = '<div class="att-item">' +
+                '<span><i class="fas ' + icon + ' me-2"></i>' + (a.fileName || 'File') + '</span>' +
+                '<span>' +
+                '<a href="' + a.filePath + '" target="_blank" class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye"></i></a>' +
+                '<button type="button" class="btn btn-sm btn-outline-danger delete-att" data-id="' + a.attachmentID + '"><i class="fas fa-trash"></i></button>' +
+                '</span></div>';
+            $c.append(row);
+        });
+        $c.find('.delete-att').on('click', function() {
+            var id = $(this).data('id');
+            if (!confirm('Delete this attachment?')) return;
+            $.post('@Url.Action("DeleteAttachment", "Transfer")', { __RequestVerificationToken: getToken(), attachmentId: id })
+                .done(function(r) { if (r.success) loadAttachments(); else alert(r.message); })
+                .fail(function() { alert('Error deleting'); });
+        });
+    }
+
+    function upload(type, fileInputId, descId, btnId) {
+        var fileInput = document.getElementById(fileInputId);
+        var descInput = document.getElementById(descId);
+        var btn = document.getElementById(btnId);
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+            alert('Please select a file.');
+            return;
+        }
+        var fd = new FormData();
+        fd.append('transferId', transferId);
+        fd.append('file', fileInput.files[0]);
+        fd.append('attachmentType', type);
+        fd.append('description', descInput ? descInput.value : '');
+        fd.append('__RequestVerificationToken', getToken());
+        $(btn).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Uploading...');
+        $.ajax({
+            url: '@Url.Action("UploadAttachment", "Transfer")',
+            method: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(r) {
+                if (r.success) {
+                    fileInput.value = '';
+                    if (descInput) descInput.value = '';
+                    loadAttachments();
+                } else alert(r.message || 'Upload failed');
+                $(btn).prop('disabled', false).html('<i class="fas fa-upload me-1"></i>Upload');
+            },
+            error: function() {
+                alert('Upload failed.');
+                $(btn).prop('disabled', false).html('<i class="fas fa-upload me-1"></i>Upload');
+            }
+        });
+    }
+
+    $('button[data-bs-target="#attachments"]').on('shown.bs.tab', function() { loadAttachments(); });
+    $('#uploadSellerBtn').on('click', function() { upload('Seller', 'sellerFile', 'sellerDescription', 'uploadSellerBtn'); });
+    $('#uploadBuyerBtn').on('click', function() { upload('Buyer', 'buyerFile', 'buyerDescription', 'uploadBuyerBtn'); });
+
+    function setBiometricDemoMessage() {
+        $('#biometricDemoMessage').show();
+    }
+    $('#btnScanSellerBiometric').on('click', function() {
+        var demo = 'DEMO_BIOMETRIC_BASE64_' + Date.now() + '_seller_fingerprint';
+        $('#SellerBiometric').val(demo);
+        $('#sellerBiometricStatus').text('Stored');
+        setBiometricDemoMessage();
+    });
+    $('#btnScanBuyerBiometric').on('click', function() {
+        var demo = 'DEMO_BIOMETRIC_BASE64_' + Date.now() + '_buyer_fingerprint';
+        $('#BuyerBiometric').val(demo);
+        $('#buyerBiometricStatus').text('Stored');
+        setBiometricDemoMessage();
+    });
+    $('#btnTestBiometric').on('click', function() {
+        var demo = 'DEMO_BIOMETRIC_BASE64_' + Date.now() + '_fingerprint_template_placeholder';
+        $('#SellerBiometric').val(demo);
+        $('#BuyerBiometric').val(demo);
+        $('#sellerBiometricStatus').text('Stored');
+        $('#buyerBiometricStatus').text('Stored');
+        setBiometricDemoMessage();
+    });
+
+    // --- Name filters: letters, spaces, dots, hyphens only ---
+    ['SellerName','SellerFatherName','BuyerName','BuyerFatherName'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() { this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, ''); });
+    });
+
+    // --- Contact filters: digits and + only ---
+    ['SellerContact','BuyerContact'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() { this.value = this.value.replace(/[^0-9\+]/g, ''); });
+    });
+
+    // --- CNIC auto-hyphen: digits only, format XXXXX-XXXXXXX-X ---
+    function applyCnicFormat(el) {
+        var raw = el.value.replace(/[^0-9]/g, '');
+        var f = '';
+        if (raw.length <= 5)        f = raw;
+        else if (raw.length <= 12)  f = raw.slice(0,5) + '-' + raw.slice(5);
+        else                        f = raw.slice(0,5) + '-' + raw.slice(5,12) + '-' + raw.slice(12,13);
+        el.value = f;
+    }
+    ['SellerCNIC','BuyerCNIC'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        // Format existing value on load
+        (function(){ var raw = el.value.replace(/[^0-9]/g,''); if(raw.length===13) el.value=raw.slice(0,5)+'-'+raw.slice(5,12)+'-'+raw.slice(12); })();
+        el.addEventListener('input', function() { applyCnicFormat(this); });
+    });
+
+    // --- Passport: alphanumeric only ---
+    var buyerPassportEl = document.getElementById('BuyerPassportNo');
+    if (buyerPassportEl) {
+        buyerPassportEl.addEventListener('input', function() { this.value = this.value.replace(/[^a-zA-Z0-9]/g, ''); });
+    }
+
+    // --- CNIC / Passport "at least one" validation on submit ---
+    document.querySelector('form[asp-action="Edit"]') || document.querySelector('form[action*="Edit"]') || document.querySelector('form');
+    var editForm = document.querySelector('form');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            var cnic     = (document.getElementById('BuyerCNIC')      ? document.getElementById('BuyerCNIC').value.trim()      : '');
+            var passport = (document.getElementById('BuyerPassportNo') ? document.getElementById('BuyerPassportNo').value.trim() : '');
+            var cnicValid    = /^\d{5}-\d{7}-\d$/.test(cnic);
+            var passportValid = passport.length >= 3;
+            var ruleEl = document.getElementById('buyerCnicPassportRule');
+            if (ruleEl) ruleEl.classList.add('d-none');
+            if (!cnicValid && !passportValid) {
+                e.preventDefault();
+                if (ruleEl) ruleEl.classList.remove('d-none');
+                document.querySelector('[data-bs-target="#buyer"]').click();
+                setTimeout(function() { document.getElementById('BuyerCNIC').scrollIntoView({ behavior:'smooth', block:'center' }); }, 300);
+            }
+        });
+    }
+})();
+</script>
+}

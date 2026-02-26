@@ -110,7 +110,7 @@
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 text-muted">Total Balance (SSP)</h6>
+                        <h6 class="mb-1 text-muted">Total Balance (PKR)</h6>
                         <h4 class="mb-0" data-format-number="@Model.Sum(c => c.Balance)">@Model.Sum(c => c.Balance).ToString("N0")</h4>
                     </div>
                 </div>
@@ -156,16 +156,16 @@
                                 <td>@customer.Phone</td>
                                 <td>@customer.Email</td>
                                 <td>@customer.PlanName</td>
-                                <td><strong><span data-format-number="@customer.TotalAmount">@customer.TotalAmount.ToString("N0")</span> SSP</strong></td>
-                                <td><span class="text-success"><span data-format-number="@customer.TotalPaid">@customer.TotalPaid.ToString("N0")</span> SSP</span></td>
+                                <td><strong><span data-format-number="@customer.TotalAmount">@customer.TotalAmount.ToString("N0")</span> PKR</strong></td>
+                                <td><span class="text-success"><span data-format-number="@customer.TotalPaid">@customer.TotalPaid.ToString("N0")</span> PKR</span></td>
                                 <td>
                                     @if (customer.Balance > 0)
                                     {
-                                        <span class="text-danger fw-bold"><span data-format-number="@customer.Balance">@customer.Balance.ToString("N0")</span> SSP</span>
+                                        <span class="text-danger fw-bold"><span data-format-number="@customer.Balance">@customer.Balance.ToString("N0")</span> PKR</span>
                                     }
                                     else
                                     {
-                                        <span class="text-success fw-bold">0 SSP</span>
+                                        <span class="text-success fw-bold">0 PKR</span>
                                     }
                                 </td>
                                 <td>

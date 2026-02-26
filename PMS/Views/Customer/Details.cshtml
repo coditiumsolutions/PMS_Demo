@@ -24,6 +24,12 @@
         <a asp-action="AccountStatement" asp-route-id="@Model.CustomerID" target="_blank" class="btn btn-outline-info me-2">
             <i class="fas fa-file-invoice-dollar me-2"></i>Account Statement
         </a>
+        @if (Model.Allotments != null && Model.Allotments.Any())
+        {
+            <a asp-action="AllotmentLetter" asp-route-id="@Model.CustomerID" target="_blank" class="btn btn-outline-info me-2">
+                <i class="fas fa-file-signature me-2"></i>Allotment Letter
+            </a>
+        }
         <a asp-action="Index" class="btn btn-outline-primary">
             <i class="fas fa-arrow-left me-2"></i>Back to List
         </a>
@@ -64,6 +70,15 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab" aria-controls="activity" aria-selected="false">
                             <i class="fas fa-history me-2"></i>Activity
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="transfers-tab" data-bs-toggle="tab" data-bs-target="#transfers" type="button" role="tab" aria-controls="transfers" aria-selected="false">
+                            <i class="fas fa-exchange-alt me-2"></i>Transfers
+                            @if (Model.Transfers != null && Model.Transfers.Any())
+                            {
+                                <span class="badge bg-warning rounded-pill ms-1">@Model.Transfers.Count</span>
+                            }
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -247,7 +262,7 @@
                                         <div class="col-md-6 mb-2">
                                             <div class="detail-field">
                                                 <label><i class="fas fa-money-bill-wave me-2"></i>Total Amount</label>
-                                                <p><strong style="color: var(--primary-green); font-size: 1.3rem;">@Model.PaymentPlan.TotalAmount.ToString("N2") SSP</strong></p>
+                                                <p><strong style="color: var(--primary-green); font-size: 1.3rem;">@Model.PaymentPlan.TotalAmount.ToString("N2") PKR</strong></p>
                                             </div>
                                         </div>
                                         <div class="col-md-4 mb-2">
@@ -282,7 +297,7 @@
                                                         </div>
                                                     </div>
                                                     <small class="text-muted mt-1 d-block">
-                                                        @totalPaid.ToString("N2") / @totalDue.ToString("N2") SSP
+                                                        @totalPaid.ToString("N2") / @totalDue.ToString("N2") PKR
                                                     </small>
                                                 </div>
                                             </div>
@@ -305,6 +320,25 @@
                                         <div class="detail-field">
                                             <label><i class="fas fa-ruler-combined me-2"></i>Registered Size</label>
                                             <p>@(Model.RegisteredSize ?? "N/A")</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <div class="detail-field">
+                                            <label><i class="fas fa-store me-2"></i>Dealer</label>
+                                            <p>
+                                                @if (Model.IsDealerRegistered == 0 && !string.IsNullOrWhiteSpace(Model.DealerName))
+                                                {
+                                                    @Model.DealerName <span class="badge bg-secondary ms-1">Not Registered</span>
+                                                }
+                                                else if (Model.Dealer != null)
+                                                {
+                                                    @Model.Dealer.DealershipName <span class="badge bg-success ms-1">Registered</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">N/A</span>
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -493,29 +527,34 @@
                 }
                     </div>
 
-                    <!-- Activity History Tab -->
+                    <!-- Activity History Tab (ActivityLog where RefID = CustomerID) -->
                     <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
-                @if (Model.CustomerLogs != null && Model.CustomerLogs.Any())
+                @{
+                    var activityLogs = ViewBag.ActivityLogs as IEnumerable<PMS.Models.ActivityLog>;
+                }
+                @if (activityLogs != null && activityLogs.Any())
                 {
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Action</th>
-                                    <th>Remarks</th>
                                     <th>Date</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Ref Type</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var log in Model.CustomerLogs.OrderByDescending(l => l.CreatedAt).Take(10))
+                                @foreach (var log in activityLogs)
                                 {
                                     <tr>
+                                        <td class="text-muted small">@log.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                        <td>@(log.User?.FullName ?? log.UserID ?? "—")</td>
                                         <td>
                                             <i class="fas fa-circle-notch me-2" style="font-size: 8px;"></i>
-                                            @log.Action
+                                            @(log.Action ?? "—")
                                         </td>
-                                        <td>@log.Remarks</td>
-                                        <td class="text-muted small">@log.CreatedAt.ToString("MMM dd, yyyy hh:mm tt")</td>
+                                        <td><span class="badge bg-secondary">@(log.RefType ?? "—")</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -526,9 +565,70 @@
                 {
                     <div class="text-center text-muted py-3">
                         <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-                        <p class="mb-0">No activity logs found.</p>
+                        <p class="mb-0">No activity logs found for this customer.</p>
                     </div>
                 }
+                    </div>
+
+                    <!-- Transfers Tab -->
+                    <div class="tab-pane fade" id="transfers" role="tabpanel" aria-labelledby="transfers-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Ownership Transfers</h6>
+                            <a asp-controller="Transfer" asp-action="Create" asp-route-customerId="@Model.CustomerID" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus me-1"></i>New Transfer
+                            </a>
+                        </div>
+                        @if (Model.Transfers != null && Model.Transfers.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Transfer ID</th>
+                                            <th>Seller</th>
+                                            <th>Buyer</th>
+                                            <th>Workflow</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var t in Model.Transfers.OrderByDescending(t => t.CreatedAt))
+                                        {
+                                            <tr>
+                                                <td><code>@t.TransferID</code></td>
+                                                <td>@(t.SellerName ?? "—")</td>
+                                                <td>@(t.BuyerName ?? "—")</td>
+                                                <td>
+                                                    @if (t.WorkFlowStatus == "Approved")
+                                                    { <span class="badge bg-success">@t.WorkFlowStatus</span> }
+                                                    else
+                                                    { <span class="badge bg-warning">@(t.WorkFlowStatus ?? "—")</span> }
+                                                </td>
+                                                <td>@t.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                                <td>
+                                                    <a asp-controller="Transfer" asp-action="Details" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    @if (t.WorkFlowStatus != "Approved")
+                                                    {
+                                                        <a asp-controller="Transfer" asp-action="Edit" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>No transfers for this customer file. <a asp-controller="Transfer" asp-action="Create" asp-route-customerId="@Model.CustomerID">Start a transfer</a>.
+                            </div>
+                        }
                     </div>
 
                     <!-- Attachments Tab -->

@@ -9,7 +9,7 @@
 ## Clone the Repository
 
 ```bash
-git clone https://github.com/UmerRana198/PMS.git
+git clone https://github.com/pakabbas/PMS_ZKB.git
 cd PMS/PMS
 ```
 

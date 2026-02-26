@@ -1,0 +1,386 @@
+@model IEnumerable<PMS.Models.Ticket>
+@{
+    ViewData["Title"] = "Ticket Management";
+    var selectedStatus = ViewBag.SelectedStatus as string ?? "All";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTicketModal">
+            <i class="fas fa-plus me-2"></i>New Ticket
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Filter by Status -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="fw-bold me-2">Filter by Status:</label>
+            <a asp-action="Index" asp-route-status="All" class="btn btn-sm @(selectedStatus == "All" ? "btn-primary" : "btn-outline-primary")"><i class="fas fa-list me-1"></i>All</a>
+            <a asp-action="Index" asp-route-status="Pending" class="btn btn-sm @(selectedStatus == "Pending" ? "btn-info" : "btn-outline-info")"><i class="fas fa-clock me-1"></i>Pending</a>
+            <a asp-action="Index" asp-route-status="Assigned" class="btn btn-sm @(selectedStatus == "Assigned" ? "btn-primary" : "btn-outline-primary")"><i class="fas fa-user-tag me-1"></i>Assigned</a>
+            <a asp-action="Index" asp-route-status="Ongoing" class="btn btn-sm @(selectedStatus == "Ongoing" ? "btn-warning" : "btn-outline-warning")"><i class="fas fa-spinner me-1"></i>Ongoing</a>
+            <a asp-action="Index" asp-route-status="Resolved" class="btn btn-sm @(selectedStatus == "Resolved" ? "btn-success" : "btn-outline-success")"><i class="fas fa-check me-1"></i>Resolved</a>
+            <a asp-action="Index" asp-route-status="Discarded" class="btn btn-sm @(selectedStatus == "Discarded" ? "btn-secondary" : "btn-outline-secondary")"><i class="fas fa-ban me-1"></i>Discarded</a>
+            <a asp-action="Index" asp-route-status="Duplicate" class="btn btn-sm @(selectedStatus == "Duplicate" ? "btn-secondary" : "btn-outline-secondary")"><i class="fas fa-copy me-1"></i>Duplicate</a>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm rounded-circle bg-primary bg-soft text-primary"><i class="fas fa-ticket-alt font-size-24"></i></div>
+                    <div class="flex-grow-1 ms-2">
+                        <h6 class="mb-0 text-muted small">Total</h6>
+                        <h5 class="mb-0">@ViewBag.TotalTickets</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm rounded-circle bg-info bg-soft text-info"><i class="fas fa-clock font-size-24"></i></div>
+                    <div class="flex-grow-1 ms-2">
+                        <h6 class="mb-0 text-muted small">Pending</h6>
+                        <h5 class="mb-0">@ViewBag.PendingTickets</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm rounded-circle bg-primary bg-soft text-primary"><i class="fas fa-user-tag font-size-24"></i></div>
+                    <div class="flex-grow-1 ms-2">
+                        <h6 class="mb-0 text-muted small">Assigned</h6>
+                        <h5 class="mb-0">@ViewBag.AssignedTickets</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm rounded-circle bg-warning bg-soft text-warning"><i class="fas fa-spinner font-size-24"></i></div>
+                    <div class="flex-grow-1 ms-2">
+                        <h6 class="mb-0 text-muted small">Ongoing</h6>
+                        <h5 class="mb-0">@ViewBag.OngoingTickets</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm rounded-circle bg-success bg-soft text-success"><i class="fas fa-check font-size-24"></i></div>
+                    <div class="flex-grow-1 ms-2">
+                        <h6 class="mb-0 text-muted small">Resolved</h6>
+                        <h5 class="mb-0">@ViewBag.ResolvedTickets</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm rounded-circle bg-secondary bg-soft text-secondary"><i class="fas fa-ban font-size-24"></i></div>
+                    <div class="flex-grow-1 ms-2">
+                        <h6 class="mb-0 text-muted small">Discarded / Dup</h6>
+                        <h5 class="mb-0">@((int)(ViewBag.DiscardedTickets ?? 0) + (int)(ViewBag.DuplicateTickets ?? 0))</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tickets Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+        <h5 class="mb-0 text-white"><i class="fas fa-list me-2"></i>Tickets (@selectedStatus)</h5>
+    </div>
+    <div class="card-body">
+        @if (Model != null && Model.Any())
+        {
+            <div class="table-responsive">
+                <table id="ticketsTable" class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Manage</th>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Customer / Contact</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            <tr class="@(t.Status == "Pending" ? "table-warning" : "")">
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailsModal@(t.TicketID)" title="View"><i class="fas fa-eye"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#updateModal@(t.TicketID)" title="Update"><i class="fas fa-edit"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTicket('@t.TicketID')" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
+                                <td><code>#@t.TicketID</code></td>
+                                <td><small><i class="fas fa-calendar-alt text-muted me-1"></i>@t.CreatedAt.ToString("MMM dd, yyyy")<br><i class="fas fa-clock text-muted me-1"></i>@t.CreatedAt.ToString("hh:mm tt")</small></td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(t.CustomerID)) { <strong>@t.CustomerID</strong><br /> }
+                                    @if (!string.IsNullOrEmpty(t.Email)) { <a href="mailto:@t.Email" class="text-decoration-none"><i class="fas fa-envelope text-primary me-1"></i>@t.Email</a><br /> }
+                                    @if (!string.IsNullOrEmpty(t.Contact)) { <a href="tel:@t.Contact" class="text-decoration-none"><i class="fas fa-phone text-success me-1"></i>@t.Contact</a> }
+                                    @if (string.IsNullOrEmpty(t.CustomerID) && string.IsNullOrEmpty(t.Email) && string.IsNullOrEmpty(t.Contact)) { <span class="text-muted">-</span> }
+                                </td>
+                                <td><div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@(t.Title ?? "-")</div></td>
+                                <td>
+                                    @if (t.Status == "Pending") { <span class="badge bg-info">@t.Status</span> }
+                                    else if (t.Status == "Assigned") { <span class="badge bg-primary">@t.Status</span> }
+                                    else if (t.Status == "Ongoing") { <span class="badge bg-warning">@t.Status</span> }
+                                    else if (t.Status == "Resolved") { <span class="badge bg-success">@t.Status</span> }
+                                    else if (t.Status == "Discarded" || t.Status == "Duplicate") { <span class="badge bg-secondary">@t.Status</span> }
+                                    else { <span class="badge bg-secondary">@t.Status</span> }
+                                </td>
+                                <td>@(t.AssignedTo ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-ticket-alt fa-4x mb-3 text-muted"></i>
+                <h5 class="text-muted">No tickets found</h5>
+                <p class="text-muted">Create a new ticket to record a customer query or complaint.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- New Ticket Modal -->
+<div class="modal fade" id="newTicketModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h5 class="modal-title text-white"><i class="fas fa-plus-circle me-2"></i>New Ticket</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Customer ID</label>
+                            <input type="text" name="customerID" class="form-control" placeholder="Optional" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="Customer email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Contact (Phone)</label>
+                            <input type="text" name="contact" class="form-control" placeholder="Phone number" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control" placeholder="Brief title of query/complaint" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-control" rows="4" placeholder="Details of the query or complaint"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Create Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@foreach (var t in Model ?? Enumerable.Empty<PMS.Models.Ticket>())
+{
+    <!-- Details Modal -->
+    <div class="modal fade" id="detailsModal@(t.TicketID)" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                    <h5 class="modal-title text-white"><i class="fas fa-ticket-alt me-2"></i>Ticket #@t.TicketID</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="text-muted small">Customer ID</label><p class="mb-0">@(t.CustomerID ?? "-")</p></div>
+                        <div class="col-md-6"><label class="text-muted small">Email</label><p class="mb-0">@(t.Email ?? "-")</p></div>
+                        <div class="col-md-6"><label class="text-muted small">Contact</label><p class="mb-0">@(t.Contact ?? "-")</p></div>
+                        <div class="col-md-6"><label class="text-muted small">Status</label><p class="mb-0"><span class="badge bg-primary">@(t.Status ?? "Pending")</span></p></div>
+                        <div class="col-md-6"><label class="text-muted small">Created By</label><p class="mb-0">@(t.CreatedBy ?? "-")</p></div>
+                        <div class="col-md-6"><label class="text-muted small">Assigned To</label><p class="mb-0">@(t.AssignedTo ?? "-")</p></div>
+                        <div class="col-12"><label class="text-muted small">Title</label><p class="mb-0 fw-bold">@(t.Title ?? "-")</p></div>
+                        <div class="col-12"><label class="text-muted small">Description</label><div class="alert alert-light mb-0">@(t.Description ?? "-")</div></div>
+                        @if (!string.IsNullOrEmpty(t.CROComments))
+                        {
+                            <div class="col-12"><label class="text-muted small">CRO Comments</label><div class="alert alert-info mb-0">@Html.Raw((t.CROComments ?? "").Replace("\n", "<br>"))</div></div>
+                        }
+                        @if (t.TicketClosingDate.HasValue)
+                        {
+                            <div class="col-12"><label class="text-muted small">Closed On</label><p class="mb-0">@t.TicketClosingDate.Value.ToString("MMM dd, yyyy hh:mm tt")</p></div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="mailto:@t.Email" class="btn btn-primary"><i class="fas fa-envelope me-1"></i>Email</a>
+                    @if (!string.IsNullOrEmpty(t.Contact))
+                    {
+                        <a href="tel:@t.Contact" class="btn btn-success"><i class="fas fa-phone me-1"></i>Call</a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Modal -->
+    <div class="modal fade" id="updateModal@(t.TicketID)" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered ticket-update-modal">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary);">
+                    <h6 class="modal-title text-white"><i class="fas fa-edit me-2"></i>Update Ticket #@t.TicketID</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form asp-action="UpdateStatus" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@t.TicketID" />
+                        <label class="form-label fw-semibold">Status</label>
+                        <select name="status" class="form-select mb-2">
+                            <option value="Pending" selected="@(t.Status == "Pending")">Pending</option>
+                            <option value="Assigned" selected="@(t.Status == "Assigned")">Assigned</option>
+                            <option value="Ongoing" selected="@(t.Status == "Ongoing")">Ongoing</option>
+                            <option value="Resolved" selected="@(t.Status == "Resolved")">Resolved</option>
+                            <option value="Discarded" selected="@(t.Status == "Discarded")">Discarded</option>
+                            <option value="Duplicate" selected="@(t.Status == "Duplicate")">Duplicate</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-1"></i>Update Status</button>
+                    </form>
+                    <hr />
+                    <form asp-action="AddCROComments" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@t.TicketID" />
+                        <label class="form-label fw-semibold">Add CRO Comments</label>
+                        <textarea name="croComments" class="form-control" rows="3" placeholder="Internal notes / follow-up"></textarea>
+                        <button type="submit" class="btn btn-outline-primary w-100 mt-2"><i class="fas fa-comment-medical me-1"></i>Add Comments</button>
+                    </form>
+                    <hr />
+                    <form asp-action="AssignTo" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@t.TicketID" />
+                        <label class="form-label fw-semibold">Assign To</label>
+                        <select name="assignedTo" class="form-select mb-2">
+                            <option value="">-- Unassigned --</option>
+                            @{
+                                var usersList = ViewBag.Users as IEnumerable<string> ?? Enumerable.Empty<string>();
+                                foreach (var name in usersList)
+                                {
+                                    if (name == t.AssignedTo) { <option value="@name" selected>@name</option> }
+                                    else { <option value="@name">@name</option> }
+                                }
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-outline-secondary w-100"><i class="fas fa-user-tie me-1"></i>Assign</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<form id="deleteForm" asp-action="Delete" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="deleteTicketId" name="ticketId" />
+</form>
+
+<style>
+    .avatar-sm { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .bg-soft { background-color: rgba(var(--bs-primary-rgb), 0.1) !important; }
+    .bg-info.bg-soft { background-color: rgba(13, 202, 240, 0.1) !important; }
+    .bg-warning.bg-soft { background-color: rgba(255, 193, 7, 0.1) !important; }
+    .bg-success.bg-soft { background-color: rgba(25, 135, 84, 0.1) !important; }
+    .font-size-24 { font-size: 24px; }
+    code { background: rgba(156, 106, 222, 0.1); color: #9C6ADE; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .table-warning { background-color: rgba(255, 193, 7, 0.1) !important; }
+    .modal-backdrop { display: none !important; }
+    body.modal-open .modal-backdrop { display: none !important; }
+    body.modal-open::before { display: none !important; background: transparent !important; }
+    .modal { background: transparent !important; }
+    .modal.show { background: transparent !important; }
+    /* Ticket Update modal: proper width and responsive */
+    .ticket-update-modal {
+        max-width: 90vw;
+        width: 420px; /* 40% smaller than 700px */
+        min-width: min(320px, 95vw);
+    }
+    @@media (min-width: 576px) {
+        .ticket-update-modal { width: 360px; } /* 40% smaller than 600px */
+    }
+    @@media (min-width: 992px) {
+        .ticket-update-modal { width: 480px; max-width: 90vw; } /* 40% smaller than 800px */
+    }
+    @@media (min-width: 1200px) {
+        .ticket-update-modal { width: 684px; max-width: 95vw; } /* 40% smaller than 1140px */
+    }
+    .ticket-update-modal .modal-body {
+        min-width: 0;
+        padding: 1.25rem 1.5rem;
+    }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            if ($('#ticketsTable tbody tr').length > 0) {
+                $('#ticketsTable').DataTable({ order: [[1, "desc"]], pageLength: 25 });
+            }
+            $('.modal').on('show.bs.modal', function () { $('.modal-backdrop').remove(); });
+            $('.modal').on('shown.bs.modal hidden.bs.modal', function () { $('.modal-backdrop').remove(); });
+        });
+        function deleteTicket(id) {
+            if (confirm('Delete this ticket? This cannot be undone.')) {
+                document.getElementById('deleteTicketId').value = id;
+                document.getElementById('deleteForm').submit();
+            }
+        }
+    </script>
+}

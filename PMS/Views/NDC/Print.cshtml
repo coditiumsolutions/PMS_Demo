@@ -1,0 +1,299 @@
+@model PMS.Models.NDC
+
+@{
+    Layout = null;
+    ViewData["Title"] = "No Dues Certificate - " + Model.NDCID;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Juba Smart City PMS</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/juba-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+
+<!-- Print/Download Controls -->
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <h3 class="mb-0"><i class="fas fa-certificate me-2"></i>No Dues Certificate</h3>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+    </div>
+</div>
+
+<div class="a4-container">
+    <div id="ndc-root">
+        <!-- Header Section -->
+        <div class="a4-header text-center">
+            <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
+            <div class="a4-title">No Dues Certificate (NDC)</div>
+            <div class="a4-subtitle">ZKB - Property Management System</div>
+            <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy")</div>
+        </div>
+
+        <!-- NDC & Customer Information -->
+        <div class="a4-section">
+            <div class="a4-info-grid">
+                <div class="a4-info-block">
+                    <h6>NDC Information</h6>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">NDC ID:</span>
+                        <span class="a4-info-value"><strong>@Model.NDCID</strong></span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Type:</span>
+                        <span class="a4-info-value">@(Model.NDCType ?? "—")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Workflow Status:</span>
+                        <span class="a4-info-value">@(Model.WorkFlowStatus ?? "—")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Issued Date:</span>
+                        <span class="a4-info-value">@Model.IssuedDate.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Expiry Date:</span>
+                        <span class="a4-info-value">@(Model.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Created:</span>
+                        <span class="a4-info-value">@Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    </div>
+                </div>
+                <div class="a4-info-block">
+                    <h6>Customer Information</h6>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Customer ID:</span>
+                        <span class="a4-info-value"><code>@(Model.CustomerID ?? "—")</code></span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Name:</span>
+                        <span class="a4-info-value">@(Model.Customer?.FullName ?? "—")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Project:</span>
+                        <span class="a4-info-value">@(Model.Customer?.PaymentPlan?.Project?.ProjectName ?? "—")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Plan:</span>
+                        <span class="a4-info-value">@(Model.Customer?.PaymentPlan?.PlanName ?? "—")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Title))
+        {
+            <div class="a4-section">
+                <div class="a4-section-title">Title / Reference</div>
+                <div class="a4-info-block" style="margin-bottom: 0;">
+                    <div class="a4-info-value">@Model.Title</div>
+                </div>
+            </div>
+        }
+
+        <!-- Payment Summary -->
+        <div class="a4-section">
+            <div class="a4-section-title">Payment Summary</div>
+            <table class="a4-table">
+                <thead>
+                    <tr>
+                        <th class="text-start">Description</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-start">Total Due (Installments)</td>
+                        <td class="text-end">@((Model.TotalDueAmount ?? 0).ToString("N0"))</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Total Paid</td>
+                        <td class="text-end">@((Model.TotalDueInstallments ?? 0).ToString("N0"))</td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">All Payments Clear</td>
+                        <td class="text-end">@(Model.AllPaymentClear ? "Yes" : "No")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Comments))
+        {
+            <div class="a4-section">
+                <div class="a4-section-title">Comments</div>
+                <div class="a4-info-block" style="margin-bottom: 0;">
+                    <div class="a4-info-value">@Model.Comments</div>
+                </div>
+            </div>
+        }
+
+        <!-- Footer -->
+        <div class="a4-footer">
+            <div>This is a system generated certificate and does not require a signature.</div>
+            <div style="margin-top: 10px;">
+                <strong>ZKB - Property Management System</strong><br>
+                Generated on: @DateTime.Now.ToString("MMMM dd, yyyy at hh:mm tt")
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* A4 Paper Size Styling - same as AccountStatement */
+    .a4-container {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 15mm;
+        background: white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+    }
+
+    .a4-header {
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }
+
+    .a4-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .a4-subtitle {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 3px;
+    }
+
+    .a4-section {
+        margin-bottom: 12px;
+    }
+
+    .a4-section-title {
+        font-size: 13px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+        padding-bottom: 3px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .a4-info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 12px;
+    }
+
+    .a4-info-block {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        border-left: 4px solid #007bff;
+    }
+
+    .a4-info-block h6 {
+        font-size: 11px;
+        font-weight: bold;
+        margin-bottom: 6px;
+        color: #333;
+    }
+
+    .a4-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+        font-size: 10px;
+    }
+
+    .a4-info-label {
+        font-weight: 600;
+        color: #555;
+    }
+
+    .a4-info-value {
+        color: #333;
+    }
+
+    .a4-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9px;
+        margin-bottom: 10px;
+    }
+
+    .a4-table th {
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        padding: 4px 3px;
+        font-weight: bold;
+        text-align: center;
+        font-size: 9px;
+    }
+
+    .a4-table td {
+        border: 1px solid #ddd;
+        padding: 4px 3px;
+        text-align: center;
+        font-size: 9px;
+    }
+
+    .a4-table .text-start { text-align: left; }
+    .a4-table .text-end { text-align: right; }
+
+    .a4-footer {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #ddd;
+        font-size: 9px;
+        color: #666;
+        text-align: center;
+    }
+
+    .a4-logo {
+        max-width: 120px;
+        height: auto;
+        margin-bottom: 10px;
+    }
+
+    @@media print {
+        @@page { size: A4; margin: 0; }
+        body { margin: 0; padding: 0; background: white; }
+        .a4-container {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0;
+            padding: 12mm;
+            box-shadow: none;
+            page-break-after: avoid;
+            page-break-inside: avoid;
+            overflow: hidden;
+        }
+        .no-print { display: none !important; }
+        .a4-section { page-break-inside: avoid; margin-bottom: 8px; }
+        .a4-header { margin-bottom: 8px; padding-bottom: 8px; }
+        .a4-footer { margin-top: 8px; padding-top: 5px; }
+        .a4-info-grid { page-break-inside: avoid; }
+    }
+
+    @@media screen {
+        body { background: #f5f5f5; padding: 20px; }
+        .a4-container { margin: 20px auto; }
+    }
+</style>
+
+</body>
+</html>

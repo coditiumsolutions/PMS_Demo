@@ -3,22 +3,45 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
+using System.Security.Claims;
 
 namespace PMS.Controllers
 {
     [Authorize]
     public class ReportsController : Controller
     {
+        private const string ModuleKey = "Reports";
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public ReportsController(PMSDbContext context)
+        public ReportsController(PMSDbContext context, IModulePermissionService modulePermission)
         {
             _context = context;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         // 1. Defaulters Report - Customers with overdue payments
         public async Task<IActionResult> Defaulters()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var today = DateTime.Today;
 
             // Get all payment schedules that are overdue
@@ -68,6 +91,8 @@ namespace PMS.Controllers
         // 2. Not Allotted Report - Customers without property allotment
         public async Task<IActionResult> NotAllotted(string filter = "All")
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             ViewBag.Filter = filter;
 
             // Get all customers
@@ -139,6 +164,8 @@ namespace PMS.Controllers
         // 3. Blocked Customers Report - Customers with inactive status
         public async Task<IActionResult> BlockedCustomers()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var blockedCustomers = await _context.Customers
                 .Include(c => c.PaymentPlan)
                 .Where(c => c.Status != "Active")
@@ -165,6 +192,8 @@ namespace PMS.Controllers
         // 4. Property Report - Allotted vs Not Allotted by Project, Size, Block
         public async Task<IActionResult> PropertyReport(string projectId = null)
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             ViewBag.Projects = await _context.Projects.OrderBy(p => p.ProjectName).ToListAsync();
             ViewBag.SelectedProjectId = projectId;
 

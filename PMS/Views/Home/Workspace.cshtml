@@ -1,0 +1,697 @@
+@{
+    ViewData["Title"] = "Workspace - Juba Smart City PMS";
+}
+
+<!-- Workspace Header -->
+<div class="workspace-header mb-4">
+    <h3 class="workspace-title">
+        <i class="fas fa-th-large me-2"></i>Workspace
+    </h3>
+    <p class="workspace-subtitle">Quick access to all modules</p>
+</div>
+
+<!-- Workspace Tiles Grid -->
+<div class="workspace-grid">
+    <!-- Dashboard Tile -->
+    <a href="@Url.Action("Index", "Home")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-tachometer-alt"></i>
+        </div>
+        <div class="tile-label">Dashboard</div>
+    </a>
+
+    <!-- Registration Tile -->
+    <a href="@Url.Action("Index", "Registration")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="tile-label">Registration</div>
+    </a>
+
+    <!-- Customers Tile -->
+    <a href="@Url.Action("Index", "Customer")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="tile-label">Customers</div>
+    </a>
+
+    <!-- Transfers Tile -->
+    <a href="@Url.Action("Index", "Transfer")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div class="tile-label">Transfers</div>
+    </a>
+
+    <!-- NDC Tile -->
+    <a href="@Url.Action("Index", "NDC")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-certificate"></i>
+        </div>
+        <div class="tile-label">NDC</div>
+    </a>
+
+    <!-- Projects Tile -->
+    <a href="@Url.Action("Index", "Project")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-building"></i>
+        </div>
+        <div class="tile-label">Projects</div>
+    </a>
+
+    <!-- Floor Plan Tile -->
+    <a href="@Url.Action("FloorPlan", "Project")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-layer-group"></i>
+        </div>
+        <div class="tile-label">Floor Plan</div>
+    </a>
+
+    <!-- Dealers Tile -->
+    <a href="@Url.Action("Index", "Dealer")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-store"></i>
+        </div>
+        <div class="tile-label">Dealers</div>
+    </a>
+
+    <!-- Properties Tile -->
+    <a href="@Url.Action("Index", "Property")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-home"></i>
+        </div>
+        <div class="tile-label">Properties</div>
+    </a>
+
+    <!-- Rentals Tile -->
+    <a href="@Url.Action("Index", "Rental")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-key"></i>
+        </div>
+        <div class="tile-label">Rentals</div>
+    </a>
+
+    <!-- Allotment Tile -->
+    <a href="@Url.Action("Index", "Allotment")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-hand-holding"></i>
+        </div>
+        <div class="tile-label">Allotment</div>
+    </a>
+
+    <!-- Payment Plans Tile -->
+    <a href="@Url.Action("PaymentPlans", "Payment")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-file-invoice-dollar"></i>
+        </div>
+        <div class="tile-label">Payment Plans</div>
+    </a>
+
+    <!-- Customer Payments Tile -->
+    <a href="@Url.Action("CustomerPayments", "Payment")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div class="tile-label">Customer Payments</div>
+    </a>
+
+    <!-- Refund Tile -->
+    <a href="@Url.Action("Index", "Refund")" class="workspace-tile" style="border: 2px solid #17a2b8;">
+        <div class="tile-icon" style="color:#17a2b8;">
+            <i class="fas fa-undo-alt"></i>
+        </div>
+        <div class="tile-label">Refunds</div>
+    </a>
+
+    <!-- Payment Audit Tile -->
+    <a href="@Url.Action("Index", "PaymentAudit")" class="workspace-tile" style="border: 2px solid #6f42c1;">
+        <div class="tile-icon" style="color:#6f42c1;">
+            <i class="fas fa-gavel"></i>
+        </div>
+        <div class="tile-label">Payment Audit</div>
+    </a>
+
+    <!-- Accounts Management Tile -->
+    <a href="@Url.Action("Index", "AccountsManagement")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-calculator"></i>
+        </div>
+        <div class="tile-label">Accounts Management</div>
+    </a>
+
+    <!-- Sales Inquiries Tile -->
+    <a href="@Url.Action("Index", "SalesInquiry")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-envelope-open-text"></i>
+        </div>
+        <div class="tile-label">Sales Inquiries</div>
+    </a>
+
+    <!-- Ticket Management (Customer Care / CRO) Tile -->
+    <a href="@Url.Action("Index", "Ticket")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-ticket-alt"></i>
+        </div>
+        <div class="tile-label">Ticket Management</div>
+    </a>
+
+    <!-- Defaulters Report Tile -->
+    <a href="@Url.Action("Defaulters", "Reports")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="tile-label">Defaulters Report</div>
+    </a>
+
+    <!-- Blocked Customers Report Tile -->
+    <a href="@Url.Action("BlockedCustomers", "Reports")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-user-lock"></i>
+        </div>
+        <div class="tile-label">Blocked Customers</div>
+    </a>
+
+    <!-- Property Report Tile -->
+    <a href="@Url.Action("PropertyReport", "Reports")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+        <div class="tile-label">Property Report</div>
+    </a>
+
+    <!-- Settings Tile -->
+    <a href="@Url.Action("Index", "Settings")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-cog"></i>
+        </div>
+        <div class="tile-label">Settings</div>
+    </a>
+
+    <!-- User Management Tile (Admin Only) -->
+    @if (User.IsInRole("Admin"))
+    {
+        <a href="@Url.Action("Users", "Account")" class="workspace-tile">
+            <div class="tile-icon">
+                <i class="fas fa-user-cog"></i>
+            </div>
+            <div class="tile-label">User Management</div>
+        </a>
+    }
+
+    <!-- AI Assistant Tile -->
+    <a href="@Url.Action("AIAssistant", "Home")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div class="tile-label">AI Assistant</div>
+    </a>
+
+    <!-- Activity Log / History Tile -->
+    <a href="@Url.Action("Index", "ActivityLog")" class="workspace-tile">
+        <div class="tile-icon">
+            <i class="fas fa-history"></i>
+        </div>
+        <div class="tile-label">Logs / History</div>
+    </a>
+
+    <!-- Backup & Sync Tile -->
+    <a href="#backup-sync-panel" class="workspace-tile backup-tile" onclick="document.getElementById('backup-sync-panel').scrollIntoView({behavior:'smooth'}); return false;">
+        <div class="tile-icon">
+            <i class="fas fa-cloud-upload-alt"></i>
+        </div>
+        <div class="tile-label">Backup &amp; Sync</div>
+        <span class="backup-tile-badge">S1 → S2</span>
+    </a>
+</div>
+
+<!-- Backup & Sync Panel -->
+<div id="backup-sync-panel" class="backup-panel mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header backup-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fas fa-cloud-upload-alt fa-lg"></i>
+                <div>
+                    <div class="fw-bold" style="font-size:15px;">Backup &amp; Sync</div>
+                    <div style="font-size:11px; opacity:.85;">Automated database replication between servers</div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="backup-server-badge">
+                    <span class="server-dot s1"></span><strong>Server 1</strong>&nbsp;127.0.0.1
+                    <i class="fas fa-long-arrow-alt-right mx-2"></i>
+                    <span class="server-dot s2"></span><strong>Server 2</strong>&nbsp;172.20.228.2
+                </div>
+                <button id="syncBtn" class="btn btn-light btn-sm sync-btn" onclick="runSync()">
+                    <i class="fas fa-sync-alt me-1" id="syncIcon"></i>Sync Now
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <!-- Summary Strip -->
+            <div class="backup-summary-strip d-flex flex-wrap">
+                <div class="summary-item">
+                    <div class="summary-val text-success" id="statSuccess">10</div>
+                    <div class="summary-lbl">Successful</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-val text-danger" id="statFailed">1</div>
+                    <div class="summary-lbl">Failed</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-val text-warning" id="statPending">0</div>
+                    <div class="summary-lbl">Pending</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-val" id="statTotal">11</div>
+                    <div class="summary-lbl">Total Syncs</div>
+                </div>
+                <div class="summary-item ms-auto">
+                    <div class="summary-val text-muted" style="font-size:12px;" id="lastSyncTime">Feb 22, 2026 &nbsp;09:45 AM</div>
+                    <div class="summary-lbl">Last Sync</div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="table table-hover backup-table mb-0" id="backupTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Backup No.</th>
+                            <th>Source IP</th>
+                            <th>Destination IP</th>
+                            <th>Status</th>
+                            <th>Date &amp; Time</th>
+                            <th>DB Size</th>
+                            <th>Duration</th>
+                            <th>Initiated By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backupTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Backup tile accent */
+    .backup-tile {
+        border-color: #3b82f6 !important;
+    }
+    .backup-tile .tile-icon { color: #3b82f6; }
+    .backup-tile-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #3b82f6;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 20px;
+        letter-spacing: .5px;
+    }
+
+    /* Panel */
+    .backup-panel { margin-bottom: 40px; }
+
+    .backup-card-header {
+        background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+        color: white;
+        border: none;
+        padding: 18px 24px;
+    }
+
+    .backup-server-badge {
+        font-size: 12px;
+        background: rgba(255,255,255,.18);
+        border: 1px solid rgba(255,255,255,.35);
+        border-radius: 8px;
+        padding: 6px 14px;
+        color: white;
+        display: flex;
+        align-items: center;
+    }
+
+    .server-dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .server-dot.s1 { background: #4ade80; box-shadow: 0 0 5px #4ade80; }
+    .server-dot.s2 { background: #fb923c; box-shadow: 0 0 5px #fb923c; }
+
+    .sync-btn {
+        font-weight: 600;
+        font-size: 13px;
+        border-radius: 8px;
+        padding: 7px 18px;
+        border: none;
+        color: #1d4ed8;
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
+        transition: all .2s;
+    }
+    .sync-btn:hover { transform: scale(1.04); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+    .sync-btn.loading { opacity: .7; pointer-events: none; }
+
+    /* Summary strip */
+    .backup-summary-strip {
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 14px 24px;
+        gap: 30px;
+    }
+    html[data-theme="dark"] .backup-summary-strip {
+        background: #1e293b;
+        border-bottom-color: #334155;
+    }
+    .summary-item { text-align: center; }
+    .summary-val { font-size: 20px; font-weight: 700; font-family: 'Inter', sans-serif; }
+    .summary-lbl { font-size: 11px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
+
+    /* Table */
+    .backup-table thead th {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: var(--text-secondary);
+        border-bottom: 2px solid #e5e7eb;
+        padding: 12px 16px;
+        white-space: nowrap;
+        background: #fafbfc;
+    }
+    html[data-theme="dark"] .backup-table thead th {
+        background: #0f172a;
+        border-bottom-color: #334155;
+        color: #94a3b8;
+    }
+    .backup-table tbody td {
+        font-size: 13px;
+        padding: 11px 16px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    html[data-theme="dark"] .backup-table tbody td {
+        border-bottom-color: #1e293b;
+        color: var(--text-primary);
+    }
+    .backup-table tbody tr:hover { background: #f0f7ff; }
+    html[data-theme="dark"] .backup-table tbody tr:hover { background: rgba(59,130,246,.08); }
+
+    .status-badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 20px;
+        display: inline-block;
+    }
+    .status-success  { background: #dcfce7; color: #15803d; }
+    .status-failed   { background: #fee2e2; color: #dc2626; }
+    .status-progress { background: #dbeafe; color: #1d4ed8; }
+    .status-pending  { background: #fef9c3; color: #854d0e; }
+
+    html[data-theme="dark"] .status-success  { background: rgba(74,222,128,.15); color: #4ade80; }
+    html[data-theme="dark"] .status-failed   { background: rgba(248,113,113,.15); color: #f87171; }
+    html[data-theme="dark"] .status-progress { background: rgba(96,165,250,.15); color: #60a5fa; }
+    html[data-theme="dark"] .status-pending  { background: rgba(251,191,36,.15); color: #fbbf24; }
+
+    .new-row-highlight { animation: rowFadeIn .8s ease; }
+    @@keyframes rowFadeIn {
+        from { background: #dbeafe; }
+        to   { background: transparent; }
+    }
+</style>
+
+@section Scripts {
+<script>
+    // ── Hardcoded seed data (10 rows) ──────────────────────────────────────
+    var backupData = [
+        { no:"BKP-20260201-001", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 01, 2026 02:00 AM", size:"342 MB", dur:"1m 08s", by:"Scheduler" },
+        { no:"BKP-20260204-002", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 04, 2026 02:00 AM", size:"358 MB", dur:"1m 14s", by:"Scheduler" },
+        { no:"BKP-20260207-003", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 07, 2026 02:00 AM", size:"361 MB", dur:"1m 11s", by:"Scheduler" },
+        { no:"BKP-20260210-004", src:"127.0.0.1", dst:"172.20.228.2", status:"Failed",    dt:"Feb 10, 2026 02:00 AM", size:"—",      dur:"—",      by:"Scheduler" },
+        { no:"BKP-20260210-005", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 10, 2026 09:15 AM", size:"361 MB", dur:"1m 22s", by:"Admin" },
+        { no:"BKP-20260213-006", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 13, 2026 02:00 AM", size:"374 MB", dur:"1m 17s", by:"Scheduler" },
+        { no:"BKP-20260216-007", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 16, 2026 02:00 AM", size:"379 MB", dur:"1m 19s", by:"Scheduler" },
+        { no:"BKP-20260218-008", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 18, 2026 02:00 AM", size:"385 MB", dur:"1m 21s", by:"Scheduler" },
+        { no:"BKP-20260220-009", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 20, 2026 02:00 AM", size:"391 MB", dur:"1m 24s", by:"Scheduler" },
+        { no:"BKP-20260222-010", src:"127.0.0.1", dst:"172.20.228.2", status:"Completed", dt:"Feb 22, 2026 09:45 AM", size:"397 MB", dur:"1m 26s", by:"Admin" }
+    ];
+
+    function statusBadge(s) {
+        var cls = { Completed:'status-success', Failed:'status-failed', 'In Progress':'status-progress', Pending:'status-pending' };
+        return '<span class="status-badge ' + (cls[s] || 'status-pending') + '">' + s + '</span>';
+    }
+
+    function renderTable(highlight) {
+        var tbody = document.getElementById('backupTableBody');
+        tbody.innerHTML = '';
+        backupData.forEach(function(r, i) {
+            var tr = document.createElement('tr');
+            if (highlight && i === backupData.length - 1) tr.className = 'new-row-highlight';
+            tr.innerHTML =
+                '<td class="text-muted">' + (i+1) + '</td>' +
+                '<td><code style="font-size:12px;">' + r.no + '</code></td>' +
+                '<td><span class="text-muted"><i class="fas fa-server me-1 text-success"></i></span>' + r.src + '</td>' +
+                '<td><span class="text-muted"><i class="fas fa-server me-1 text-warning"></i></span>' + r.dst + '</td>' +
+                '<td>' + statusBadge(r.status) + '</td>' +
+                '<td>' + r.dt + '</td>' +
+                '<td>' + r.size + '</td>' +
+                '<td>' + r.dur + '</td>' +
+                '<td><i class="fas fa-user me-1 text-muted"></i>' + r.by + '</td>';
+            tbody.appendChild(tr);
+        });
+        updateStats();
+    }
+
+    function updateStats() {
+        var success = backupData.filter(function(r){ return r.status === 'Completed'; }).length;
+        var failed  = backupData.filter(function(r){ return r.status === 'Failed'; }).length;
+        var pending = backupData.filter(function(r){ return r.status === 'Pending' || r.status === 'In Progress'; }).length;
+        document.getElementById('statSuccess').textContent = success;
+        document.getElementById('statFailed').textContent  = failed;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statTotal').textContent   = backupData.length;
+        if (backupData.length) {
+            document.getElementById('lastSyncTime').textContent = backupData[backupData.length-1].dt;
+        }
+    }
+
+    function pad(n){ return n < 10 ? '0'+n : n; }
+    function nowLabel() {
+        var d = new Date();
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return months[d.getMonth()] + ' ' + pad(d.getDate()) + ', ' + d.getFullYear() +
+               ' ' + pad(h) + ':' + pad(d.getMinutes()) + ' ' + ampm;
+    }
+    function nextBkpNo() {
+        var d = new Date();
+        var ymd = d.getFullYear() + '' + pad(d.getMonth()+1) + '' + pad(d.getDate());
+        return 'BKP-' + ymd + '-' + pad(backupData.length + 1).padStart(3,'0');
+    }
+
+    function runSync() {
+        var btn  = document.getElementById('syncBtn');
+        var icon = document.getElementById('syncIcon');
+        btn.classList.add('loading');
+        icon.classList.add('fa-spin');
+
+        // Add "In Progress" row immediately
+        var pending = { no: nextBkpNo(), src:'127.0.0.1', dst:'172.20.228.2',
+                        status:'In Progress', dt: nowLabel(), size:'—', dur:'—', by:'Manual' };
+        backupData.push(pending);
+        renderTable(true);
+
+        // After 3s, mark as Completed
+        setTimeout(function() {
+            var last = backupData[backupData.length - 1];
+            last.status = 'Completed';
+            last.size   = (397 + Math.floor(Math.random() * 15)) + ' MB';
+            last.dur    = Math.floor(3 + Math.random()*2) + 'm ' + Math.floor(10 + Math.random()*50) + 's';
+            renderTable(true);
+            btn.classList.remove('loading');
+            icon.classList.remove('fa-spin');
+        }, 3000);
+    }
+
+    // Initial render
+    renderTable(false);
+</script>
+}
+
+<style>
+    .workspace-header {
+        margin-bottom: 30px;
+    }
+
+    .workspace-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+
+    .workspace-subtitle {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* Ensure workspace header text is readable in dark theme */
+    html[data-theme="dark"] .workspace-title,
+    html[data-theme="dark"] .workspace-subtitle {
+        color: var(--text-primary);
+    }
+
+    html[data-theme="dark"] .workspace-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .workspace-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 20px;
+        padding: 0;
+    }
+
+    .workspace-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 30px 20px;
+        background: white;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        min-height: 160px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Dark theme: tiles use surface color and theme text so they stay readable */
+    html[data-theme="dark"] .workspace-tile {
+        background: var(--surface);
+        border-color: var(--border);
+        color: var(--text-primary);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    html[data-theme="modern"] .workspace-tile {
+        background: var(--surface);
+    }
+
+    html[data-theme="dark"] .workspace-tile:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        border-color: var(--primary);
+        color: var(--text-primary);
+    }
+
+    html[data-theme="dark"] .tile-icon {
+        color: var(--primary-light);
+    }
+
+    html[data-theme="dark"] .tile-label {
+        color: var(--text-primary);
+    }
+
+    .workspace-tile::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        transform: scaleX(0);
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .workspace-tile:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        border-color: var(--primary);
+        text-decoration: none;
+        color: var(--text-primary);
+    }
+
+    .workspace-tile:hover::before {
+        transform: scaleX(1);
+    }
+
+    .workspace-tile:hover .tile-icon {
+        transform: scale(1.1);
+        color: var(--primary);
+    }
+
+    .tile-icon {
+        font-size: 48px;
+        color: var(--primary-light);
+        margin-bottom: 15px;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .tile-label {
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+        color: var(--text-primary);
+        line-height: 1.3;
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 768px) {
+        .workspace-grid {
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .workspace-tile {
+            padding: 25px 15px;
+            min-height: 140px;
+        }
+
+        .tile-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .tile-label {
+            font-size: 13px;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .workspace-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .workspace-tile {
+            padding: 20px 12px;
+            min-height: 120px;
+        }
+
+        .tile-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .tile-label {
+            font-size: 12px;
+        }
+    }
+</style>

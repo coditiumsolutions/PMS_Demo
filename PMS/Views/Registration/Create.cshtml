@@ -31,14 +31,27 @@
 
                     <div class="mb-3">
                         <label asp-for="FullName" class="form-label">Full Name *</label>
-                        <input asp-for="FullName" class="form-control" required />
+                        <input asp-for="FullName" id="FullName" class="form-control" required />
                         <span asp-validation-for="FullName" class="text-danger"></span>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="CNIC" class="form-label">CNIC</label>
-                        <input asp-for="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
-                        <span asp-validation-for="CNIC" class="text-danger"></span>
+                        <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
+                        <small class="text-muted">Format: 5 digits – 7 digits – 1 digit. No letters allowed.</small>
+                        <span asp-validation-for="CNIC" class="text-danger d-block"></span>
+                        <span id="cnicError" class="text-danger small d-none"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PassportNo" class="form-label">Passport Number</label>
+                        <input asp-for="PassportNo" id="PassportNo" class="form-control" placeholder="e.g. AB1234567" />
+                        <small class="text-muted">Alphanumeric only (letters and digits). Provide if no CNIC.</small>
+                        <span asp-validation-for="PassportNo" class="text-danger d-block"></span>
+                        <span id="passportError" class="text-danger small d-none"></span>
+                    </div>
+                    <div id="cnicPassportRuleError" class="alert alert-warning small py-2 d-none" role="alert">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Either CNIC or Passport Number is required.
                     </div>
                 </div>
 
@@ -49,7 +62,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Phone" class="form-label">Phone Number *</label>
-                        <input asp-for="Phone" class="form-control" required />
+                        <input asp-for="Phone" id="Phone" class="form-control" required />
                         <span asp-validation-for="Phone" class="text-danger"></span>
                     </div>
 
@@ -57,6 +70,28 @@
                         <label asp-for="Email" class="form-label">Email Address</label>
                         <input asp-for="Email" type="email" class="form-control" />
                         <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ProjectID" class="form-label">Project *</label>
+                        <select asp-for="ProjectID" class="form-select" id="projectSelect" required>
+                            <option value="">-- Select Project --</option>
+                            @if (ViewBag.Projects != null)
+                            {
+                                @foreach (var p in ViewBag.Projects)
+                                {
+                                    <option value="@p.ProjectID">@p.ProjectName</option>
+                                }
+                            }
+                        </select>
+                        <span asp-validation-for="ProjectID" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Size" class="form-label">Size *</label>
+                        <select asp-for="Size" class="form-select" id="sizeSelect" disabled required>
+                            <option value="">-- Select Project first --</option>
+                        </select>
+                        <span asp-validation-for="Size" class="text-danger"></span>
                     </div>
                 </div>
             </div>
@@ -77,5 +112,98 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // FullName: letters, spaces, dots, hyphens only
+        document.getElementById('FullName').addEventListener('input', function () {
+            this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+        });
+        // Phone: digits and + only
+        document.getElementById('Phone').addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9\+]/g, '');
+        });
+
+        // Project / Size loader
+        document.getElementById('projectSelect').addEventListener('change', function () {
+            var projectId = this.value;
+            var sizeSelect = document.getElementById('sizeSelect');
+            sizeSelect.innerHTML = '<option value="">-- Select Size --</option>';
+            sizeSelect.disabled = !projectId;
+            if (projectId) {
+                fetch('@Url.Action("GetProjectSizes", "Registration")?projectId=' + encodeURIComponent(projectId))
+                    .then(function (r) { return r.json(); })
+                    .then(function (arr) {
+                        arr.forEach(function (s) {
+                            var opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = s;
+                            sizeSelect.appendChild(opt);
+                        });
+                    });
+            }
+        });
+
+        // CNIC: auto-insert hyphens, block letters
+        var cnicInput = document.getElementById('CNIC');
+        cnicInput.addEventListener('input', function (e) {
+            var raw = this.value.replace(/[^0-9]/g, '');
+            var formatted = '';
+            if (raw.length <= 5) {
+                formatted = raw;
+            } else if (raw.length <= 12) {
+                formatted = raw.slice(0, 5) + '-' + raw.slice(5);
+            } else {
+                formatted = raw.slice(0, 5) + '-' + raw.slice(5, 12) + '-' + raw.slice(12, 13);
+            }
+            this.value = formatted;
+            validateCnicPassport();
+        });
+
+        // Passport: block non-alphanumeric
+        var passportInput = document.getElementById('PassportNo');
+        passportInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^a-zA-Z0-9]/g, '');
+            validateCnicPassport();
+        });
+
+        function validateCnicPassport() {
+            var cnic = (cnicInput.value || '').trim();
+            var passport = (passportInput.value || '').trim();
+            var cnicRegex = /^\d{5}-\d{7}-\d$/;
+            var cnicValid = cnicRegex.test(cnic);
+            var passportValid = passport.length >= 3;
+
+            document.getElementById('cnicError').classList.add('d-none');
+            document.getElementById('passportError').classList.add('d-none');
+            document.getElementById('cnicPassportRuleError').classList.add('d-none');
+            cnicInput.classList.remove('is-invalid');
+            passportInput.classList.remove('is-invalid');
+
+            if (cnic && !cnicValid) {
+                cnicInput.classList.add('is-invalid');
+                document.getElementById('cnicError').classList.remove('d-none');
+                document.getElementById('cnicError').textContent = 'CNIC must be XXXXX-XXXXXXX-X (digits only).';
+            }
+            if (passport && !/^[a-zA-Z0-9]+$/.test(passport)) {
+                passportInput.classList.add('is-invalid');
+                document.getElementById('passportError').classList.remove('d-none');
+                document.getElementById('passportError').textContent = 'Passport must be alphanumeric only.';
+            }
+        }
+
+        // On submit: require at least one of CNIC (valid) or Passport
+        document.querySelector('form').addEventListener('submit', function (e) {
+            var cnic = (cnicInput.value || '').trim();
+            var passport = (passportInput.value || '').trim();
+            var cnicValid = /^\d{5}-\d{7}-\d$/.test(cnic);
+            var passportValid = passport.length >= 3;
+            if (!cnicValid && !passportValid) {
+                e.preventDefault();
+                document.getElementById('cnicPassportRuleError').classList.remove('d-none');
+                cnicInput.classList.add('is-invalid');
+                passportInput.classList.add('is-invalid');
+                cnicInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    </script>
 }
 

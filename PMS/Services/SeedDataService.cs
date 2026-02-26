@@ -30,6 +30,134 @@ namespace PMS.Services
 
             // Seed Sample Payment Plans
             await SeedPaymentPlans();
+
+            // Seed NDC section in Configuration (if missing)
+            await SeedNDCConfiguration();
+
+            // Seed Users category in Configuration (Departments, Designations)
+            await SeedUsersConfiguration();
+
+            // Seed default module permissions for Admin users (full access)
+            await SeedUserModulePermissionsAsync();
+        }
+
+        private static readonly string[] ModuleKeys = new[]
+        {
+            "Home", "Registration", "Customer", "Transfer", "NDC", "Project", "Dealer", "Property", "Payment",
+            "Allotment", "Rental", "SalesInquiry", "Reports", "Account", "Settings", "ActivityLog",
+            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi"
+        };
+
+        private async Task SeedUserModulePermissionsAsync()
+        {
+            var adminUsers = await _context.Users.Where(u => u.RoleID == "ADMIN001").Select(u => u.UserID).ToListAsync();
+            foreach (var userId in adminUsers)
+            {
+                var existingKeys = await _context.UserModulePermissions
+                    .Where(p => p.UserID == userId)
+                    .Select(p => p.ModuleKey)
+                    .ToListAsync();
+                foreach (var key in ModuleKeys)
+                {
+                    if (!existingKeys.Contains(key))
+                    {
+                        _context.UserModulePermissions.Add(new UserModulePermission
+                        {
+                            UserID = userId,
+                            ModuleKey = key,
+                            Permission = "Admin"
+                        });
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedUsersConfiguration()
+        {
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "departments"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "departments",
+                    Category = "Users",
+                    ConfigValue = "Admin,IT,Sales,Accounts,CRO,HR,Operations,Finance,Marketing",
+                    Description = "User departments (comma-separated)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "designations"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "designations",
+                    Category = "Users",
+                    ConfigValue = "System Administrator,Manager,CRO,Sales Officer,Accountant,HR Officer,Executive",
+                    Description = "User designations (comma-separated)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedNDCConfiguration()
+        {
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "NDCWorkFlowStatus"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "NDCWorkFlowStatus",
+                    Category = "NDC",
+                    ConfigValue = "Initiated,Approved,Declined",
+                    Description = "NDC workflow statuses (comma-separated)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "NDCExpiry"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "NDCExpiry",
+                    Category = "NDC",
+                    ConfigValue = "14",
+                    Description = "NDC validity in days from creation",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "NDCStartNormal"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "NDCStartNormal",
+                    Category = "NDC",
+                    ConfigValue = "3",
+                    Description = "Issued date = creation date + this many days (used unless type contains Urgent)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "NDCStartUrgent"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "NDCStartUrgent",
+                    Category = "NDC",
+                    ConfigValue = "0",
+                    Description = "Issued date = creation date + this many days when NDC Type contains Urgent",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "NDCType"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "NDCType",
+                    Category = "NDC",
+                    ConfigValue = "Normal Transfer,Urgent Transfer,Family Transfer,Death Transfer",
+                    Description = "NDC types (comma-separated)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            await _context.SaveChangesAsync();
         }
 
         private async Task SeedRoles()
@@ -59,11 +187,35 @@ namespace PMS.Services
                     Email = "admin@jubasmartcity.com",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                     RoleID = "ADMIN001",
+                    Designation = "System Administrator",
+                    Department = "IT",
+                    UserType = "Admin",
                     IsActive = true,
                     CreatedAt = DateTime.Now
                 };
 
                 _context.Users.Add(adminUser);
+                await _context.SaveChangesAsync();
+            }
+
+            // Seed additional admin user: abbas@pms.com
+            if (!await _context.Users.AnyAsync(u => u.Email == "abbas@pms.com"))
+            {
+                var abbasUser = new User
+                {
+                    UserID = "USER00002",
+                    FullName = "Abbas",
+                    Email = "abbas@pms.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                    RoleID = "ADMIN001",
+                    Designation = "Administrator",
+                    Department = "Admin",
+                    UserType = "Admin",
+                    IsActive = true,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.Users.Add(abbasUser);
                 await _context.SaveChangesAsync();
             }
         }
@@ -157,7 +309,7 @@ namespace PMS.Services
                         TotalAmount = 50000,
                         TotalAmountUSD = 50000,
                         ExchangeRate = 1m,
-                        Currency = "SSP",
+                        Currency = "PKR",
                         DurationMonths = 36,
                         Frequency = "Monthly",
                         Description = "Basic payment plan for residential properties",
@@ -171,7 +323,7 @@ namespace PMS.Services
                         TotalAmount = 75000,
                         TotalAmountUSD = 75000,
                         ExchangeRate = 1m,
-                        Currency = "SSP",
+                        Currency = "PKR",
                         DurationMonths = 48,
                         Frequency = "Monthly",
                         Description = "Premium payment plan for residential properties",
@@ -185,7 +337,7 @@ namespace PMS.Services
                         TotalAmount = 100000,
                         TotalAmountUSD = 100000,
                         ExchangeRate = 1m,
-                        Currency = "SSP",
+                        Currency = "PKR",
                         DurationMonths = 60,
                         Frequency = "Quarterly",
                         Description = "Payment plan for commercial properties",

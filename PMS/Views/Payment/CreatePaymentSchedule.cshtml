@@ -30,8 +30,8 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3">
-                            <small class="text-muted">Total Amount (SSP)</small>
-                            <p class="fw-bold" style="color: var(--primary-green);">@($"{paymentPlan.TotalAmount:N2}") SSP</p>
+                            <small class="text-muted">Total Amount (PKR)</small>
+                            <p class="fw-bold" style="color: var(--primary-green);">@($"{paymentPlan.TotalAmount:N2}") PKR</p>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Total Amount (USD)</small>
@@ -39,7 +39,7 @@
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Exchange Rate</small>
-                            <p class="fw-bold">@(planExchangeRate > 0 ? $"1 USD = {planExchangeRate:N4} SSP" : "N/A")</p>
+                            <p class="fw-bold">@(planExchangeRate > 0 ? $"1 USD = {planExchangeRate:N4} PKR" : "N/A")</p>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Primary Currency</small>
@@ -107,7 +107,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label asp-for="Amount" class="form-label">Amount (SSP) *</label>
+                                <label asp-for="Amount" class="form-label">Amount (PKR) *</label>
                                 <input asp-for="Amount" type="number" step="0.01" class="form-control" placeholder="e.g., 100000" required />
                                 <span asp-validation-for="Amount" class="text-danger"></span>
                                 <small class="text-muted d-block">Equivalent USD: <span id="amountUsdPreview">0.00</span></small>
@@ -153,7 +153,7 @@
                             var existingTotal = paymentPlan.PaymentSchedules?.Sum(ps => ps.Amount) ?? 0m;
                             var remaining = paymentPlan.TotalAmount - existingTotal;
                             <div class="mt-2">
-                                <strong>Remaining allowable total:</strong> @($"{remaining:N2}") SSP
+                                <strong>Remaining allowable total:</strong> @($"{remaining:N2}") PKR
                                 @if (planExchangeRate > 0m)
                                 {
                                     var remainingUsd = Math.Round(remaining / planExchangeRate, 2, MidpointRounding.AwayFromZero);

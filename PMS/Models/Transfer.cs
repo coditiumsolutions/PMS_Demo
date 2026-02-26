@@ -7,31 +7,97 @@ namespace PMS.Models
     public class Transfer
     {
         [Key]
-        [StringLength(10)]
+        [StringLength(50)]
         public string TransferID { get; set; } = string.Empty;
 
+        [Required]
         [StringLength(10)]
-        public string? FromCustomerID { get; set; }
+        public string CustomerID { get; set; } = string.Empty;
 
-        [StringLength(10)]
-        public string? ToCustomerID { get; set; }
-
-        [StringLength(10)]
-        public string? PropertyID { get; set; }
-
-        [StringLength(50)]
-        public string? Status { get; set; }
+        [StringLength(100)]
+        public string? WorkFlowStatus { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
-        // Navigation properties
-        [ForeignKey("FromCustomerID")]
-        public virtual Customer? FromCustomer { get; set; }
+        // Seller (current owner at initiation)
+        [StringLength(200)]
+        [RegularExpression(@"^[a-zA-Z\s\.\-]+$", ErrorMessage = "Seller Name must contain letters only.")]
+        public string? SellerName { get; set; }
 
-        [ForeignKey("ToCustomerID")]
-        public virtual Customer? ToCustomer { get; set; }
+        [StringLength(200)]
+        [RegularExpression(@"^[a-zA-Z\s\.\-]+$", ErrorMessage = "Seller Father Name must contain letters only.")]
+        public string? SellerFatherName { get; set; }
 
-        [ForeignKey("PropertyID")]
-        public virtual Property? Property { get; set; }
+        [StringLength(200)]
+        [RegularExpression(@"^\d{5}-\d{7}-\d$", ErrorMessage = "Seller CNIC must be in format XXXXX-XXXXXXX-X (digits only).")]
+        public string? SellerCNIC { get; set; }
+
+        [StringLength(200)]
+        [RegularExpression(@"^[0-9\+]+$", ErrorMessage = "Seller Contact must contain digits and '+' only.")]
+        public string? SellerContact { get; set; }
+
+        [StringLength(200)]
+        public string? SellerAddress { get; set; }
+
+        // Buyer (new owner)
+        [StringLength(200)]
+        [RegularExpression(@"^[a-zA-Z\s\.\-]+$", ErrorMessage = "Buyer Name must contain letters only.")]
+        public string? BuyerName { get; set; }
+
+        [StringLength(200)]
+        [RegularExpression(@"^[a-zA-Z\s\.\-]+$", ErrorMessage = "Buyer Father Name must contain letters only.")]
+        public string? BuyerFatherName { get; set; }
+
+        [StringLength(200)]
+        [RegularExpression(@"^\d{5}-\d{7}-\d$", ErrorMessage = "CNIC must be in format XXXXX-XXXXXXX-X (digits only).")]
+        public string? BuyerCNIC { get; set; }
+
+        [StringLength(200)]
+        [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Passport Number must be alphanumeric.")]
+        public string? BuyerPassportNo { get; set; }
+
+        [StringLength(200)]
+        [RegularExpression(@"^[0-9\+]+$", ErrorMessage = "Contact must contain digits and '+' only.")]
+        public string? BuyerContact { get; set; }
+
+        [StringLength(200)]
+        public string? BuyerAddress { get; set; }
+
+        [StringLength(200)]
+        public string? BuyerCity { get; set; }
+
+        [StringLength(200)]
+        public string? BuyerCountry { get; set; }
+
+        /// <summary>JSON array of attachment refs</summary>
+        public string? BuyerAttachments { get; set; }
+
+        /// <summary>JSON array of attachment refs</summary>
+        public string? SellerAttachments { get; set; }
+
+        /// <summary>Fingerprint/biometric template data (e.g. base64) for seller. Stored as NVARCHAR(MAX).</summary>
+        public string? SellerBiometric { get; set; }
+
+        /// <summary>Fingerprint/biometric template data (e.g. base64) for buyer. Stored as NVARCHAR(MAX).</summary>
+        public string? BuyerBiometric { get; set; }
+
+        public double? TransferFeeDue { get; set; }
+        public double? TransferFeePaid { get; set; }
+        public DateTime? PaymentDate { get; set; }
+
+        [StringLength(200)]
+        public string? PaymentMode { get; set; }
+
+        [StringLength(200)]
+        public string? PaymentChallanNo { get; set; }
+
+        public string? Details { get; set; }
+        public string? CROComments { get; set; }
+        public string? AccountsComments { get; set; }
+        public string? TransferComments { get; set; }
+
+        // Navigation
+        [ForeignKey("CustomerID")]
+        public virtual Customer? Customer { get; set; }
     }
 }

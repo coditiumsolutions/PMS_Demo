@@ -1,0 +1,204 @@
+@{
+    ViewData["Title"] = "Customer Blocking";
+    var statusOptions = (ViewBag.CustomerStatuses as List<string>) ?? new List<string> { "Active", "Blocked", "Inactive" };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-ban me-2"></i>Customer Blocking</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Customers
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Change customer status (Block / Unblock)</h5>
+        <small class="text-muted">Reason is required. All actions are recorded in BlockingLogs and ActivityLog.</small>
+    </div>
+    <div class="card-body">
+        <form asp-action="CustomerBlocking" method="post" enctype="multipart/form-data" id="blockingForm">
+            @Html.AntiForgeryToken()
+            <div class="row g-3">
+
+                <!-- Customer ID Search -->
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Customer ID <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="text" id="customerIdInput" name="customerId" class="form-control"
+                               placeholder="Enter Customer ID" required autocomplete="off" />
+                        <button type="button" id="btnSearchCustomer" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                    </div>
+                    <span class="text-danger small" id="customerIdError"></span>
+                </div>
+
+                <!-- Customer Info Card (shown after search) -->
+                <div class="col-md-6" id="customerInfoPanel" style="display:none;">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <i class="fas fa-user-circle fa-2x" style="color:var(--primary-light);"></i>
+                                <div>
+                                    <div class="fw-bold" id="infoName">—</div>
+                                    <small class="text-muted" id="infoId">—</small>
+                                </div>
+                            </div>
+                            <div class="row g-1 small">
+                                <div class="col-6 text-muted">CNIC:</div>
+                                <div class="col-6 fw-semibold" id="infoCnic">—</div>
+                                <div class="col-6 text-muted">Phone:</div>
+                                <div class="col-6 fw-semibold" id="infoPhone">—</div>
+                                <div class="col-6 text-muted">Current Status:</div>
+                                <div class="col-6" id="infoStatus">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Status -->
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">New Status <span class="text-danger">*</span></label>
+                    <select name="newStatus" class="form-select" required>
+                        @foreach (var s in statusOptions)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Reason -->
+                <div class="col-12">
+                    <label class="form-label fw-bold">Reason <span class="text-danger">*</span></label>
+                    <textarea name="reason" class="form-control" rows="4" required
+                              placeholder="Enter reason for status change (e.g. document discrepancy, payment default, resolved after verification...)"></textarea>
+                </div>
+
+                <!-- Attachment -->
+                <div class="col-12">
+                    <label class="form-label fw-bold">Attachment (optional)</label>
+                    <input type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+                    <small class="text-muted">Allowed: PDF, JPG, PNG, DOC, DOCX. Max 5MB.</small>
+                </div>
+
+                <!-- Actions -->
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary" id="btnSubmit" disabled>
+                        <i class="fas fa-save me-2"></i>Update Status and Log
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        var searchUrl = '@Url.Action("SearchCustomerForBlocking", "Customer")';
+        var customerFound = false;
+
+        var inputEl    = document.getElementById('customerIdInput');
+        var btnSearch  = document.getElementById('btnSearchCustomer');
+        var errorEl    = document.getElementById('customerIdError');
+        var infoPanel  = document.getElementById('customerInfoPanel');
+        var btnSubmit  = document.getElementById('btnSubmit');
+
+        function resetPanel() {
+            customerFound = false;
+            infoPanel.style.display = 'none';
+            btnSubmit.disabled = true;
+            document.getElementById('infoName').textContent = '—';
+            document.getElementById('infoId').textContent = '—';
+            document.getElementById('infoCnic').textContent = '—';
+            document.getElementById('infoPhone').textContent = '—';
+            document.getElementById('infoStatus').textContent = '—';
+            document.getElementById('infoStatus').className = '';
+        }
+
+        function search() {
+            var id = inputEl.value.trim();
+            errorEl.textContent = '';
+            resetPanel();
+
+            if (!id) {
+                errorEl.textContent = 'Enter a Customer ID.';
+                return;
+            }
+
+            var token = document.querySelector('input[name="__RequestVerificationToken"]');
+            var body = (token ? '__RequestVerificationToken=' + encodeURIComponent(token.value) + '&' : '')
+                     + 'customerId=' + encodeURIComponent(id);
+
+            btnSearch.disabled = true;
+            btnSearch.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Searching…';
+
+            fetch(searchUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    document.getElementById('infoName').textContent  = data.fullName || '—';
+                    document.getElementById('infoId').textContent    = data.customerID;
+                    document.getElementById('infoCnic').textContent  = data.cnic || '—';
+                    document.getElementById('infoPhone').textContent = data.phone || '—';
+
+                    var statusEl = document.getElementById('infoStatus');
+                    statusEl.textContent = data.status;
+                    statusEl.className = data.status === 'Blocked'   ? 'fw-semibold text-danger'
+                                       : data.status === 'Active'    ? 'fw-semibold text-success'
+                                       : 'fw-semibold text-warning';
+
+                    infoPanel.style.display = 'block';
+                    customerFound = true;
+                    btnSubmit.disabled = false;
+                } else {
+                    errorEl.textContent = data.message || 'Customer not found.';
+                }
+            })
+            .catch(function () { errorEl.textContent = 'Request failed. Please try again.'; })
+            .finally(function () {
+                btnSearch.disabled = false;
+                btnSearch.innerHTML = '<i class="fas fa-search me-1"></i>Search';
+            });
+        }
+
+        btnSearch.addEventListener('click', search);
+
+        inputEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); search(); }
+        });
+
+        inputEl.addEventListener('input', function () {
+            if (customerFound) resetPanel();
+            errorEl.textContent = '';
+        });
+
+        document.getElementById('blockingForm').addEventListener('submit', function (e) {
+            if (!customerFound) {
+                e.preventDefault();
+                errorEl.textContent = 'Please search and confirm a customer before submitting.';
+            }
+        });
+    })();
+</script>
+}

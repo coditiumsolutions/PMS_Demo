@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMS Database - Entity Relationship Diagram</title>
+    <style>
+        @media print {
+            body { margin: 0; padding: 10px; }
+            .page-break { page-break-before: always; }
+            .no-break { page-break-inside: avoid; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11px;
+            color: #222;
+            background: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 18px;
+            margin: 0 0 8px 0;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 6px;
+        }
+        .subtitle {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .erd-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        .entity-box {
+            border: 1px solid #333;
+            min-width: 180px;
+            max-width: 220px;
+            background: #fff;
+            page-break-inside: avoid;
+        }
+        .entity-header {
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .entity-body {
+            padding: 8px 10px;
+        }
+        .entity-body .col {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 2px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+        .entity-body .col:last-child { border-bottom: none; }
+        .col-name { word-break: break-word; flex: 1; }
+        .col-type { color: #666; flex-shrink: 0; }
+        .pk { color: #059669; font-weight: 600; }
+        .fk { color: #dc2626; font-style: italic; }
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 24px 0 10px 0;
+            color: #1e40af;
+            width: 100%;
+        }
+        .relationships {
+            margin-top: 24px;
+            width: 100%;
+        }
+        .rel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+        .rel-table th, .rel-table td {
+            border: 1px solid #999;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        .rel-table th {
+            background: #e0e7ff;
+            font-weight: 600;
+        }
+        .rel-table tr:nth-child(even) { background: #f9fafb; }
+        .more-cols { font-style: italic; color: #64748b; font-size: 10px; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <h1>PMS Database – Entity Relationship Diagram</h1>
+    <p class="subtitle">Property Management System · Print to PDF for documentation</p>
+
+    <div class="section-title">1. Users &amp; Access Control</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">ACL</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">RoleID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">RoleName</span><span class="col-type">NVARCHAR(100)</span></div>
+                <div class="col"><span class="col-name">Permissions</span><span class="col-type">NVARCHAR(MAX)</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Users</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">UserID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">FullName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Email</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">PasswordHash</span><span class="col-type">NVARCHAR(256)</span></div>
+                <div class="col"><span class="col-name fk">RoleID</span><span class="col-type">FK→ACL</span></div>
+                <div class="col"><span class="col-name">Designation</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Department</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">UserType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="more-cols">+3 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">UserModulePermission</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name fk">UserID</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">ModuleKey</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Permission</span><span class="col-type">NVARCHAR(20)</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Tickets</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">TicketID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">CustomerID</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Email</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Contact</span><span class="col-type">NVARCHAR(256)</span></div>
+                <div class="col"><span class="col-name">Title</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="col"><span class="col-name">Description</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="col"><span class="col-name">Status</span><span class="col-type">NVARCHAR(256)</span></div>
+                <div class="more-cols">+5 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">UserSessions</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">SessionID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">UserID</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">LoginTime</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">LogoutTime</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">IPAddress</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">DeviceInfo</span><span class="col-type">NVARCHAR(150)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">2. Projects &amp; Properties</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Projects</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">ProjectID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">ProjectName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Prefix</span><span class="col-type">NVARCHAR(4)</span></div>
+                <div class="col"><span class="col-name">Type</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Location</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Sizes</span><span class="col-type">NVARCHAR(1000)</span></div>
+                <div class="col"><span class="col-name">Description</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="more-cols">+1 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Property</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">PropertyID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">ProjectID</span><span class="col-type">FK→Projects</span></div>
+                <div class="col"><span class="col-name">PlotNo</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Street</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">PlotType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Block</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Floor</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="more-cols">+6 more columns</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">3. Registration, Dealers &amp; Customers</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Dealers</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">DealerID</span><span class="col-type">INT PK</span></div>
+                <div class="col"><span class="col-name">DealershipName</span><span class="col-type">NVARCHAR(500)</span></div>
+                <div class="col"><span class="col-name">OwnerName</span><span class="col-type">NVARCHAR(500)</span></div>
+                <div class="col"><span class="col-name">OwnerCNIC</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">MobileNo</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Email</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">RegisterationDate</span><span class="col-type">DATE</span></div>
+                <div class="more-cols">+6 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Registration</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">RegID</span><span class="col-type">NVARCHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">FullName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">CNIC</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">PassportNo</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Phone</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Email</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name fk">ProjectID</span><span class="col-type">FK→Projects</span></div>
+                <div class="more-cols">+3 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Customers</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">CustomerID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">RegID</span><span class="col-type">FK→Registration</span></div>
+                <div class="col"><span class="col-name fk">PlanID</span><span class="col-type">FK→PaymentPlan</span></div>
+                <div class="col"><span class="col-name">FullName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">FatherName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">CNIC</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Phone</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="more-cols">+23 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">CustomerLogs</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">LogID</span><span class="col-type">INT PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">Action</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">Remarks</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">CreatedAt</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">CreatedBy</span><span class="col-type">CHAR(10)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">4. Payment Plans &amp; Schedules</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">PaymentPlan</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">PlanID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">ProjectID</span><span class="col-type">CHAR(10)</span></div>
+                <div class="col"><span class="col-name">PlanName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">TotalAmount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">TotalAmountUSD</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">DurationMonths</span><span class="col-type">INT</span></div>
+                <div class="col"><span class="col-name">Frequency</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="more-cols">+4 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">PaymentSchedule</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">ScheduleID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">PlanID</span><span class="col-type">FK→PaymentPlan</span></div>
+                <div class="col"><span class="col-name">PaymentDescription</span><span class="col-type">NVARCHAR(250)</span></div>
+                <div class="col"><span class="col-name">InstallmentNo</span><span class="col-type">INT</span></div>
+                <div class="col"><span class="col-name">DueDate</span><span class="col-type">DATE</span></div>
+                <div class="col"><span class="col-name">Amount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">SurchargeApplied</span><span class="col-type">BIT</span></div>
+                <div class="more-cols">+2 more columns</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">5. Rental Module</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Rental</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">RentalID</span><span class="col-type">NVARCHAR(50) PK</span></div>
+                <div class="col"><span class="col-name fk">PropertyID</span><span class="col-type">FK→Property</span></div>
+                <div class="col"><span class="col-name">TenantName</span><span class="col-type">NVARCHAR(200)</span></div>
+                <div class="col"><span class="col-name">TenantCNIC</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">TenantPhone</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">MonthlyRent</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">StartDate</span><span class="col-type">DATE</span></div>
+                <div class="more-cols">+12 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">RentalPayments</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">RentalPaymentID</span><span class="col-type">NVARCHAR(50) PK</span></div>
+                <div class="col"><span class="col-name fk">RentalID</span><span class="col-type">FK→Rental</span></div>
+                <div class="col"><span class="col-name">BillingYear</span><span class="col-type">INT</span></div>
+                <div class="col"><span class="col-name">BillingMonth</span><span class="col-type">INT</span></div>
+                <div class="col"><span class="col-name">DueDate</span><span class="col-type">DATE</span></div>
+                <div class="col"><span class="col-name">AmountDue</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">AmountPaid</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="more-cols">+5 more columns</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">6. Allotment, Balloting &amp; Possession</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Allotment</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">AllotmentID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">PropertyID</span><span class="col-type">FK→Property</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name fk">AllottedBy</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">AllotmentDate</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">AllottmentType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">WorkFlowStatus</span><span class="col-type">NVARCHAR(250)</span></div>
+                <div class="more-cols">+3 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Balloting</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">BallotID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">ProjectID</span><span class="col-type">FK→Projects</span></div>
+                <div class="col"><span class="col-name fk">ConductedBy</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">ConductedAt</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">Remarks</span><span class="col-type">NVARCHAR(255)</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Possession</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">PossessionID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">PropertyID</span><span class="col-type">FK→Property</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">PossessionDate</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">WorkFlowStatus</span><span class="col-type">NVARCHAR(250)</span></div>
+                <div class="col"><span class="col-name">Comments</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="col"><span class="col-name">Remarks</span><span class="col-type">NVARCHAR(255)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">7. Payment Flow</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Payments</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">PaymentID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">ScheduleID</span><span class="col-type">FK→PaymentSchedule</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">PaymentDate</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">Amount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">Method</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Status</span><span class="col-type">NVARCHAR(250)</span></div>
+                <div class="more-cols">+10 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Penalties</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">PenaltyID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">Amount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">Reason</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">AppliedOn</span><span class="col-type">DATETIME</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Waiver</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">WaiverID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">Amount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">Reason</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name fk">ApprovedBy</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">CreatedAt</span><span class="col-type">DATETIME</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Refund</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">RefundID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">RefundType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">PaidAmount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">RefundedAmount</span><span class="col-type">DECIMAL(18,2)</span></div>
+                <div class="col"><span class="col-name">WorkflowStatus</span><span class="col-type">NVARCHAR(100)</span></div>
+                <div class="col"><span class="col-name fk">CreatedBy</span><span class="col-type">FK→Users</span></div>
+                <div class="more-cols">+6 more columns</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">8. Transfers &amp; NDC</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Transfer</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">TransferID</span><span class="col-type">NVARCHAR(50) PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">WorkFlowStatus</span><span class="col-type">NVARCHAR(100)</span></div>
+                <div class="col"><span class="col-name">SellerName</span><span class="col-type">NVARCHAR(200)</span></div>
+                <div class="col"><span class="col-name">SellerCNIC</span><span class="col-type">NVARCHAR(200)</span></div>
+                <div class="col"><span class="col-name">BuyerName</span><span class="col-type">NVARCHAR(200)</span></div>
+                <div class="col"><span class="col-name">BuyerCNIC</span><span class="col-type">NVARCHAR(200)</span></div>
+                <div class="more-cols">+21 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">NDC</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">NDCID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name">NDCType</span><span class="col-type">NVARCHAR(100)</span></div>
+                <div class="col"><span class="col-name">Title</span><span class="col-type">NVARCHAR(500)</span></div>
+                <div class="col"><span class="col-name">WorkFlowStatus</span><span class="col-type">NVARCHAR(500)</span></div>
+                <div class="col"><span class="col-name">IssuedDate</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">NDCExpiryDate</span><span class="col-type">DATE</span></div>
+                <div class="more-cols">+5 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Approvals</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">ApprovalID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">RefType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">RefID</span><span class="col-type">CHAR(10)</span></div>
+                <div class="col"><span class="col-name">ApprovedBy</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="col"><span class="col-name">Status</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Remarks</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">CreatedAt</span><span class="col-type">DATETIME</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">9. Attachments, Logs &amp; Config</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">Attachments</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">AttachmentID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name">RefType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">RefID</span><span class="col-type">VARCHAR(100)</span></div>
+                <div class="col"><span class="col-name">AttachmentType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">FileName</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">FilePath</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">FileSize</span><span class="col-type">BIGINT</span></div>
+                <div class="more-cols">+3 more columns</div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">ActivityLog</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">LogID</span><span class="col-type">INT PK</span></div>
+                <div class="col"><span class="col-name fk">UserID</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">Action</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">RefType</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">RefID</span><span class="col-type">NVARCHAR(100)</span></div>
+                <div class="col"><span class="col-name">CreatedAt</span><span class="col-type">DATETIME</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">BlockingLogs</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">BlockingLogID</span><span class="col-type">INT PK</span></div>
+                <div class="col"><span class="col-name fk">CustomerID</span><span class="col-type">FK→Customers</span></div>
+                <div class="col"><span class="col-name fk">UserID</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">ActionDate</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">PreviousStatus</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">NewStatus</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">Reason</span><span class="col-type">NVARCHAR(MAX)</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Notifications</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">NotificationID</span><span class="col-type">CHAR(10) PK</span></div>
+                <div class="col"><span class="col-name fk">UserID</span><span class="col-type">FK→Users</span></div>
+                <div class="col"><span class="col-name">Message</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">IsRead</span><span class="col-type">BIT</span></div>
+                <div class="col"><span class="col-name">CreatedAt</span><span class="col-type">DATETIME</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">PropertyLogs</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">LogID</span><span class="col-type">INT PK</span></div>
+                <div class="col"><span class="col-name fk">PropertyID</span><span class="col-type">FK→Property</span></div>
+                <div class="col"><span class="col-name">Action</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">OldValue</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">NewValue</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">Remarks</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name fk">CreatedBy</span><span class="col-type">FK→Users</span></div>
+            </div>
+        </div>
+        <div class="entity-box no-break">
+            <div class="entity-header">Configuration</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">ConfigKey</span><span class="col-type">NVARCHAR(50) PK</span></div>
+                <div class="col"><span class="col-name">Category</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">ConfigValue</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="col"><span class="col-name">Description</span><span class="col-type">NVARCHAR(255)</span></div>
+                <div class="col"><span class="col-name">CreatedAt</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name">UpdatedAt</span><span class="col-type">DATETIME</span></div>
+                <div class="col"><span class="col-name fk">UpdatedBy</span><span class="col-type">FK→Users</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">10. Sales Inquiry</div>
+    <div class="erd-container">
+        <div class="entity-box no-break">
+            <div class="entity-header">PropertyInquiry</div>
+            <div class="entity-body">
+                <div class="col"><span class="col-name pk">InquiryID</span><span class="col-type">INT PK</span></div>
+                <div class="col"><span class="col-name">FullName</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">PhoneNumber</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="col"><span class="col-name">EmailAddress</span><span class="col-type">NVARCHAR(150)</span></div>
+                <div class="col"><span class="col-name">InquiryType</span><span class="col-type">NVARCHAR(100)</span></div>
+                <div class="col"><span class="col-name">Message</span><span class="col-type">NVARCHAR(MAX)</span></div>
+                <div class="col"><span class="col-name">Status</span><span class="col-type">NVARCHAR(50)</span></div>
+                <div class="more-cols">+5 more columns</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="relationships">
+        <div class="section-title">Relationship Summary (Foreign Keys)</div>
+        <table class="rel-table">
+            <thead>
+                <tr>
+                    <th>From Table</th>
+                    <th>From Column</th>
+                    <th>To Table</th>
+                    <th>To Column</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Users</td><td>RoleID</td><td>ACL</td><td>RoleID</td></tr>
+                <tr><td>UserModulePermission</td><td>UserID</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>UserSessions</td><td>UserID</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Registration</td><td>ProjectID</td><td>Projects</td><td>ProjectID</td></tr>
+                <tr><td>Property</td><td>ProjectID</td><td>Projects</td><td>ProjectID</td></tr>
+                <tr><td>PaymentSchedule</td><td>PlanID</td><td>PaymentPlan</td><td>PlanID</td></tr>
+                <tr><td>Customers</td><td>RegID</td><td>Registration</td><td>RegID</td></tr>
+                <tr><td>Customers</td><td>PlanID</td><td>PaymentPlan</td><td>PlanID</td></tr>
+                <tr><td>Customers</td><td>DealerID</td><td>Dealers</td><td>DealerID</td></tr>
+                <tr><td>CustomerLogs</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Rental</td><td>PropertyID</td><td>Property</td><td>PropertyID</td></tr>
+                <tr><td>RentalPayments</td><td>RentalID</td><td>Rental</td><td>RentalID</td></tr>
+                <tr><td>PropertyLogs</td><td>PropertyID</td><td>Property</td><td>PropertyID</td></tr>
+                <tr><td>PropertyLogs</td><td>CreatedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Allotment</td><td>PropertyID</td><td>Property</td><td>PropertyID</td></tr>
+                <tr><td>Allotment</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Allotment</td><td>AllottedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Balloting</td><td>ProjectID</td><td>Projects</td><td>ProjectID</td></tr>
+                <tr><td>Balloting</td><td>ConductedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Possession</td><td>PropertyID</td><td>Property</td><td>PropertyID</td></tr>
+                <tr><td>Possession</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Payments</td><td>ScheduleID</td><td>PaymentSchedule</td><td>ScheduleID</td></tr>
+                <tr><td>Payments</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Payments</td><td>CreatedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Payments</td><td>AuditedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Penalties</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Waiver</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Waiver</td><td>ApprovedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Refund</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>Refund</td><td>CreatedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Refund</td><td>ApprovedBy</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Transfer</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>NDC</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>ActivityLog</td><td>UserID</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>BlockingLogs</td><td>CustomerID</td><td>Customers</td><td>CustomerID</td></tr>
+                <tr><td>BlockingLogs</td><td>UserID</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Notifications</td><td>UserID</td><td>Users</td><td>UserID</td></tr>
+                <tr><td>Configuration</td><td>UpdatedBy</td><td>Users</td><td>UserID</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p style="margin-top:30px; font-size:10px; color:#666;">PMS ERD · Generated from db.txt · PK = Primary Key · FK = Foreign Key</p>
+</body>
+</html>

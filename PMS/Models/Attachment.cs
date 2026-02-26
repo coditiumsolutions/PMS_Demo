@@ -13,7 +13,7 @@ namespace PMS.Models
         [StringLength(50)]
         public string? RefType { get; set; }
 
-        [StringLength(50)]
+        [StringLength(100)]
         public string? RefID { get; set; }
 
         [StringLength(50)]

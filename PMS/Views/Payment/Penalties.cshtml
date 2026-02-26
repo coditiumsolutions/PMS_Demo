@@ -30,7 +30,7 @@
     <div class="col-md-4">
         <div class="stats-card">
             <div class="stats-number">@Model.Sum(p => p.Amount).ToString("N0")</div>
-            <div class="stats-label">Total Amount (SSP)</div>
+            <div class="stats-label">Total Amount (PKR)</div>
             <i class="fas fa-money-bill-wave fa-2x mt-2" style="color: #dc3545;"></i>
         </div>
     </div>
@@ -80,7 +80,7 @@
                                 }
                             </td>
                             <td>
-                                <strong class="text-danger">@penalty.Amount.ToString("N2") SSP</strong>
+                                <strong class="text-danger">@penalty.Amount.ToString("N2") PKR</strong>
                             </td>
                             <td>@penalty.Reason</td>
                             <td>
@@ -125,7 +125,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="amount" class="form-label">Penalty Amount (SSP) *</label>
+                        <label for="amount" class="form-label">Penalty Amount (PKR) *</label>
                         <input type="number" name="amount" id="amount" step="0.01" class="form-control" required />
                     </div>
 

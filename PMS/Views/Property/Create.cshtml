@@ -41,7 +41,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="PlotNo" class="form-label">Plot Number *</label>
+                                <label asp-for="PlotNo" class="form-label">Plot/Unit Number *</label>
                                 <input asp-for="PlotNo" class="form-control" required />
                                 <span asp-validation-for="PlotNo" class="text-danger"></span>
                             </div>
@@ -57,6 +57,12 @@
                                 <input asp-for="Block" class="form-control" required />
                                 <span asp-validation-for="Block" class="text-danger"></span>
                             </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Floor" class="form-label">Floor</label>
+                                <input asp-for="Floor" class="form-control" placeholder="e.g. G, 1, 2, Basement" />
+                                <span asp-validation-for="Floor" class="text-danger"></span>
+                            </div>
                         </div>
 
                         <!-- Property Details -->
@@ -67,42 +73,35 @@
 
                             <div class="mb-3">
                                 <label asp-for="PlotType" class="form-label">Plot Type</label>
-                                <select asp-for="PlotType" class="form-select">
+                                <select asp-for="PlotType" class="form-select" id="plotType">
                                     <option value="">Select Plot Type</option>
-                                    <option value="Residential">Residential</option>
-                                    <option value="Commercial">Commercial</option>
-                                    <option value="Industrial">Industrial</option>
-                                    <option value="Agricultural">Agricultural</option>
+                                    @if (ViewBag.PlotTypes != null)
+                                    {
+                                        @foreach (var item in (IEnumerable<string>)ViewBag.PlotTypes)
+                                        {
+                                            <option value="@item">@item</option>
+                                        }
+                                    }
                                 </select>
                                 <span asp-validation-for="PlotType" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
                                 <label asp-for="PropertyType" class="form-label">Property Type</label>
-                                <select asp-for="PropertyType" class="form-select">
+                                <select asp-for="PropertyType" class="form-select" id="propertyType">
                                     <option value="">Select Property Type</option>
-                                    <option value="Plot">Plot</option>
-                                    <option value="House">House</option>
-                                    <option value="Apartment">Apartment</option>
-                                    <option value="Villa">Villa</option>
-                                    <option value="Shop">Shop</option>
-                                    <option value="Office">Office</option>
-                                    <option value="Warehouse">Warehouse</option>
+                                    @foreach (var pt in (ViewBag.PropertyTypes as List<string> ?? new List<string>()))
+                                    {
+                                        <option value="@pt">@pt</option>
+                                    }
                                 </select>
                                 <span asp-validation-for="PropertyType" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
                                 <label asp-for="Size" class="form-label">Size *</label>
-                                <select asp-for="Size" class="form-select" required>
-                                    <option value="">Select Size</option>
-                                    @if (ViewBag.Sizes != null)
-                                    {
-                                        @foreach (var size in ViewBag.Sizes)
-                                        {
-                                            <option value="@size">@size</option>
-                                        }
-                                    }
+                                <select asp-for="Size" class="form-select" required id="size">
+                                    <option value="">Select Project first</option>
                                 </select>
                                 <span asp-validation-for="Size" class="text-danger"></span>
                             </div>
@@ -162,5 +161,57 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function() {
+            var projectSelect = document.getElementById('ProjectID');
+            var sizeSelect = document.getElementById('size');
+            var propertyTypeSelect = document.getElementById('propertyType');
+            var getProjectDetailsUrl = '@Url.Action("GetProjectDetails", "Property")';
+
+            function fillOptions(select, options, placeholder) {
+                var first = select.options[0];
+                select.innerHTML = '';
+                select.appendChild(first);
+                first.text = placeholder;
+                first.value = '';
+                (options || []).forEach(function(v) {
+                    var opt = document.createElement('option');
+                    opt.value = v;
+                    opt.textContent = v;
+                    select.appendChild(opt);
+                });
+            }
+
+            function loadProjectDetails() {
+                var projectId = projectSelect && projectSelect.value;
+                if (!projectId) {
+                    fillOptions(sizeSelect, [], 'Select Project first');
+                    fillOptions(propertyTypeSelect, [], 'Select Project first');
+                    return;
+                }
+                fetch(getProjectDetailsUrl + '?projectId=' + encodeURIComponent(projectId))
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        fillOptions(sizeSelect, data.sizes || [], 'Select Size');
+                    })
+                    .catch(function() {
+                        fillOptions(sizeSelect, [], 'Select Project first');
+                    });
+            }
+
+            if (projectSelect) {
+                projectSelect.addEventListener('change', loadProjectDetails);
+                if (projectSelect.value) {
+                    loadProjectDetails();
+                    var preserveSize = '@(Model?.Size ?? "")';
+                    var preservePropertyType = '@(Model?.PropertyType ?? "")';
+                    setTimeout(function() {
+                        if (preserveSize && sizeSelect) sizeSelect.value = preserveSize;
+                        if (preservePropertyType && propertyTypeSelect) propertyTypeSelect.value = preservePropertyType;
+                    }, 100);
+                }
+            }
+        })();
+    </script>
 }
 

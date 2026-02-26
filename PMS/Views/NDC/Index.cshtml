@@ -1,0 +1,134 @@
+@model IEnumerable<PMS.Models.NDC>
+
+@{
+    ViewData["Title"] = "NDC (No Dues Certificate)";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="fas fa-file-certificate me-2"></i>NDC</h2>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New NDC
+    </a>
+</div>
+
+<form method="get" asp-action="Index" class="mb-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Customer ID</label>
+                    <input type="text" name="customerIdFilter" class="form-control form-control-sm" placeholder="Search by Customer ID" value="@ViewBag.CustomerIdFilter" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Workflow Status</label>
+                    <select name="workflowFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All</option>
+                        @if (ViewBag.WorkflowStatuses != null)
+                        {
+                            foreach (var s in (IEnumerable<string>)ViewBag.WorkflowStatuses)
+                            {
+                                <option value="@s" selected="@(ViewBag.WorkflowFilter == s)">@s</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times me-2"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-body">
+        @if (Model != null && Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Actions</th>
+                            <th>NDC ID</th>
+                            <th>Customer ID</th>
+                            <th>Customer / Project</th>
+                            <th>Type / Title</th>
+                            <th>Total Due</th>
+                            <th>Total Paid</th>
+                            <th>All Clear</th>
+                            <th>Expiry</th>
+                            <th>Workflow</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var n in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="Print" asp-route-id="@n.NDCID" target="_blank" class="btn btn-sm btn-outline-secondary" title="Print">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    <a asp-action="Details" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-primary" title="Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                                <td><span class="badge bg-secondary">@n.NDCID</span></td>
+                                <td><code>@n.CustomerID</code></td>
+                                <td>
+                                    @if (n.Customer != null)
+                                    {
+                                        <span>@(n.Customer.FullName ?? "—")</span>
+                                        @if (n.Customer.PaymentPlan?.Project != null)
+                                        {
+                                            <br /><span class="badge bg-info">@n.Customer.PaymentPlan.Project.ProjectName</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="text-muted small">@(n.NDCType ?? "—")</span>
+                                    @if (!string.IsNullOrWhiteSpace(n.Title))
+                                    {
+                                        <br /><span class="small">@(n.Title.Length > 40 ? n.Title.Substring(0, 40) + "…" : n.Title)</span>
+                                    }
+                                </td>
+                                <td>@(n.TotalDueAmount?.ToString("N0") ?? "—")</td>
+                                <td>@(n.TotalDueInstallments?.ToString("N0") ?? "—")</td>
+                                <td>
+                                    @if (n.AllPaymentClear)
+                                    { <span class="badge bg-success">Yes</span> }
+                                    else
+                                    { <span class="badge bg-warning">No</span> }
+                                </td>
+                                <td>@(n.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</td>
+                                <td><span class="badge bg-primary">@(n.WorkFlowStatus ?? "—")</span></td>
+                                <td>@n.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-file-certificate fa-4x mb-3"></i>
+                <h5>No NDC records</h5>
+                <p>Create an NDC (No Dues Certificate) before a transfer when the customer has cleared all dues.</p>
+                <a asp-action="Create" class="btn btn-primary"><i class="fas fa-plus me-2"></i>New NDC</a>
+            </div>
+        }
+    </div>
+</div>

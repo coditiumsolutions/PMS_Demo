@@ -1,0 +1,435 @@
+@{
+    ViewData["Title"] = "AI Assistant";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-robot me-2"></i>AI Assistant
+    </h2>
+    <a asp-action="Workspace" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Workspace
+    </a>
+</div>
+
+<div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-comments me-2"></i>Chat with AI Assistant
+        </h5>
+        <small class="text-muted">Ask questions about your database and get instant answers</small>
+    </div>
+    <div class="card-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+        <div id="chatMessages" style="min-height: 400px; margin-bottom: 20px;">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Ask me anything about your database! I can help you query customer data, projects, payments, and more.
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="input-group">
+            <input type="text" class="form-control" id="chatInput" placeholder="Ask a question..." onkeypress="handleChatKeyPress(event)">
+            <button class="btn btn-primary" type="button" onclick="sendMessage()">
+                <i class="fas fa-paper-plane me-2"></i>Send
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-message {
+        margin-bottom: 20px;
+        padding: 15px;
+        border-radius: 10px;
+        background: #f8f9fa;
+    }
+
+    .chat-message.user {
+        background: #e3f2fd;
+        margin-left: 20%;
+    }
+
+    .chat-message.ai {
+        background: #f1f8e9;
+        margin-right: 20%;
+    }
+
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+    }
+
+    .step-indicator.pending {
+        border-left-color: #6c757d;
+        opacity: 0.6;
+    }
+
+    .step-indicator.completed {
+        border-left-color: #28a745;
+    }
+
+    .step-indicator.error {
+        border-left-color: #dc3545;
+    }
+
+    .step-indicator.step-3-final {
+        background: #f8f9fa;
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        margin-top: 15px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .step-3-final .step-number {
+        width: 32px;
+        height: 32px;
+        background: #28a745;
+        font-size: 16px;
+    }
+
+    .step-3-final .step-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .step-3-final .step-body {
+        font-size: 15px;
+        font-weight: 500;
+        color: #1e7e34;
+        line-height: 1.6;
+        padding: 12px 15px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #c3e6cb;
+        margin-top: 10px;
+    }
+
+    .step-3-final .data-table {
+        margin-top: 15px;
+        border-top: 1px solid #dee2e6;
+        padding-top: 12px;
+    }
+
+    .step-number {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #007bff;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 15px;
+    }
+
+    .step-indicator.pending .step-number {
+        background: #6c757d;
+    }
+
+    .step-indicator.completed .step-number {
+        background: #28a745;
+    }
+
+    .step-indicator.error .step-number {
+        background: #dc3545;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+        flex: 1;
+    }
+
+    .step-body {
+        color: #666;
+        font-size: 14px;
+        white-space: pre-wrap;
+        margin-top: 10px;
+    }
+
+    .sql-code {
+        background: #282c34;
+        color: #abb2bf;
+        padding: 15px;
+        border-radius: 5px;
+        font-family: 'Courier New', monospace;
+        margin-top: 10px;
+        overflow-x: auto;
+    }
+
+    .data-table {
+        margin-top: 15px;
+        overflow-x: auto;
+    }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.15em;
+    }
+
+    .step-collapsible {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .step-collapsible:hover {
+        background: #f0f0f0 !important;
+    }
+
+    .step-body-collapsed {
+        display: none;
+    }
+
+    .step-expand-icon {
+        margin-left: auto;
+        margin-right: 10px;
+        transition: transform 0.3s ease;
+        color: #6c757d;
+        font-size: 12px;
+    }
+
+    .step-expand-icon.collapsed {
+        transform: rotate(-90deg);
+    }
+
+    .step-header {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+</style>
+
+<script>
+    function handleChatKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        if (!message) return;
+
+        // Add user message to chat
+        addUserMessage(message);
+        input.value = '';
+        input.disabled = true;
+
+        // Show loading indicator
+        const stepContainer = addAIMessage('', true);
+        const stepsDiv = document.createElement('div');
+        stepsDiv.id = 'currentSteps';
+        stepContainer.querySelector('.step-content').appendChild(stepsDiv);
+
+        // Add a single pending step - will be replaced with actual steps from response
+        addStep(stepsDiv, 1, 'Understanding Question', 'pending', 'Analyzing your question...');
+
+        try {
+            const response = await fetch('@Url.Action("AIChat", "Home")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            
+            // Clear and update steps with actual response
+            stepsDiv.innerHTML = '';
+            
+            // Only add steps that exist in the response
+            if (data.steps && data.steps.length > 0) {
+                data.steps.forEach(step => {
+                    // Ensure status is completed (not pending) for all returned steps
+                    const stepStatus = step.status === 'pending' ? 'completed' : step.status;
+                    addStep(stepsDiv, step.stepNumber, step.title, stepStatus, step.content, step.sqlQuery, step.data);
+                });
+
+                // Collapse steps 1 and 2 when step 3 completes
+                const step3 = data.steps.find(s => s.stepNumber === 3);
+                if (step3 && step3.status === 'completed') {
+                    collapseSteps1And2(stepsDiv);
+                }
+            } else {
+                // Fallback if no steps returned
+                addStep(stepsDiv, 1, 'Response', 'completed', 'No response received.');
+            }
+
+            input.disabled = false;
+            input.focus();
+        } catch (error) {
+            stepsDiv.innerHTML = '';
+            addStep(stepsDiv, 1, 'Error', 'error', 'An error occurred: ' + error.message);
+            input.disabled = false;
+        }
+    }
+
+    function addUserMessage(message) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message user';
+        messageDiv.innerHTML = `<strong>You:</strong><br>${escapeHtml(message)}`;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function addAIMessage(content, isLoading = false) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message ai';
+        messageDiv.innerHTML = `
+            <strong><i class="fas fa-robot me-2"></i>AI Assistant:</strong>
+            <div class="step-content">${isLoading ? '<div class="spinner-border spinner-border-sm" role="status"></div>' : escapeHtml(content)}</div>
+        `;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return messageDiv;
+    }
+
+    function addStep(container, stepNumber, title, status, content, sqlQuery = null, data = null) {
+        const stepDiv = document.createElement('div');
+        const isStep3 = stepNumber === 3;
+        const step3Class = isStep3 && status === 'completed' ? 'step-3-final' : '';
+        stepDiv.className = `step-indicator ${status} ${step3Class}`;
+        
+        // For step 3, separate the AI response from the data table
+        let aiResponseText = '';
+        let stepBody = '';
+        
+        if (isStep3 && status === 'completed') {
+            // Step 3: Extract the AI response text (before any data table)
+            aiResponseText = escapeHtml(content);
+            
+            // Remove any markdown or extra formatting, keep it clean
+            aiResponseText = aiResponseText.trim();
+        } else {
+            stepBody = escapeHtml(content);
+        }
+        
+        if (sqlQuery && !isStep3) {
+            stepBody += `<div class="sql-code">${escapeHtml(sqlQuery)}</div>`;
+        }
+        
+        // Make steps 1 and 2 collapsible
+        const isCollapsible = stepNumber === 1 || stepNumber === 2;
+        const collapsibleClass = isCollapsible ? 'step-collapsible' : '';
+        const stepBodyClass = isCollapsible ? 'step-body step-body-collapsed' : 'step-body';
+        
+        const expandIcon = isCollapsible ? '<i class="fas fa-chevron-down step-expand-icon collapsed"></i>' : '';
+
+        if (isStep3 && status === 'completed') {
+            // Special rendering for step 3 - prominent AI response (but consistent with site theme)
+            stepDiv.innerHTML = `
+                <div class="step-number">${stepNumber}</div>
+                <div class="step-content">
+                    <div class="step-header">
+                        <div class="step-title"><i class="fas fa-check-circle me-2" style="color: #28a745;"></i>${title}</div>
+                    </div>
+                    <div class="step-body">
+                        <i class="fas fa-info-circle me-2" style="color: #17a2b8;"></i>${aiResponseText}
+                    </div>
+                    ${data && data.length > 0 ? '<div class="data-table">' + renderDataTable(data) + '</div>' : ''}
+                </div>
+            `;
+        } else {
+            // Regular rendering for steps 1 and 2
+            stepDiv.innerHTML = `
+                <div class="step-number">${stepNumber}</div>
+                <div class="step-content ${collapsibleClass}" ${isCollapsible ? 'onclick="toggleStep(this)"' : ''} style="${isCollapsible ? 'cursor: pointer;' : ''}">
+                    <div class="step-header">
+                        <div class="step-title">${title}</div>
+                        ${expandIcon}
+                    </div>
+                    <div class="${stepBodyClass}">${stepBody}</div>
+                    ${sqlQuery ? `<div class="sql-code">${escapeHtml(sqlQuery)}</div>` : ''}
+                    ${data && data.length > 0 ? renderDataTable(data) : ''}
+                </div>
+            `;
+        }
+        
+        container.appendChild(stepDiv);
+    }
+
+    function toggleStep(stepContentElement) {
+        const stepBody = stepContentElement.querySelector('.step-body');
+        const expandIcon = stepContentElement.querySelector('.step-expand-icon');
+        
+        if (stepBody.classList.contains('step-body-collapsed')) {
+            stepBody.classList.remove('step-body-collapsed');
+            expandIcon.classList.remove('collapsed');
+        } else {
+            stepBody.classList.add('step-body-collapsed');
+            expandIcon.classList.add('collapsed');
+        }
+    }
+
+    function collapseSteps1And2(container) {
+        const steps = container.querySelectorAll('.step-indicator');
+        steps.forEach(step => {
+            const stepContent = step.querySelector('.step-content.step-collapsible');
+            if (stepContent) {
+                const stepBody = stepContent.querySelector('.step-body');
+                const expandIcon = stepContent.querySelector('.step-expand-icon');
+                if (stepBody && !stepBody.classList.contains('step-body-collapsed')) {
+                    stepBody.classList.add('step-body-collapsed');
+                    if (expandIcon) {
+                        expandIcon.classList.add('collapsed');
+                    }
+                }
+            }
+        });
+    }
+
+    function renderDataTable(data) {
+        if (!data || data.length === 0) return '';
+
+        const headers = Object.keys(data[0]);
+        let html = '<div class="data-table"><table class="table table-sm table-bordered table-striped"><thead><tr>';
+        
+        headers.forEach(header => {
+            html += `<th>${escapeHtml(header)}</th>`;
+        });
+        
+        html += '</tr></thead><tbody>';
+        
+        data.forEach(row => {
+            html += '<tr>';
+            headers.forEach(header => {
+                const value = row[header];
+                html += `<td>${value === null || value === undefined ? '-' : escapeHtml(value.toString())}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Focus input on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('chatInput').focus();
+    });
+</script>

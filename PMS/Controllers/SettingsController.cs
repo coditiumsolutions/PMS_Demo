@@ -3,22 +3,44 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
 
 namespace PMS.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class SettingsController : Controller
     {
+        private const string ModuleKey = "Settings";
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public SettingsController(PMSDbContext context)
+        public SettingsController(PMSDbContext context, IModulePermissionService modulePermission)
         {
             _context = context;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         public async Task<IActionResult> Index()
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var configurations = await _context.Configurations
                 .Include(c => c.UpdatedByUser)
                 .OrderBy(c => c.Category)
@@ -29,8 +51,10 @@ namespace PMS.Controllers
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             return View();
         }
 
@@ -38,6 +62,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Configuration configuration)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (ModelState.IsValid)
             {
                 // Check if key already exists
@@ -65,6 +91,8 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (string.IsNullOrEmpty(id))
             {
                 return NotFound();
@@ -83,6 +111,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Configuration configuration)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (ModelState.IsValid)
             {
                 try
@@ -109,6 +139,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var configuration = await _context.Configurations.FindAsync(id);
             if (configuration != null)
             {

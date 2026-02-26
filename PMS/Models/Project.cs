@@ -8,7 +8,7 @@ namespace PMS.Models
     {
         [Key]
         [StringLength(10)]
-        public string ProjectID { get; set; } = string.Empty;
+        public string? ProjectID { get; set; } = string.Empty;
 
         [StringLength(150)]
         public string? ProjectName { get; set; }
@@ -21,6 +21,14 @@ namespace PMS.Models
 
         [StringLength(150)]
         public string? Location { get; set; }
+
+        /// <summary>Comma-separated list of sizes (e.g. 5 Marla, 7 Marla, 10 Marla).</summary>
+        [StringLength(1000)]
+        public string? Sizes { get; set; }
+
+        /// <summary>Comma-separated list of property types (e.g. Plot, Apartment, House).</summary>
+        [StringLength(500)]
+        public string? PropertyTypes { get; set; }
 
         public string? Description { get; set; }
 

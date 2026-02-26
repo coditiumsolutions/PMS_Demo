@@ -11,9 +11,12 @@
         <i class="fas fa-file-invoice-dollar me-2"></i>
     </h2>
     <div>
+        @if (ViewBag.CanCreate == true)
+        {
         <a asp-action="CreatePaymentSchedule" asp-route-planId="@Model.PlanID" class="btn btn-primary me-2">
             <i class="fas fa-plus me-2"></i>Add Installment
         </a>
+        }
         <a asp-action="PaymentPlans" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-2"></i>Back to Plans
         </a>
@@ -30,7 +33,7 @@
     <div class="card-body">
         <div class="row">
             <div class="col-md-3">
-                <small class="text-muted">Total Amount (SSP)</small>
+                <small class="text-muted">Total Amount (PKR)</small>
                 <p class="fw-bold" style="color: #9C6ADE; font-size: 1.2rem;">
                     <span data-format-number="@Model.TotalAmount">@Model.TotalAmount.ToString("N0")</span>
                 </p>
@@ -41,7 +44,7 @@
             </div>
             <div class="col-md-3">
                 <small class="text-muted">Exchange Rate</small>
-                <p class="fw-bold">@(planExchangeRate > 0 ? $"1 USD = {planExchangeRate:N4} SSP" : "N/A")</p>
+                <p class="fw-bold">@(planExchangeRate > 0 ? $"1 USD = {planExchangeRate:N4} PKR" : "N/A")</p>
             </div>
             <div class="col-md-3">
                 <small class="text-muted">Primary Currency</small>
@@ -126,12 +129,12 @@
                                 </td>
                                 <td>
                                     <strong style="color: #9C6ADE;">
-                                        SSP <span data-format-number="@schedule.Amount">@schedule.Amount.ToString("N0")</span><br />
+                                        PKR <span data-format-number="@schedule.Amount">@schedule.Amount.ToString("N0")</span><br />
                                         <small class="text-muted">USD @amountUsdDisplay</small>
                                     </strong>
                                     @if (totalPaid > 0)
                                     {
-                                        <br /><small class="text-muted">Paid: <span data-format-number="@totalPaid">@totalPaid.ToString("N0")</span> SSP / USD @totalPaidUsdDisplay</small>
+                                        <br /><small class="text-muted">Paid: <span data-format-number="@totalPaid">@totalPaid.ToString("N0")</span> PKR / USD @totalPaidUsdDisplay</small>
                                     }
                                 </td>
                                 <td>
@@ -175,6 +178,8 @@
                                                 title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </button>
+                                        @if (ViewBag.CanEdit == true)
+                                        {
                                         <button type="button" 
                                                 class="btn btn-sm btn-outline-primary" 
                                                 data-bs-toggle="modal" 
@@ -182,12 +187,16 @@
                                                 title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </button>
+                                        }
+                                        @if (ViewBag.CanDelete == true)
+                                        {
                                         <button type="button" 
                                                 class="btn btn-sm btn-outline-danger" 
                                                 onclick="deleteSchedule('@schedule.ScheduleID')"
                                                 title="Delete">
                                             <i class="fas fa-trash"></i>
                                         </button>
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -233,7 +242,7 @@
                                         <p>@schedule.DueDate.ToString("MMMM dd, yyyy")</p>
                                     </div>
                                     <div class="col-6">
-                                        <label class="text-muted small">Amount (SSP)</label>
+                                        <label class="text-muted small">Amount (PKR)</label>
                                         <p><strong style="color: #9C6ADE;">
                                             <span data-format-number="@schedule.Amount">@($"{schedule.Amount:N0}")</span>
                                         </strong></p>
@@ -271,7 +280,7 @@
                                                 {
                                                     <tr>
                                                         <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
-                                                        <td><strong>@($"{payment.Amount:N2}") SSP</strong></td>
+                                                        <td><strong>@($"{payment.Amount:N2}") PKR</strong></td>
                                                         <td>@payment.Method</td>
                                                         <td><small>@payment.ReferenceNo</small></td>
                                                     </tr>
@@ -332,7 +341,7 @@
 
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Amount (SSP)</label>
+                                            <label class="form-label">Amount (PKR)</label>
                                             <input type="number" name="Amount" step="0.01" class="form-control" value="@schedule.Amount" required />
                                         </div>
 
@@ -382,9 +391,12 @@
                 <i class="fas fa-calendar-plus fa-4x mb-3 text-muted"></i>
                 <h5 class="text-muted">No Installments Added Yet</h5>
                 <p class="text-muted">Create installment schedules for this payment plan.</p>
+                @if (ViewBag.CanCreate == true)
+                {
                 <a asp-action="CreatePaymentSchedule" asp-route-planId="@Model.PlanID" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Add First Installment
                 </a>
+                }
             </div>
         }
     </div>

@@ -200,4 +200,4 @@ For support and questions, please contact the development team.
 
 ---
 
-**Juba Smart City Property Management System** - Streamlining real estate management for the future of Juba.
+**ZKB - Property Management System** - Streamlining real estate management for the future of Juba.

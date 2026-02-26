@@ -1,0 +1,135 @@
+@model PMS.Models.NDC
+
+@{
+    ViewData["Title"] = "NDC Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0"><i class="fas fa-file-certificate me-2"></i>NDC Details</h2>
+        <div class="text-muted small">NDC ID: <span class="badge bg-secondary">@Model.NDCID</span></div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Print" asp-route-id="@Model.NDCID" target="_blank" class="btn btn-outline-secondary" title="Print NDC">
+            <i class="fas fa-print me-2"></i>Print NDC
+        </a>
+        <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h5 class="mb-0 text-white"><i class="fas fa-user me-2"></i>Customer</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <div class="text-muted small">Customer ID</div>
+                    <div class="fw-bold"><code>@(Model.CustomerID ?? "—")</code></div>
+                </div>
+                @if (Model.Customer != null)
+                {
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <div class="text-muted small">Name</div>
+                            <div class="fw-bold">@(Model.Customer.FullName ?? "—")</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted small">CNIC</div>
+                            <div>@(Model.Customer.CNIC ?? "—")</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted small">Phone</div>
+                            <div>@(Model.Customer.Phone ?? "—")</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="text-muted small">Plan / Project</div>
+                            <div>@(Model.Customer.PaymentPlan?.PlanName ?? "—") / @(Model.Customer.PaymentPlan?.Project?.ProjectName ?? "—")</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h5 class="mb-0 text-white"><i class="fas fa-coins me-2"></i>Payment Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="text-muted small">Total Due (at creation)</div>
+                        <div class="fw-bold">@(Model.TotalDueAmount?.ToString("N0") ?? "—")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Total Paid (at creation)</div>
+                        <div class="fw-bold">@(Model.TotalDueInstallments?.ToString("N0") ?? "—")</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted small">All Payment Clear</div>
+                        <div>
+                            @if (Model.AllPaymentClear)
+                            { <span class="badge bg-success">Yes</span> }
+                            else
+                            { <span class="badge bg-warning">No</span> }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mt-3">
+    <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+        <h5 class="mb-0 text-white"><i class="fas fa-info-circle me-2"></i>NDC Info</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <div class="text-muted small">NDC Type</div>
+                <div>@(Model.NDCType ?? "—")</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Title</div>
+                <div>@(Model.Title ?? "—")</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Workflow Status</div>
+                <div><span class="badge bg-primary">@(Model.WorkFlowStatus ?? "—")</span></div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Created At</div>
+                <div>@Model.CreatedAt.ToString("MMM dd, yyyy HH:mm")</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Created By</div>
+                <div>@(Model.CreatedBy ?? "—")</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Issued Date</div>
+                <div>@(Model.IssuedDate.ToString("MMM dd, yyyy"))</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">NDC Expiry Date</div>
+                <div>@(Model.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</div>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.Comments))
+            {
+                <div class="col-12">
+                    <div class="text-muted small">Comments</div>
+                    <div>@Model.Comments</div>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Remarks))
+            {
+                <div class="col-12">
+                    <div class="text-muted small">Remarks</div>
+                    <div>@Model.Remarks</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

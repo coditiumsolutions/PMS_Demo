@@ -8,7 +8,7 @@ namespace PMS.Models
     {
         [Key]
         [StringLength(10)]
-        public string PlanID { get; set; } = string.Empty;
+        public string? PlanID { get; set; } = string.Empty;
 
         [StringLength(10)]
         public string? ProjectID { get; set; }
@@ -26,7 +26,7 @@ namespace PMS.Models
         public decimal? ExchangeRate { get; set; }
 
         [StringLength(10)]
-        public string Currency { get; set; } = "SSP";
+        public string? Currency { get; set; } = "PKR";
 
         public int? DurationMonths { get; set; }
 

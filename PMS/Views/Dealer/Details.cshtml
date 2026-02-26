@@ -48,6 +48,11 @@
                                 <span class="badge bg-info">@Model.MembershipType</span>
                             </dd>
 
+                            <dt class="col-sm-4">Incentive Percentage:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-success">@Model.IncentivePercentage.ToString("F2")%</span>
+                            </dd>
+
                             <dt class="col-sm-4">Registration Date:</dt>
                             <dd class="col-sm-8">@Model.RegisterationDate.ToString("MMM dd, yyyy")</dd>
                         </dl>

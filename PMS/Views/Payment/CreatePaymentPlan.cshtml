@@ -27,21 +27,15 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="PlanName" class="form-label">Plan Name *</label>
-                                <select asp-for="PlanName" id="PlanName" class="form-select" required>
-                                    <option value="">Select Plan</option>
-                                    <option value="1 Year Plan" data-months="12">1 Year Plan</option>
-                                    <option value="2 Year Plan" data-months="24">2 Year Plan</option>
-                                    <option value="3 Year Plan" data-months="36">3 Year Plan</option>
-                                    <option value="4 Year Plan" data-months="48">4 Year Plan</option>
-                                </select>
+                                <input asp-for="PlanName" id="PlanName" class="form-control" type="text" required placeholder="e.g. 2 Year Plan" />
                                 <span asp-validation-for="PlanName" class="text-danger"></span>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label asp-for="ProjectID" class="form-label">Project (Optional)</label>
-                                <select asp-for="ProjectID" id="ProjectID" class="form-select">
+                                <label asp-for="ProjectID" class="form-label">Project *</label>
+                                <select asp-for="ProjectID" id="ProjectID" class="form-select" required>
                                     <option value="">Select Project</option>
                                     @if (ViewBag.Projects != null)
                                     {
@@ -61,7 +55,7 @@
                             <div class="mb-3">
                                 <label for="Currency" class="form-label">Primary Currency *</label>
                                 <select id="Currency" class="form-select">
-                                    <option value="SSP" selected>SSP (South Sudanese Pound)</option>
+                                    <option value="PKR" selected>PKR (Pakistani Rupee)</option>
                                     <option value="USD">USD (United States Dollar)</option>
                                 </select>
                                 <small class="text-muted">Amounts auto-convert using the configured exchange rate.</small>
@@ -72,13 +66,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label asp-for="TotalAmount" class="form-label">Total Amount (SSP) *</label>
+                                <label asp-for="TotalAmount" class="form-label">Total Amount (PKR) *</label>
                                 <input asp-for="TotalAmount" id="TotalAmount" type="number" step="0.01" class="form-control" placeholder="e.g., 5000000" required />
                                 <span asp-validation-for="TotalAmount" class="text-danger"></span>
                             </div>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="durationMonthsGroup" style="display: none;">
                             <div class="mb-3">
                                 <label asp-for="DurationMonths" class="form-label">Plan Duration (Months) *</label>
                                 <input asp-for="DurationMonths" id="DurationMonths" type="number" class="form-control" placeholder="e.g., 36" required readonly />
@@ -92,14 +86,14 @@
                             <div class="mb-3">
                                 <label for="TotalAmountUSD" class="form-label">Total Amount (USD)</label>
                                 <input type="number" id="TotalAmountUSD" step="0.01" class="form-control" placeholder="e.g., 10000" />
-                                <small class="text-muted">Auto-calculated from SSP when SSP is primary.</small>
+                                <small class="text-muted">Auto-calculated from PKR when PKR is primary.</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="ExchangeRate" class="form-label">Exchange Rate (1 USD = SSP)</label>
-                                <input type="number" id="ExchangeRate" step="0.0001" class="form-control" value="@((decimal?)ViewBag.UsdToSspRate ?? 1m)" readonly />
-                                <small class="text-muted">Managed via configuration key <code>Currency:USDToSSP</code>.</small>
+                                <label for="ExchangeRate" class="form-label">Exchange Rate (1 USD = PKR)</label>
+                                <input type="number" id="ExchangeRate" step="0.0001" class="form-control" value="@((decimal?)ViewBag.UsdToPkrRate ?? 1m)" readonly />
+                                <small class="text-muted">Managed via configuration key <code>Currency:USDToPKR</code>.</small>
                             </div>
                         </div>
                     </div>
@@ -138,7 +132,7 @@
                         <div id="tokenAmountSection" class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="tokenAmount" class="form-label">Token Amount (SSP) *</label>
+                                    <label for="tokenAmount" class="form-label">Token Amount (PKR) *</label>
                                     <input type="number" id="tokenAmount" step="0.01" class="form-control" placeholder="e.g., 50000" required />
                                     <small class="text-muted">Token payment amount (Installment 0 - No surcharge applied)</small>
                                 </div>
@@ -168,9 +162,9 @@
 
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="installmentAmount" class="form-label">Installment Amount (SSP) *</label>
-                                    <input type="number" id="installmentAmount" step="0.01" class="form-control" placeholder="e.g., 125000" required />
-                                    <small class="text-muted">Amount per installment (same for all installments)</small>
+                                    <label for="installmentAmount" class="form-label">Installment Amount (PKR) *</label>
+                                    <input type="number" id="installmentAmount" step="0.01" class="form-control" placeholder="Auto-calculated" required readonly />
+                                    <small class="text-muted">Auto: (Total Amount − Token Amount) ÷ Total Installments</small>
                                 </div>
                             </div>
 
@@ -240,11 +234,11 @@
                         <div id="installmentPreview" class="mt-2">
                             <p class="mb-1"><strong>Total Installments:</strong> <span id="previewTotalInstallments">0</span></p>
                             <p class="mb-1"><strong>Token:</strong> <span id="previewToken">Not included</span></p>
-                            <p class="mb-1"><strong>Amount per Installment:</strong> SSP <span id="previewAmount">0.00</span> / USD <span id="previewAmountUSD">0.00</span></p>
+                            <p class="mb-1"><strong>Amount per Installment:</strong> PKR <span id="previewAmount">0.00</span> / USD <span id="previewAmountUSD">0.00</span></p>
                             <p class="mb-1"><strong>Frequency:</strong> <span id="previewFrequency">-</span></p>
-                            <p class="mb-1"><strong>Total Installments Amount:</strong> SSP <span id="previewTotalInstallmentsAmount">0.00</span> / USD <span id="previewTotalInstallmentsAmountUSD">0.00</span></p>
-                            <p class="mb-1"><strong>Token Amount:</strong> SSP <span id="previewTokenAmount">0.00</span> / USD <span id="previewTokenAmountUSD">0.00</span></p>
-                            <p class="mb-0"><strong>Grand Total (Token + Installments):</strong> SSP <span id="previewGrandTotal">0.00</span> / USD <span id="previewGrandTotalUSD">0.00</span> / Plan Total SSP <span id="previewPlanTotal">0.00</span> / Plan Total USD <span id="previewPlanTotalUSD">0.00</span></p>
+                            <p class="mb-1"><strong>Total Installments Amount:</strong> PKR <span id="previewTotalInstallmentsAmount">0.00</span> / USD <span id="previewTotalInstallmentsAmountUSD">0.00</span></p>
+                            <p class="mb-1"><strong>Token Amount:</strong> PKR <span id="previewTokenAmount">0.00</span> / USD <span id="previewTokenAmountUSD">0.00</span></p>
+                            <p class="mb-0"><strong>Grand Total (Token + Installments):</strong> PKR <span id="previewGrandTotal">0.00</span> / USD <span id="previewGrandTotalUSD">0.00</span> / Plan Total PKR <span id="previewPlanTotal">0.00</span> / Plan Total USD <span id="previewPlanTotalUSD">0.00</span></p>
                         </div>
                         <div id="amountValidationMessage" class="mt-2" style="display: none;">
                             <div class="alert alert-danger mb-0">
@@ -304,17 +298,6 @@
                 return rate && rate > 0 ? rate : 1;
             }
 
-            function handlePlanNameChange() {
-                var selectedOption = $('#PlanName option:selected');
-                var months = selectedOption.data('months');
-
-                if (months) {
-                    $('#DurationMonths').val(months).prop('readonly', true);
-                } else {
-                    $('#DurationMonths').val('').prop('readonly', true);
-                }
-            }
-
             function updateCurrencyAccessibility() {
                 var currency = $('#Currency').val();
                 var isUsd = currency === 'USD';
@@ -327,10 +310,11 @@
                 $('#tokenAmount').prop('required', !isUsd && $('#includeToken').is(':checked'));
                 $('#tokenAmountUSD').prop('required', isUsd && $('#includeToken').is(':checked'));
 
-                $('#installmentAmount').prop('readonly', isUsd);
-                $('#installmentAmountUSD').prop('readonly', !isUsd);
-                $('#installmentAmount').prop('required', !isUsd);
-                $('#installmentAmountUSD').prop('required', isUsd);
+                // Installment amount is always auto-calculated (readonly)
+                $('#installmentAmount').prop('readonly', true);
+                $('#installmentAmountUSD').prop('readonly', true);
+                $('#installmentAmount').prop('required', true);
+                $('#installmentAmountUSD').prop('required', false);
             }
 
             function syncPlanAmounts(sourceCurrency) {
@@ -396,7 +380,21 @@
                 }
             }
 
+            /** Auto-calculate Installment Amount (PKR) = (Total Amount (PKR) - Token Amount (PKR)) / Total Installments */
+            function recalculateInstallmentAmount() {
+                var planTotalSSP = parseAmount('#TotalAmount');
+                var includeToken = $('#includeToken').is(':checked');
+                var tokenAmountSSP = includeToken ? parseAmount('#tokenAmount') : 0;
+                var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
+                var remainder = planTotalSSP - tokenAmountSSP;
+                var installmentPKR = (totalInstallments > 0 && remainder >= 0) ? remainder / totalInstallments : 0;
+                var rate = getExchangeRate();
+                writeAmount('#installmentAmount', installmentPKR);
+                writeAmount('#installmentAmountUSD', rate ? installmentPKR / rate : 0);
+            }
+
             function updatePreview() {
+                recalculateInstallmentAmount();
                 var exchangeRate = getExchangeRate();
                 var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
                 var includeToken = $('#includeToken').is(':checked');
@@ -442,6 +440,10 @@
                 $('#previewPlanTotalUSD').text(formatAmount(planTotalUSD));
 
                 validateTotalAmount(planTotalSSP, grandTotalSSP, includeToken, tokenAmountSSP, totalInstallmentsAmountSSP);
+
+                // Duration (Months) is derived from Frequency and Total Installments (field is hidden)
+                var monthsPerInstallment = { 'Monthly': 1, 'Quarterly': 3, 'Half Yearly': 6, 'Yearly': 12 }[frequency] || 1;
+                $('#DurationMonths').val(frequency && totalInstallments > 0 ? totalInstallments * monthsPerInstallment : '');
             }
 
             function validateTotalAmount(planTotalSSP, grandTotalSSP, includeToken, tokenAmountSSP, totalInstallmentsAmountSSP) {
@@ -457,10 +459,10 @@
                     var excessSSP = grandTotalSSP - planTotalSSP;
                     var excessUSD = exchangeRate ? excessSSP / exchangeRate : 0;
                     messageText.html(
-                        'Total Installments Amount (SSP ' + formatAmount(totalInstallmentsAmountSSP) + ' / USD ' + formatAmount(totalInstallmentsAmountUSD) + ') + ' +
-                        'Token Amount (SSP ' + (includeToken ? formatAmount(tokenAmountSSP) : '0.00') + ' / USD ' + (includeToken ? formatAmount(tokenAmountUSD) : '0.00') + ') = SSP ' +
+                        'Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmountSSP) + ' / USD ' + formatAmount(totalInstallmentsAmountUSD) + ') + ' +
+                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountSSP) : '0.00') + ' / USD ' + (includeToken ? formatAmount(tokenAmountUSD) : '0.00') + ') = PKR ' +
                         formatAmount(grandTotalSSP) + ' / USD ' + formatAmount(grandTotalUSD) +
-                        ' exceeds Parent Total Amount (SSP ' + formatAmount(planTotalSSP) + ' / USD ' + formatAmount(planTotalUSD) + '). Excess: SSP ' +
+                        ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalSSP) + ' / USD ' + formatAmount(planTotalUSD) + '). Excess: PKR ' +
                         formatAmount(excessSSP) + ' / USD ' + formatAmount(excessUSD) + '.'
                     );
                     validationDiv.show();
@@ -474,7 +476,7 @@
             function toggleTokenSection() {
                 if ($('#includeToken').is(':checked')) {
                     $('#tokenAmountSection').show();
-                    $('#tokenAmount').prop('required', $('#Currency').val() === 'SSP');
+                    $('#tokenAmount').prop('required', $('#Currency').val() === 'PKR');
                     $('#tokenAmountUSD').prop('required', $('#Currency').val() === 'USD');
                 } else {
                     $('#tokenAmountSection').hide();
@@ -483,15 +485,11 @@
                 }
             }
 
-            $('#PlanName').on('change', handlePlanNameChange);
-            handlePlanNameChange();
-
             $('#Currency').on('change', function() {
                 updateCurrencyAccessibility();
                 var currency = $(this).val();
                 syncPlanAmounts(currency);
                 syncTokenAmounts(currency);
-                syncInstallmentAmounts(currency);
                 updatePreview();
             });
 
@@ -507,8 +505,8 @@
             });
 
             $('#TotalAmount').on('input', function() {
-                if ($('#Currency').val() === 'SSP') {
-                    syncPlanAmounts('SSP');
+                if ($('#Currency').val() === 'PKR') {
+                    syncPlanAmounts('PKR');
                     updatePreview();
                 }
             });
@@ -521,8 +519,8 @@
             });
 
             $('#tokenAmount').on('input', function() {
-                if ($('#Currency').val() === 'SSP') {
-                    syncTokenAmounts('SSP');
+                if ($('#Currency').val() === 'PKR') {
+                    syncTokenAmounts('PKR');
                     updatePreview();
                 }
             });
@@ -535,8 +533,8 @@
             });
 
             $('#installmentAmount').on('input', function() {
-                if ($('#Currency').val() === 'SSP') {
-                    syncInstallmentAmounts('SSP');
+                if ($('#Currency').val() === 'PKR') {
+                    syncInstallmentAmounts('PKR');
                     updatePreview();
                 }
             });
@@ -568,6 +566,12 @@
                     return false;
                 }
 
+                if (!$('#ProjectID').val()) {
+                    alert('Please select a Project.');
+                    $('#ProjectID').focus().addClass('is-invalid');
+                    return false;
+                }
+
                 // Ensure amounts are synced before reading values
                 var currentCurrency = $('#Currency').val();
                 syncPlanAmounts(currentCurrency);
@@ -593,9 +597,9 @@
                 if (grandTotal > planTotalSSP) {
                     var excess = grandTotal - planTotalSSP;
                     alert(
-                        'Validation Error: Total Installments Amount (SSP ' + formatAmount(totalInstallmentsAmount) + ' / USD ' + formatAmount(exchangeRate ? totalInstallmentsAmount / exchangeRate : 0) + ') + ' +
-                        'Token Amount (SSP ' + (includeToken ? formatAmount(tokenAmountSSP) : '0.00') + ' / USD ' + (includeToken ? formatAmount(tokenAmountUSD || 0) : '0.00') + ') = SSP ' +
-                        formatAmount(grandTotal) + ' exceeds Parent Total Amount (SSP ' + formatAmount(planTotalSSP) + '). Excess: SSP ' + formatAmount(excess) + '.'
+                        'Validation Error: Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmount) + ' / USD ' + formatAmount(exchangeRate ? totalInstallmentsAmount / exchangeRate : 0) + ') + ' +
+                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountSSP) : '0.00') + ' / USD ' + (includeToken ? formatAmount(tokenAmountUSD || 0) : '0.00') + ') = PKR ' +
+                        formatAmount(grandTotal) + ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalSSP) + '). Excess: PKR ' + formatAmount(excess) + '.'
                     );
                     return false;
                 }

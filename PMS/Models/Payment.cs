@@ -33,11 +33,26 @@ namespace PMS.Models
         [StringLength(255)]
         public string? Remarks { get; set; }
 
+        // Audit fields — managed by PaymentAudit module only
+        [StringLength(50)]
+        public string? AuditStatus { get; set; } = "Pending";
+
+        [StringLength(10)]
+        public string? AuditedBy { get; set; }
+
+        public DateTime? AuditedAt { get; set; }
+
+        [StringLength(500)]
+        public string? AuditRemarks { get; set; }
+
         // Navigation properties
         [ForeignKey("ScheduleID")]
         public virtual PaymentSchedule? PaymentSchedule { get; set; }
 
         [ForeignKey("CustomerID")]
         public virtual Customer? Customer { get; set; }
+
+        [ForeignKey("AuditedBy")]
+        public virtual User? AuditedByUser { get; set; }
     }
 }

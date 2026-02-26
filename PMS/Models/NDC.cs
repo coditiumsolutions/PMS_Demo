@@ -29,6 +29,25 @@ namespace PMS.Models
         [StringLength(255)]
         public string? Remarks { get; set; }
 
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        [StringLength(100)]
+        public string? CreatedBy { get; set; }
+
+        [Column(TypeName = "date")]
+        public DateTime? NDCExpiryDate { get; set; }
+
+        /// <summary>Sum of PaymentSchedule.Amount due by CreatedAt (schedules with DueDate &lt;= CreatedAt for customer's plan).</summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? TotalDueAmount { get; set; }
+
+        /// <summary>Sum of Payments.Amount for this customer (total paid to date).</summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? TotalDueInstallments { get; set; }
+
+        /// <summary>1 if TotalDueAmount == TotalDueInstallments (all dues cleared), else 0.</summary>
+        public bool AllPaymentClear { get; set; }
+
         // Navigation properties
         [ForeignKey("CustomerID")]
         public virtual Customer? Customer { get; set; }

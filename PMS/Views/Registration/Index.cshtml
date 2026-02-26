@@ -8,9 +8,12 @@
     <h2>
         <!-- <i class="fas fa-file-alt me-2"></i>Registration Management -->
     </h2>
+    @if (ViewBag.CanCreate == true)
+    {
     <a asp-action="Create" class="btn btn-success">
         <i class="fas fa-plus me-2"></i>New Registration
     </a>
+    }
 </div>
 
 @* TempData messages are handled in _Layout.cshtml *@
@@ -136,6 +139,8 @@
                         <tr>
                             <th>Registration ID</th>
                             <th>Full Name</th>
+                            <th>Project</th>
+                            <th>Size</th>
                             <th>CNIC</th>
                             <th>Contact</th>
                             <th>Registration Date</th>
@@ -153,6 +158,12 @@
                                 </td>
                                 <td>
                                     <strong>@registration.FullName</strong>
+                                </td>
+                                <td>
+                                    @(registration.Project?.ProjectName ?? "—")
+                                </td>
+                                <td>
+                                    @(registration.Size ?? "—")
                                 </td>
                                 <td>
                                     @(registration.CNIC ?? "N/A")
@@ -203,10 +214,13 @@
                                     @if (registration.Customers != null && registration.Customers.Any())
                                     {
                                         var customer = registration.Customers.FirstOrDefault();
-                                        <a asp-controller="Customer" asp-action="Details" asp-route-id="@customer.CustomerID" 
-                                           class="btn btn-sm btn-success">
-                                            <i class="fas fa-user me-1"></i>View Customer
-                                        </a>
+                                        @if (customer != null)
+                                        {
+                                            <a asp-controller="Customer" asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")" 
+                                               class="btn btn-sm btn-success">
+                                                <i class="fas fa-user me-1"></i>View Customer
+                                            </a>
+                                        }
                                     }
                                     else
                                     {
@@ -215,15 +229,18 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
+                                        @if (ViewBag.CanEdit == true)
+                                        {
                                         <a asp-action="Edit" asp-route-id="@registration.RegID" 
                                            class="btn btn-sm btn-outline-success" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        }
                                         <a asp-action="Details" asp-route-id="@registration.RegID" 
                                            class="btn btn-sm btn-outline-theme" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        @if (registration.Customers == null || !registration.Customers.Any())
+                                        @if ((ViewBag.CanDelete == true) && (registration.Customers == null || !registration.Customers.Any()))
                                         {
                                             <a asp-action="Delete" asp-route-id="@registration.RegID" 
                                                class="btn btn-sm btn-outline-danger" title="Delete">
@@ -244,9 +261,12 @@
                 <i class="fas fa-inbox fa-4x mb-3 text-muted"></i>
                 <h5 class="text-muted">No Registrations Found</h5>
                 <p class="text-muted">@(ViewBag.SearchTerm != null && ViewBag.SearchTerm != "" ? "Try different search criteria" : "Start by creating a new registration.")</p>
+                @if (ViewBag.CanCreate == true)
+                {
                 <a asp-action="Create" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Create First Registration
                 </a>
+                }
             </div>
         }
     </div>

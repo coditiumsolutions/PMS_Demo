@@ -1,26 +1,50 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
 using System.Text.Json;
 
 namespace PMS.Controllers
 {
+    [Authorize]
     public class AllotmentController : Controller
     {
+        private const string ModuleKey = "Allotment";
         private readonly PMSDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly IModulePermissionService _modulePermission;
 
-        public AllotmentController(PMSDbContext context, IWebHostEnvironment environment)
+        public AllotmentController(PMSDbContext context, IWebHostEnvironment environment, IModulePermissionService modulePermission)
         {
             _context = context;
             _environment = environment;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         // GET: Allotment/Index (Main page with grid and charts)
         public async Task<IActionResult> Index(string projectFilter = "All", string statusFilter = "All", string searchTerm = "")
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             // Get all allotments with related data
             var allotmentsQuery = _context.Allotments
                 .Include(a => a.Customer)
@@ -99,8 +123,10 @@ namespace PMS.Controllers
         }
 
         // GET: Allotment/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             return View();
         }
 
@@ -549,6 +575,8 @@ namespace PMS.Controllers
         // GET: Allotment/Details
         public async Task<IActionResult> Details(string id)
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             if (string.IsNullOrEmpty(id))
             {
                 return NotFound();
@@ -574,6 +602,8 @@ namespace PMS.Controllers
         // GET: Allotment/UnAllot
         public async Task<IActionResult> UnAllot()
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var allotments = await _context.Allotments
                 .Include(a => a.Customer)
                 .Include(a => a.Property)
@@ -589,6 +619,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessUnAllot(string allotmentID, string reason)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             try
             {
                 if (string.IsNullOrEmpty(allotmentID))

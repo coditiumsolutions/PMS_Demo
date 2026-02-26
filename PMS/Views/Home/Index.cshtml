@@ -1,4 +1,4 @@
-﻿@model PMS.Models.DashboardViewModel
+@model PMS.Models.DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard - Juba Smart City PMS";
 }
@@ -10,11 +10,39 @@
             <h3 class="dashboard-title mb-2">
                 <i class="fas fa-tachometer-alt me-2"></i>Dashboard
             </h3>
-            <p class="dashboard-subtitle mb-0">Welcome to Juba Smart City Property Management System</p>
+            <p class="dashboard-subtitle mb-0">Welcome to ZKB - Property Management System</p>
+            <div class="theme-switcher mt-2">
+                <span class="theme-label me-2">Theme:</span>
+                <button type="button" class="theme-btn active" data-theme="original" title="Original theme">Original</button>
+                <button type="button" class="theme-btn" data-theme="dark" title="Dark theme">Dark</button>
+                <button type="button" class="theme-btn" data-theme="modern" title="Modern theme">Modern</button>
+                <span id="server-label" style="font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.25);color:white;font-weight:700;border:1px solid rgba(255,255,255,0.5);letter-spacing:.5px;margin-left:4px;display:none;"></span>
+            </div>
+            <script>
+                (function(){
+                    var h = window.location.hostname;
+                    var el = document.getElementById('server-label');
+                    if (h === 'localhost' || h === '127.0.0.1') {
+                        el.innerHTML = '<span style="color:#4ade80;">&#9679;</span> Server 1';
+                        el.title = 'Running on localhost (dev)';
+                        el.style.display = 'inline';
+                    } else if (h === '172.20.228.2') {
+                        el.innerHTML = '<span style="color:#fb923c;">&#9679;</span> Server 2';
+                        el.title = 'Running on IIS (172.20.228.2)';
+                        el.style.display = 'inline';
+                    }
+                })();
+            </script>
         </div>
-        <div class="dashboard-date">
-            <i class="far fa-calendar-alt me-2"></i>
-            <span>@DateTime.Now.ToString("MMMM dd, yyyy")</span>
+        <div class="text-end">
+            <div class="dashboard-date">
+                <i class="far fa-calendar-alt me-2"></i>
+                <span>@DateTime.Now.ToString("MMMM dd, yyyy")</span>
+            </div>
+            <div class="dashboard-user mt-2">
+                <i class="fas fa-user me-2"></i>
+                <span>Logged in as @User.Identity?.Name</span>
+            </div>
         </div>
     </div>
 </div>
@@ -64,7 +92,7 @@
                 }
                 @formattedPayments
             </div>
-            <div class="stats-label">Total Payments (SSP)</div>
+            <div class="stats-label">Total Payments (PKR)</div>
             <i class="fas fa-dollar-sign fa-2x mt-2" style="color: var(--primary-light) !important;"></i>
         </div>
     </div>
@@ -206,6 +234,12 @@
         color: white;
     }
 
+    html[data-theme="dark"] .dashboard-banner {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border);
+    }
+
     .dashboard-title {
         font-family: 'Inter', sans-serif;
         font-size: 24px;
@@ -229,6 +263,53 @@
         padding: 8px 15px;
         border-radius: 10px;
         backdrop-filter: blur(10px);
+    }
+
+    .dashboard-user {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 500;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 8px 15px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        display: inline-block;
+    }
+
+    .theme-switcher {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .theme-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+    }
+
+    .theme-btn {
+        font-size: 12px;
+        padding: 5px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .theme-btn:hover {
+        background: rgba(255, 255, 255, 0.35);
+        border-color: rgba(255, 255, 255, 0.8);
+    }
+
+    .theme-btn.active {
+        background: rgba(255, 255, 255, 0.95);
+        color: #1E1E2D;
+        border-color: white;
     }
 
     /* Smaller Stats Card Styling */
@@ -306,6 +387,11 @@
             padding: 6px 12px;
         }
 
+        .dashboard-user {
+            font-size: 11px;
+            padding: 6px 12px;
+        }
+
         .stats-card .stats-number {
             font-size: 1.8rem;
         }
@@ -318,6 +404,28 @@
 
 @section Scripts {
     <script>
+        // Theme switcher (persists in localStorage, applies site-wide)
+        (function () {
+            var storageKey = 'pms-theme';
+            function applyTheme(theme) {
+                theme = theme || 'original';
+                document.documentElement.setAttribute('data-theme', theme);
+                try { localStorage.setItem(storageKey, theme); } catch (e) {}
+                document.querySelectorAll('.theme-btn').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
+                });
+            }
+            document.querySelectorAll('.theme-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    applyTheme(this.getAttribute('data-theme'));
+                });
+            });
+            var current = document.documentElement.getAttribute('data-theme') || 'original';
+            document.querySelectorAll('.theme-btn').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-theme') === current);
+            });
+        })();
+
         // JUBA Smart City Theme Colors - Purple Palette
         const colors = {
             primary: '#9C6ADE',
@@ -373,7 +481,7 @@
             data: {
                 labels: [@Html.Raw(string.Join(",", Model.MonthlyPaymentsData.Keys.Select(k => $"'{k}'")))],
                 datasets: [{
-                    label: 'Payments (SSP)',
+                    label: 'Payments (PKR)',
                     data: [@string.Join(",", Model.MonthlyPaymentsData.Values)],
                     backgroundColor: colors.primary,
                     borderColor: colors.primaryLight,
@@ -389,7 +497,7 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return 'SSP ' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+                                return 'PKR ' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
                             }
                         }
                     }
@@ -399,7 +507,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return 'SSP ' + value.toLocaleString('en-US');
+                                return 'PKR ' + value.toLocaleString('en-US');
                             }
                         }
                     }

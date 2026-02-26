@@ -1,0 +1,150 @@
+@model PMS.Models.Transfer
+@{
+    Layout = null;
+    ViewData["Title"] = "Transfer Letter";
+    var projectName = Model.Customer?.PaymentPlan?.Project?.ProjectName ?? "—";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transfer Letter - @Model.TransferID - Juba Smart City PMS</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <h3 class="mb-0"><i class="fas fa-file-alt me-2"></i>Transfer Letter</h3>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+    </div>
+</div>
+
+<div class="a4-container">
+    <!-- Header -->
+    <div class="a4-header text-center">
+        <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
+        <div class="a4-title">Transfer Letter</div>
+        <div class="a4-subtitle">ZKB - Property Management System</div>
+        <div class="a4-subtitle">Proof of Transfer of Ownership</div>
+        <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy")</div>
+    </div>
+
+    <!-- Transfer Reference -->
+    <div class="a4-section">
+        <div class="a4-section-title">Transfer Reference</div>
+        <div class="a4-info-grid">
+            <div class="a4-info-block">
+                <div class="a4-info-row"><span class="a4-info-label">Transfer ID:</span><span class="a4-info-value"><strong>@Model.TransferID</strong></span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Customer ID (File):</span><span class="a4-info-value"><code>@Model.CustomerID</code></span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Project:</span><span class="a4-info-value">@projectName</span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Status:</span><span class="a4-info-value">Approved</span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Date of Transfer:</span><span class="a4-info-value">@Model.CreatedAt.ToString("MMMM dd, yyyy")</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transferor (Seller) -->
+    <div class="a4-section">
+        <div class="a4-section-title">Transferor (Seller) – Previous Owner</div>
+        <div class="a4-info-block">
+            <div class="a4-info-row"><span class="a4-info-label">Name:</span><span class="a4-info-value">@(Model.SellerName ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Father's Name:</span><span class="a4-info-value">@(Model.SellerFatherName ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">CNIC:</span><span class="a4-info-value">@(Model.SellerCNIC ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Contact:</span><span class="a4-info-value">@(Model.SellerContact ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Address:</span><span class="a4-info-value">@(Model.SellerAddress ?? "—")</span></div>
+        </div>
+    </div>
+
+    <!-- Transferee (Buyer) -->
+    <div class="a4-section">
+        <div class="a4-section-title">Transferee (Buyer) – New Owner</div>
+        <div class="a4-info-block">
+            <div class="a4-info-row"><span class="a4-info-label">Name:</span><span class="a4-info-value">@(Model.BuyerName ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Father's Name:</span><span class="a4-info-value">@(Model.BuyerFatherName ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">CNIC:</span><span class="a4-info-value">@(Model.BuyerCNIC ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Passport No:</span><span class="a4-info-value">@(Model.BuyerPassportNo ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Contact:</span><span class="a4-info-value">@(Model.BuyerContact ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Address:</span><span class="a4-info-value">@(Model.BuyerAddress ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">City / Country:</span><span class="a4-info-value">@(Model.BuyerCity ?? "—") @(Model.BuyerCountry != null ? ", " + Model.BuyerCountry : "")</span></div>
+        </div>
+    </div>
+
+    <!-- Statement -->
+    <div class="a4-section">
+        <div class="a4-section-title">Statement</div>
+        <p class="a4-statement">
+            This is to certify that the ownership of the above-referenced file (Customer ID: <strong>@Model.CustomerID</strong>) under project <strong>@projectName</strong> has been formally transferred from the Transferor to the Transferee named above. The transfer has been approved and recorded in the system on @Model.CreatedAt.ToString("MMMM dd, yyyy"). The Transferee is hereby recognized as the new owner of the said file.
+        </p>
+    </div>
+
+    <!-- Payment details (if any) -->
+    @if (Model.TransferFeePaid.HasValue && Model.TransferFeePaid.Value > 0)
+    {
+        <div class="a4-section">
+            <div class="a4-section-title">Transfer Fee</div>
+            <div class="a4-info-block">
+                <div class="a4-info-row"><span class="a4-info-label">Transfer Fee Paid:</span><span class="a4-info-value">@Model.TransferFeePaid.Value.ToString("N2")</span></div>
+                @if (Model.PaymentDate.HasValue)
+                {
+                    <div class="a4-info-row"><span class="a4-info-label">Payment Date:</span><span class="a4-info-value">@Model.PaymentDate.Value.ToString("MMMM dd, yyyy")</span></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.PaymentMode))
+                {
+                    <div class="a4-info-row"><span class="a4-info-label">Payment Mode:</span><span class="a4-info-value">@Model.PaymentMode</span></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.PaymentChallanNo))
+                {
+                    <div class="a4-info-row"><span class="a4-info-label">Challan No:</span><span class="a4-info-value">@Model.PaymentChallanNo</span></div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="a4-footer">
+        This letter is a system-generated proof of transfer and may be printed and handed over to the new owner (Transferee).<br />
+        Transfer ID: @Model.TransferID | Generated on @DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+    </div>
+</div>
+
+<style>
+    .a4-container {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 15px 20px;
+        background: white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .a4-header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 12px; }
+    .a4-title { font-size: 20px; font-weight: bold; color: #333; margin-bottom: 5px; }
+    .a4-subtitle { font-size: 11px; color: #666; margin-bottom: 3px; }
+    .a4-section { margin-bottom: 12px; }
+    .a4-section-title { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 8px; padding-bottom: 3px; border-bottom: 1px solid #ddd; }
+    .a4-info-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 12px; }
+    .a4-info-block { background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid #007bff; }
+    .a4-info-block h6 { font-size: 11px; font-weight: bold; margin-bottom: 6px; color: #333; }
+    .a4-info-row { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+    .a4-info-label { font-weight: 600; color: #555; }
+    .a4-info-value { color: #333; }
+    .a4-statement { font-size: 11px; line-height: 1.5; color: #333; margin-bottom: 0; }
+    .a4-footer { margin-top: 15px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #666; text-align: center; }
+    .a4-logo { max-width: 120px; height: auto; margin-bottom: 10px; }
+    @@media print {
+        @@page { size: A4; margin: 0; }
+        body { margin: 0; padding: 0; background: white; }
+        .a4-container { width: 210mm; min-height: 297mm; margin: 0; padding: 12mm; box-shadow: none; }
+        .no-print { display: none !important; }
+    }
+    @@media screen {
+        body { background: #f5f5f5; padding: 20px; }
+        .a4-container { margin: 20px auto; }
+    }
+</style>
+</body>
+</html>

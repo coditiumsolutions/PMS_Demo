@@ -34,6 +34,7 @@
                         <th>Email</th>
                         <th>Status</th>
                         <th>Membership Type</th>
+                        <th>Incentive %</th>
                         <th>Registration Date</th>
                         <th>Customers</th>
                         <th>Properties</th>
@@ -61,6 +62,7 @@
                             <td>
                                 <span class="badge" style="background-color: var(--accent);">@dealer.MembershipType</span>
                             </td>
+                            <td>@dealer.IncentivePercentage%</td>
                             <td>@dealer.RegisterationDate.ToString("MMM dd, yyyy")</td>
                             <td>
                                 <span class="badge" style="background-color: var(--primary);">@(dealer.Customers?.Count ?? 0) Customers</span>
@@ -94,9 +96,9 @@
         $(document).ready(function() {
             $('#dealersTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 7, "desc" ]],
+                "order": [[ 8, "desc" ]],
                 "columnDefs": [
-                    { "orderable": false, "targets": 10 }
+                    { "orderable": false, "targets": 11 }
                 ]
             });
         });

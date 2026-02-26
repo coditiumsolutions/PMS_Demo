@@ -1,0 +1,517 @@
+@{
+    ViewData["Title"] = "Multiple Payments";
+    var preCustomerId = ViewBag.PreSelectedCustomerId as string ?? "";
+}
+
+<!-- Banner -->
+<div class="custom-banner mb-4" style="margin-top: 20px;">
+    <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-white mb-1" style="font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    <i class="fas fa-layer-group me-2"></i>Multiple Payments
+                </h2>
+                <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.95rem;">
+                    Distribute a single payment across multiple installments at once
+                </p>
+            </div>
+            <a asp-action="CustomerPayments" class="btn btn-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Payments
+            </a>
+        </div>
+    </div>
+</div>
+
+<div id="alertArea"></div>
+
+<div class="row g-4">
+    <!-- ── Left: Header / Payment Details ─────────────────────────────── -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h6 class="mb-0 text-white"><i class="fas fa-receipt me-2"></i>Payment Header</h6>
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Customer Search -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-user me-1" style="color:var(--primary)"></i>Customer ID <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <input type="text" id="customerIdInput" class="form-control" placeholder="Enter Customer ID" value="@preCustomerId" autocomplete="off" />
+                        <button type="button" id="btnSearch" class="btn btn-primary px-3">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <input type="hidden" id="customerId" value="" />
+                    <div id="customerMsg" class="small mt-1"></div>
+                    <div id="customerNameBadge" class="alert alert-success py-2 mt-2 mb-0 small" style="display:none;">
+                        <i class="fas fa-check-circle me-1"></i><strong id="customerNameText"></strong>
+                    </div>
+                </div>
+
+                <!-- Total Payment Amount -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-coins me-1" style="color:var(--primary)"></i>Total Payment (PKR) <span class="text-danger">*</span>
+                    </label>
+                    <input type="number" id="totalAmount" class="form-control form-control-lg fw-bold" placeholder="0.00" step="0.01" min="0.01" />
+                    <div id="totalMatchMsg" class="small mt-1"></div>
+                </div>
+
+                <!-- Reference Number -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-hashtag me-1" style="color:var(--primary)"></i>Reference Number
+                    </label>
+                    <input type="text" id="referenceNo" class="form-control" placeholder="DD/DS, Cheque, Transaction No." />
+                </div>
+
+                <!-- Payment Method -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-credit-card me-1" style="color:var(--primary)"></i>Payment Method <span class="text-danger">*</span>
+                    </label>
+                    <select id="paymentMethod" class="form-select">
+                        <option value="DD/DS" selected>DD/DS</option>
+                        <option value="Cash">💵 Cash</option>
+                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                        <option value="Cheque">📝 Cheque</option>
+                        <option value="Online">💳 Online</option>
+                        <option value="Mobile Money">📱 Mobile Money</option>
+                    </select>
+                </div>
+
+                <!-- Payment Date -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-calendar me-1" style="color:var(--primary)"></i>Payment Date <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" id="paymentDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <!-- Remarks -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-comment me-1" style="color:var(--primary)"></i>Remarks
+                    </label>
+                    <textarea id="remarks" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
+                </div>
+
+                <!-- Running Total Indicator -->
+                <div class="p-3 rounded" style="background:rgba(156,106,222,0.07); border:1px solid rgba(156,106,222,0.2);">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Total Payment</small>
+                        <strong id="hdrTotal" class="text-primary">PKR 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Distributed</small>
+                        <strong id="hdrDistributed" class="text-success">PKR 0.00</strong>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted fw-semibold">Remaining</small>
+                        <strong id="hdrRemaining" class="text-danger">PKR 0.00</strong>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="button" id="btnSubmit" class="btn btn-lg w-100 fw-semibold" style="background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:white;border:none;" disabled>
+                        <i class="fas fa-check me-2"></i>Save All Payments
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Right: Installments Table ──────────────────────────────────── -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h6 class="mb-0 text-white"><i class="fas fa-list-ol me-2"></i>Installments</h6>
+                <button type="button" id="btnAutoDistribute" class="btn btn-sm btn-light" style="display:none;" title="Auto-fill amounts starting from oldest overdue">
+                    <i class="fas fa-magic me-1"></i>Auto-distribute
+                </button>
+            </div>
+
+            <!-- Not searched yet -->
+            <div id="noSearchState" class="card-body text-center py-5">
+                <i class="fas fa-search fa-3x mb-3 text-muted"></i>
+                <p class="text-muted mb-0">Enter a Customer ID and click Search to load outstanding installments.</p>
+            </div>
+
+            <!-- Loading -->
+            <div id="loadingState" class="card-body text-center py-5" style="display:none;">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <p class="text-muted mb-0">Loading installments…</p>
+            </div>
+
+            <!-- No installments -->
+            <div id="emptyState" class="card-body text-center py-5" style="display:none;">
+                <i class="fas fa-check-double fa-3x mb-3 text-success"></i>
+                <p class="text-muted mb-0">This customer has no outstanding installments.</p>
+            </div>
+
+            <!-- Table -->
+            <div id="tableState" style="display:none;">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="installmentsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:42px;">
+                                    <input type="checkbox" id="chkAll" class="form-check-input" title="Select/deselect all" />
+                                </th>
+                                <th>#</th>
+                                <th>Description</th>
+                                <th>Due Date</th>
+                                <th class="text-end">Installment</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Outstanding</th>
+                                <th style="min-width:130px;" class="text-end">Pay Now (PKR)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="installmentsTbody">
+                        </tbody>
+                        <tfoot class="table-light fw-semibold">
+                            <tr>
+                                <td colspan="6" class="text-end text-muted">Selected Outstanding:</td>
+                                <td class="text-end" id="footOutstanding">PKR 0.00</td>
+                                <td class="text-end" style="color:var(--primary);" id="footPayNow">PKR 0.00</td>
+                            </tr>
+                            <tr>
+                                <td colspan="7" class="text-end text-muted">Total Paying Now:</td>
+                                <td class="text-end fw-bold" id="footPayNowTotal" style="color:var(--primary);">PKR 0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="card-footer d-flex justify-content-between align-items-center py-3">
+                    <small class="text-muted"><span id="selectedCount">0</span> installment(s) selected</small>
+                    <button type="button" id="btnClearAmounts" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-eraser me-1"></i>Clear amounts
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info box -->
+        <div class="alert alert-info mt-3 small" style="background:rgba(156,106,222,0.07);border:1px solid rgba(156,106,222,0.2);">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>How it works:</strong> Enter a total payment amount, then distribute it across one or more outstanding installments.
+            Partial payments are allowed — an installment doesn't need to be fully paid.
+            The sum of <em>Pay Now</em> fields must exactly equal the <em>Total Payment</em> amount before saving.
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+
+    var fmt = function (n) {
+        return 'PKR ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    var fmtN = function (n) {
+        return Number(n || 0).toFixed(2);
+    };
+
+    var schedulesData = [];  // raw from API
+
+    // ── Running totals ──────────────────────────────────────────────────
+    function recalc() {
+        var total   = parseFloat($('#totalAmount').val()) || 0;
+        var distrib = 0;
+        $('#installmentsTbody .pay-now-input').each(function () {
+            distrib += parseFloat($(this).val()) || 0;
+        });
+        var remaining = total - distrib;
+
+        $('#hdrTotal').text(fmt(total));
+        $('#hdrDistributed').text(fmt(distrib));
+        $('#hdrRemaining').text(fmt(Math.abs(remaining)));
+        $('#hdrRemaining').removeClass('text-danger text-success')
+            .addClass(Math.abs(remaining) < 0.01 ? 'text-success' : 'text-danger');
+
+        // Footer totals — only count selected rows
+        var totalOutstanding = 0;
+        $('#installmentsTbody tr').each(function () {
+            if ($(this).find('.row-checkbox').is(':checked')) {
+                totalOutstanding += parseFloat($(this).data('outstanding')) || 0;
+            }
+        });
+        $('#footOutstanding').text(fmt(totalOutstanding));
+        $('#footPayNow').text(fmt(distrib));
+        $('#footPayNowTotal').text(fmt(distrib));
+
+        // Match message
+        var $msg = $('#totalMatchMsg');
+        if (total <= 0) { $msg.text(''); }
+        else if (Math.abs(remaining) < 0.01) {
+            $msg.html('<span class="text-success"><i class="fas fa-check-circle me-1"></i>Amounts match ✓</span>');
+        } else if (remaining > 0) {
+            $msg.html('<span class="text-warning"><i class="fas fa-exclamation-circle me-1"></i>PKR ' + fmtN(remaining) + ' still to distribute</span>');
+        } else {
+            $msg.html('<span class="text-danger"><i class="fas fa-times-circle me-1"></i>Distributed exceeds total by PKR ' + fmtN(Math.abs(remaining)) + '</span>');
+        }
+
+        // Selected count
+        var sel = $('#installmentsTbody .row-checkbox:checked').length;
+        $('#selectedCount').text(sel);
+
+        // Submit button
+        var customerId = $('#customerId').val();
+        var canSubmit = customerId && total > 0 && Math.abs(remaining) < 0.01 && distrib > 0;
+        $('#btnSubmit').prop('disabled', !canSubmit);
+    }
+
+    $('#totalAmount').on('input', recalc);
+
+    // ── Customer Search ─────────────────────────────────────────────────
+    function doSearch() {
+        var input = $('#customerIdInput').val().trim();
+        if (!input) { $('#customerMsg').addClass('text-danger').text('Enter a Customer ID first.'); return; }
+
+        $('#customerMsg').removeClass('text-danger text-success').text('');
+        $('#customerNameBadge').hide();
+        $('#customerId').val('');
+        schedulesData = [];
+        showState('loading');
+        $('#btnAutoDistribute').hide();
+        $('#btnSearch').prop('disabled', true);
+
+        $.get('@Url.Action("GetCustomerPaymentInfo", "Payment")', { customerId: input })
+            .done(function (data) {
+                if (!data.found) {
+                    $('#customerMsg').addClass('text-danger').text(data.message || 'Customer not found.');
+                    showState('noSearch');
+                    return;
+                }
+
+                $('#customerId').val(data.customerId);
+                $('#customerIdInput').val(data.customerId);
+                $('#customerNameText').text(data.fullName + ' (' + data.customerId + ')');
+                $('#customerNameBadge').show();
+                $('#customerMsg').addClass('text-success').text('Customer found.');
+
+                schedulesData = data.schedules || [];
+                if (schedulesData.length === 0) {
+                    showState('empty');
+                } else {
+                    renderTable(schedulesData);
+                    showState('table');
+                    $('#btnAutoDistribute').show();
+                    recalc();
+                }
+            })
+            .fail(function () {
+                $('#customerMsg').addClass('text-danger').text('Search failed. Please try again.');
+                showState('noSearch');
+            })
+            .always(function () { $('#btnSearch').prop('disabled', false); });
+    }
+
+    $('#btnSearch').on('click', doSearch);
+    $('#customerIdInput').on('keypress', function (e) { if (e.which === 13) { e.preventDefault(); doSearch(); } });
+
+    // ── Render Table ────────────────────────────────────────────────────
+    function renderTable(schedules) {
+        var $tbody = $('#installmentsTbody').empty();
+        $.each(schedules, function (i, s) {
+            var overdueBadge = s.isOverdue
+                ? '<span class="badge bg-danger ms-1 small">Overdue</span>'
+                : '<span class="badge bg-success ms-1 small">On time</span>';
+
+            var row = $('<tr></tr>')
+                .data('schedule-id', s.scheduleId)
+                .data('outstanding', s.outstanding)
+                .data('amount', s.amount)
+                .data('paid', s.paid);
+
+            row.html(
+                '<td><input type="checkbox" class="form-check-input row-checkbox" checked /></td>' +
+                '<td><span class="badge bg-secondary">#' + (s.installmentNo != null ? s.installmentNo : 'T') + '</span></td>' +
+                '<td>' +
+                    '<div class="fw-semibold small">' + (s.paymentDescription || 'Installment') + '</div>' +
+                    '<small class="text-muted">' + (s.planName || '') + '</small>' +
+                '</td>' +
+                '<td>' +
+                    '<div class="small">' + (s.dueDate || '') + '</div>' +
+                    overdueBadge +
+                '</td>' +
+                '<td class="text-end small">PKR ' + fmtN(s.amount) + '</td>' +
+                '<td class="text-end small text-muted">PKR ' + fmtN(s.paid) + '</td>' +
+                '<td class="text-end small fw-semibold" style="color:var(--primary);">PKR ' + fmtN(s.outstanding) + '</td>' +
+                '<td class="text-end">' +
+                    '<input type="number" class="form-control form-control-sm text-end pay-now-input" ' +
+                           'data-max="' + s.outstanding + '" ' +
+                           'step="0.01" min="0" max="' + s.outstanding + '" ' +
+                           'placeholder="0.00" value="" />' +
+                    '<small class="text-muted d-block mt-1 outstanding-hint">max PKR ' + fmtN(s.outstanding) + '</small>' +
+                '</td>'
+            );
+
+            $tbody.append(row);
+        });
+
+        // Live validation per row + recalc on every input change
+        $tbody.on('input', '.pay-now-input', function () {
+            var max = parseFloat($(this).data('max')) || 0;
+            var val = parseFloat($(this).val()) || 0;
+            if (val > max + 0.005) {
+                $(this).addClass('is-invalid');
+            } else {
+                $(this).removeClass('is-invalid');
+            }
+            recalc();
+        });
+
+        // Checkbox toggle: zero out amount when unchecked, restore outstanding when re-checked
+        $tbody.on('change', '.row-checkbox', function () {
+            var $input = $(this).closest('tr').find('.pay-now-input');
+            if (!$(this).is(':checked')) {
+                $input.val('').prop('disabled', true);
+            } else {
+                $input.prop('disabled', false);
+            }
+            recalc();
+        });
+    }
+
+    // ── Select All ──────────────────────────────────────────────────────
+    $('#chkAll').on('change', function () {
+        var checked = $(this).is(':checked');
+        $('#installmentsTbody .row-checkbox').prop('checked', checked).trigger('change');
+    });
+
+    // ── Auto-distribute ─────────────────────────────────────────────────
+    $('#btnAutoDistribute').on('click', function () {
+        var total = parseFloat($('#totalAmount').val()) || 0;
+        if (total <= 0) { alert('Enter Total Payment amount first.'); return; }
+
+        var remaining = total;
+        $('#installmentsTbody tr').each(function () {
+            var $chk   = $(this).find('.row-checkbox');
+            var $input = $(this).find('.pay-now-input');
+            if (!$chk.is(':checked') || $input.prop('disabled')) { $input.val(''); return; }
+            var outstanding = parseFloat($(this).data('outstanding')) || 0;
+            if (remaining <= 0) { $input.val(''); return; }
+            var toApply = Math.min(outstanding, remaining);
+            toApply = Math.round(toApply * 100) / 100;
+            $input.val(toApply > 0 ? toApply.toFixed(2) : '').removeClass('is-invalid');
+            remaining = Math.round((remaining - toApply) * 100) / 100;
+        });
+        recalc();
+    });
+
+    // ── Clear amounts ───────────────────────────────────────────────────
+    $('#btnClearAmounts').on('click', function () {
+        $('#installmentsTbody .pay-now-input').val('').removeClass('is-invalid');
+        recalc();
+    });
+
+    // ── State helper ────────────────────────────────────────────────────
+    function showState(state) {
+        $('#noSearchState, #loadingState, #emptyState, #tableState').hide();
+        if (state === 'noSearch')  $('#noSearchState').show();
+        if (state === 'loading')   $('#loadingState').show();
+        if (state === 'empty')     $('#emptyState').show();
+        if (state === 'table')     $('#tableState').show();
+    }
+
+    // ── Submit ──────────────────────────────────────────────────────────
+    $('#btnSubmit').on('click', function () {
+        var customerId = $('#customerId').val();
+        var totalAmount = parseFloat($('#totalAmount').val()) || 0;
+
+        // Build rows
+        var payments = [];
+        var hasInvalid = false;
+        $('#installmentsTbody tr').each(function () {
+            var $chk = $(this).find('.row-checkbox');
+            if (!$chk.is(':checked')) return;
+            var $input = $(this).find('.pay-now-input');
+            var amount = parseFloat($input.val()) || 0;
+            if (amount <= 0) return;
+            var max = parseFloat($input.data('max')) || 0;
+            if (amount > max + 0.005) { hasInvalid = true; return; }
+            payments.push({
+                scheduleId: $(this).data('schedule-id'),
+                amount: amount
+            });
+        });
+
+        if (hasInvalid) { showAlert('danger', 'One or more amounts exceed the outstanding balance. Please fix before saving.'); return; }
+        if (payments.length === 0) { showAlert('danger', 'No installment amounts entered.'); return; }
+
+        var sum = payments.reduce(function (a, b) { return a + b.amount; }, 0);
+        sum = Math.round(sum * 100) / 100;
+        totalAmount = Math.round(totalAmount * 100) / 100;
+        if (Math.abs(sum - totalAmount) > 0.01) {
+            showAlert('danger', 'Sum of amounts (PKR ' + sum.toFixed(2) + ') must equal Total Payment (PKR ' + totalAmount.toFixed(2) + ').');
+            return;
+        }
+
+        var payload = {
+            customerId:  customerId,
+            totalAmount: totalAmount,
+            referenceNo: $('#referenceNo').val(),
+            method:      $('#paymentMethod').val(),
+            remarks:     $('#remarks').val(),
+            paymentDate: $('#paymentDate').val(),
+            payments:    payments
+        };
+
+        $('#btnSubmit').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Saving…');
+
+        $.ajax({
+            url:         '@Url.Action("MultiplePayments", "Payment")',
+            type:        'POST',
+            contentType: 'application/json',
+            headers:     { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
+            data:        JSON.stringify(payload),
+            success: function (res) {
+                if (res.success) {
+                    showAlert('success', '<i class="fas fa-check-circle me-2"></i>' + res.message + ' <a href="@Url.Action("CustomerPayments", "Payment")" class="alert-link ms-2">View all payments →</a>');
+                    // Reset form
+                    $('#totalAmount').val('');
+                    $('#customerId').val('');
+                    $('#customerIdInput').val('');
+                    $('#customerNameBadge').hide();
+                    $('#customerMsg').text('');
+                    schedulesData = [];
+                    showState('noSearch');
+                    $('#btnAutoDistribute').hide();
+                    recalc();
+                } else {
+                    showAlert('danger', res.message || 'An error occurred.');
+                }
+            },
+            error: function () { showAlert('danger', 'Server error. Please try again.'); },
+            complete: function () {
+                $('#btnSubmit').prop('disabled', false).html('<i class="fas fa-check me-2"></i>Save All Payments');
+                recalc();
+            }
+        });
+    });
+
+    function showAlert(type, html) {
+        var $a = $('<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' + html + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+        $('#alertArea').html($a);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Anti-forgery hidden input (needed for AJAX header)
+    $('body').append('@Html.AntiForgeryToken()');
+
+    // Auto-search if pre-selected
+    @if (!string.IsNullOrEmpty(preCustomerId))
+    {
+        <text>
+        setTimeout(function() { doSearch(); }, 300);
+        </text>
+    }
+});
+</script>
+}

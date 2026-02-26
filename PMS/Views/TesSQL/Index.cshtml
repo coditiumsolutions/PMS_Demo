@@ -1,0 +1,226 @@
+@{
+    ViewData["Title"] = "TesSQL - Query Runner";
+    // Table names from db.txt for shortcut UX
+    var tables = new[] {
+        "ACL", "Users", "Tickets", "UserSessions", "Registration", "PaymentPlan", "PaymentSchedule",
+        "Customers", "CustomerLogs", "Projects", "Property", "Rental", "RentalPayments", "PropertyLogs",
+        "Allotment", "Balloting", "Possession", "Payments", "Penalties", "Waiver", "Refund", "Transfer",
+        "NDC", "Approvals", "Attachments", "ActivityLog", "Notifications", "Configuration", "PropertyInquiry", "Dealers"
+    };
+}
+
+<div class="custom-banner mb-4" style="margin-top: 20px;">
+    <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); padding: 20px 24px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-white mb-1" style="font-weight: 600;">
+                    <i class="fas fa-database me-2"></i>TesSQL
+                </h2>
+                <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.9rem;">Run SQL queries and view table data (MS SQL Server)</p>
+            </div>
+            <div>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h6 class="mb-0 text-white"><i class="fas fa-table-list me-2"></i>Table shortcuts</h6>
+                <small class="text-white" style="opacity: 0.9;">Click to insert <code>SELECT * FROM TableName</code></small>
+            </div>
+            <div class="card-body py-3" style="max-height: 20rem; overflow-y: auto; overflow-x: hidden;">
+                <div class="d-flex flex-wrap gap-3" id="tableShortcuts">
+                    @foreach (var t in tables)
+                    {
+                        <button type="button" class="btn btn-outline-primary btn-sm table-shortcut" data-table="@t" title="SELECT * FROM @t">@t</button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h6 class="mb-0 text-white"><i class="fas fa-code me-2"></i>SQL query</h6>
+            </div>
+            <div class="card-body">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label for="sqlInput" class="form-label fw-semibold">Enter SQL (SELECT, INSERT, UPDATE, DELETE, etc.)</label>
+                    <textarea id="sqlInput" class="form-control font-monospace" rows="8" placeholder="e.g. SELECT * FROM Customers"></textarea>
+                </div>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <button type="button" id="btnExecute" class="btn btn-primary">
+                        <i class="fas fa-play me-1"></i>Execute
+                    </button>
+                    <button type="button" id="btnClear" class="btn btn-outline-secondary">Clear</button>
+                    <kbd class="ms-2">Ctrl+Enter</kbd> run query
+                </div>
+            </div>
+        </div>
+
+        <div id="resultArea" class="mt-4" style="display: none;">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                    <h6 class="mb-0 text-white"><i class="fas fa-table me-2"></i>Results</h6>
+                    <span id="resultSummary" class="badge bg-light text-dark"></span>
+                </div>
+                <div class="card-body p-0 overflow-auto">
+                    <div id="resultMessage" class="p-3 alert mb-0" style="display: none;"></div>
+                    <div id="resultTableWrap" class="overflow-auto" style="max-height: 70vh;">
+                        <table id="resultTable" class="table table-striped table-hover table-sm mb-0">
+                            <thead id="resultThead" class="table-light sticky-top"></thead>
+                            <tbody id="resultTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorArea" class="mt-4" style="display: none;">
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i><strong>Error</strong>
+                <div id="errorText" class="mt-1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    var sqlInput = document.getElementById('sqlInput');
+    var btnExecute = document.getElementById('btnExecute');
+    var btnClear = document.getElementById('btnClear');
+    var resultArea = document.getElementById('resultArea');
+    var resultSummary = document.getElementById('resultSummary');
+    var resultMessage = document.getElementById('resultMessage');
+    var resultTableWrap = document.getElementById('resultTableWrap');
+    var resultThead = document.getElementById('resultThead');
+    var resultTbody = document.getElementById('resultTbody');
+    var errorArea = document.getElementById('errorArea');
+    var errorText = document.getElementById('errorText');
+
+    function getToken() {
+        return document.querySelector('input[name="__RequestVerificationToken"]').value;
+    }
+
+    function formatCell(val) {
+        if (val === null || val === undefined) return '<em class="text-muted">NULL</em>';
+        if (val instanceof Date || (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(val))) {
+            var d = new Date(val);
+            return isNaN(d.getTime()) ? val : d.toLocaleString();
+        }
+        var s = String(val);
+        if (s.length > 200) return '<span title="' + s.replace(/"/g, '&quot;') + '">' + escapeHtml(s.substring(0, 200)) + '…</span>';
+        return escapeHtml(s);
+    }
+    function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function runQuery() {
+        var sql = (sqlInput.value || '').trim();
+        if (!sql) {
+            errorArea.style.display = 'block';
+            errorText.textContent = 'Please enter a SQL query.';
+            resultArea.style.display = 'none';
+            return;
+        }
+        errorArea.style.display = 'none';
+        resultArea.style.display = 'block';
+        resultThead.innerHTML = '';
+        resultTbody.innerHTML = '';
+        resultMessage.style.display = 'none';
+        resultTableWrap.style.display = 'block';
+        resultSummary.textContent = 'Running…';
+        btnExecute.disabled = true;
+
+        fetch('@Url.Action("Execute", "TesSQL")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': getToken()
+            },
+            body: JSON.stringify({ sql: sql })
+        }).then(function(r) {
+            return r.json().then(function(data) {
+                if (!r.ok) throw new Error(data.error || 'Request failed');
+                return data;
+            });
+        }).then(function(data) {
+            if (!data.success) {
+                errorArea.style.display = 'block';
+                errorText.textContent = data.error || 'Unknown error';
+                resultArea.style.display = 'none';
+                return;
+            }
+            if (data.isSelect) {
+                resultSummary.textContent = data.rowCount + ' row(s)';
+                var cols = data.columns || [];
+                var theadTr = document.createElement('tr');
+                cols.forEach(function(c) {
+                    var th = document.createElement('th');
+                    th.scope = 'col';
+                    th.textContent = c;
+                    th.className = 'text-nowrap';
+                    theadTr.appendChild(th);
+                });
+                resultThead.appendChild(theadTr);
+                (data.rows || []).forEach(function(row) {
+                    var tr = document.createElement('tr');
+                    cols.forEach(function(col) {
+                        var td = document.createElement('td');
+                        td.className = 'text-nowrap';
+                        td.innerHTML = formatCell(row[col]);
+                        tr.appendChild(td);
+                    });
+                    resultTbody.appendChild(tr);
+                });
+            } else {
+                resultTableWrap.style.display = 'none';
+                resultMessage.style.display = 'block';
+                resultMessage.className = 'p-3 alert alert-success mb-0';
+                resultMessage.textContent = data.message || 'Command executed.';
+                resultSummary.textContent = '';
+            }
+        }).catch(function(err) {
+            errorArea.style.display = 'block';
+            errorText.textContent = err.message || 'Request failed';
+            resultArea.style.display = 'none';
+        }).finally(function() {
+            btnExecute.disabled = false;
+        });
+    }
+
+    btnExecute.addEventListener('click', runQuery);
+    btnClear.addEventListener('click', function() {
+        sqlInput.value = '';
+        resultArea.style.display = 'none';
+        errorArea.style.display = 'none';
+    });
+
+    sqlInput.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            runQuery();
+        }
+    });
+
+    document.querySelectorAll('.table-shortcut').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var table = this.getAttribute('data-table');
+            var q = 'SELECT * FROM ' + table;
+            if (sqlInput.value.trim()) sqlInput.value += '\n' + q;
+            else sqlInput.value = q;
+            sqlInput.focus();
+        });
+    });
+})();
+</script>
+}

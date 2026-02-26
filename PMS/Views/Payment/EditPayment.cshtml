@@ -1,0 +1,188 @@
+@model PMS.Models.Payment
+@{
+    ViewData["Title"] = "Edit Payment";
+    var maxAmount = ViewBag.MaxAmount != null ? (decimal)ViewBag.MaxAmount : Model.Amount;
+}
+
+<div class="custom-banner mb-4" style="margin-top: 20px;">
+    <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-white mb-1" style="font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    <i class="fas fa-edit me-2"></i>Edit Payment
+                </h2>
+                <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.95rem;">
+                    Update payment @Model.PaymentID
+                </p>
+            </div>
+            <div>
+                <a asp-action="CustomerPayments" class="btn btn-light">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Payments
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h6 class="mb-0 text-white">
+                    <i class="fas fa-info-circle me-2"></i>Customer & Installment (read-only)
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <small class="text-muted">Customer</small>
+                        <p class="fw-bold mb-0">@(Model.Customer?.FullName ?? "—")</p>
+                        <small class="text-muted">@Model.CustomerID</small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted">Plan / Installment</small>
+                        <p class="fw-bold mb-0">@(Model.PaymentSchedule?.PaymentPlan?.PlanName ?? "—")</p>
+                        <small class="text-muted">Installment #@(Model.PaymentSchedule?.InstallmentNo?.ToString() ?? "N/A")</small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted">Max amount for this installment</small>
+                        <p class="fw-bold mb-0" style="color: #9C6ADE;">PKR @maxAmount.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-receipt me-2"></i>Payment Details
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                <form asp-action="EditPayment" method="post" id="editPaymentForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="paymentId" value="@Model.PaymentID" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="paymentDate" class="form-label fw-semibold">
+                                <i class="fas fa-calendar me-1" style="color: #9C6ADE;"></i>Payment Date *
+                            </label>
+                            <input type="datetime-local" name="paymentDate" id="paymentDate" class="form-control" required
+                                   value="@Model.PaymentDate.ToString("yyyy-MM-ddTHH:mm")" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="amount" class="form-label fw-semibold">
+                                <i class="fas fa-coins me-1" style="color: #9C6ADE;"></i>Amount (PKR) *
+                            </label>
+                            <input type="number" name="amount" id="amount" step="0.01" min="0.01" class="form-control"
+                                   value="@Model.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                   max="@maxAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+                            <small class="text-muted">Must not exceed PKR @maxAmount.ToString("N2") for this installment.</small>
+                            <div id="amountValidationError" class="invalid-feedback d-block" style="display: none !important;"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="method" class="form-label fw-semibold">
+                                <i class="fas fa-credit-card me-1" style="color: #9C6ADE;"></i>Payment Method *
+                            </label>
+                            <select name="method" id="method" class="form-select" required>
+                                <option value="">Select Payment Method</option>
+                                @if (Model.Method == "Cash") { <option value="Cash" selected>Cash</option> } else { <option value="Cash">Cash</option> }
+                                @if (Model.Method == "Bank Transfer") { <option value="Bank Transfer" selected>Bank Transfer</option> } else { <option value="Bank Transfer">Bank Transfer</option> }
+                                @if (Model.Method == "Cheque") { <option value="Cheque" selected>Cheque</option> } else { <option value="Cheque">Cheque</option> }
+                                @if (Model.Method == "Online") { <option value="Online" selected>Online Payment</option> } else { <option value="Online">Online Payment</option> }
+                                @if (Model.Method == "Mobile Money") { <option value="Mobile Money" selected>Mobile Money</option> } else { <option value="Mobile Money">Mobile Money</option> }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="referenceNo" class="form-label fw-semibold">
+                                <i class="fas fa-hashtag me-1" style="color: #9C6ADE;"></i>Reference Number
+                            </label>
+                            <input type="text" name="referenceNo" id="referenceNo" class="form-control"
+                                   value="@Model.ReferenceNo" placeholder="Transaction/Receipt/Cheque Number" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="status" class="form-label fw-semibold">
+                                <i class="fas fa-check-circle me-1" style="color: #9C6ADE;"></i>Status *
+                            </label>
+                            <select name="status" id="status" class="form-select" required>
+                                @{ var statusVal = Model.Status ?? "Paid"; var statusList = ViewBag.PaymentStatuses as IEnumerable<string> ?? new[] { "Pending", "Paid", "Partially Paid" }; }
+                                @foreach (var s in statusList)
+                                {
+                                    var isSelected = string.Equals(s, statusVal, StringComparison.OrdinalIgnoreCase);
+                                    if (isSelected)
+                                    { <option value="@s" selected>@s</option> }
+                                    else
+                                    { <option value="@s">@s</option> }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="remarks" class="form-label fw-semibold">
+                                <i class="fas fa-comment me-1" style="color: #9C6ADE;"></i>Remarks
+                            </label>
+                            <textarea name="remarks" id="remarks" class="form-control" rows="3">@Model.Remarks</textarea>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-lg" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; border: none;">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                        <a asp-action="CustomerPayments" class="btn btn-lg btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var maxAmount = @maxAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            var form = document.getElementById('editPaymentForm');
+            var amountInput = document.getElementById('amount');
+            var amountError = document.getElementById('amountValidationError');
+
+            function validateAmount() {
+                var val = parseFloat(amountInput.value) || 0;
+                if (maxAmount > 0 && val > maxAmount) {
+                    amountError.style.display = 'block';
+                    amountError.textContent = 'Amount must not exceed PKR ' + maxAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 }) + '.';
+                    amountInput.classList.add('is-invalid');
+                    return false;
+                }
+                amountError.style.display = 'none';
+                amountInput.classList.remove('is-invalid');
+                return true;
+            }
+
+            amountInput.addEventListener('input', validateAmount);
+
+            form.addEventListener('submit', function (e) {
+                if (!validateAmount()) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        })();
+    </script>
+}

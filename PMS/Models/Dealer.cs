@@ -54,6 +54,9 @@ namespace PMS.Models
 
         public string? Details { get; set; }
 
+        [Column(TypeName = "float")]
+        public double IncentivePercentage { get; set; } = 5.0;
+
         // Navigation properties
         public virtual ICollection<Customer> Customers { get; set; } = new List<Customer>();
         public virtual ICollection<Property> Properties { get; set; } = new List<Property>();

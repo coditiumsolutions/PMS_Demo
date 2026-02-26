@@ -8,7 +8,7 @@ namespace PMS.Models
     {
         [Key]
         [StringLength(10)]
-        public string AllotmentID { get; set; } = string.Empty;
+        public string? AllotmentID { get; set; } = string.Empty;
 
         [Required]
         [StringLength(10)]
@@ -27,13 +27,11 @@ namespace PMS.Models
         [StringLength(50)]
         public string? ApprovedBy { get; set; }
 
-        [Required]
         [StringLength(50)]
-        public string AllottmentType { get; set; } = "Regular";
+        public string? AllottmentType { get; set; } = "Regular";
 
-        [Required]
         [StringLength(250)]
-        public string WorkFlowStatus { get; set; } = "Pending";
+        public string? WorkFlowStatus { get; set; } = "Pending";
 
         public string? Comments { get; set; }
 

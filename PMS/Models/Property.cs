@@ -26,6 +26,9 @@ namespace PMS.Models
         public string? Block { get; set; }
 
         [StringLength(50)]
+        public string? Floor { get; set; }
+
+        [StringLength(50)]
         public string? PropertyType { get; set; }
 
         [StringLength(50)]
@@ -49,7 +52,7 @@ namespace PMS.Models
 
         public virtual ICollection<Allotment> Allotments { get; set; } = new List<Allotment>();
         public virtual ICollection<Possession> Possessions { get; set; } = new List<Possession>();
-        public virtual ICollection<Transfer> Transfers { get; set; } = new List<Transfer>();
         public virtual ICollection<PropertyLog> PropertyLogs { get; set; } = new List<PropertyLog>();
+        public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
     }
 }

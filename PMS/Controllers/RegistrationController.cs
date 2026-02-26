@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 using System.Security.Claims;
 
 namespace PMS.Controllers
@@ -10,18 +11,40 @@ namespace PMS.Controllers
     [Authorize]
     public class RegistrationController : Controller
     {
+        private const string ModuleKey = "Registration";
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public RegistrationController(PMSDbContext context)
+        public RegistrationController(PMSDbContext context, IModulePermissionService modulePermission)
         {
             _context = context;
+            _modulePermission = modulePermission;
+        }
+
+        private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var perm = await _modulePermission.GetPermissionAsync(userId, ModuleKey);
+            if (requiredLevel == "Read" && !_modulePermission.CanRead(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+                return RedirectToAction("AccessDenied", "Account");
+            ViewBag.CanCreate = _modulePermission.CanEdit(perm);
+            ViewBag.CanEdit = _modulePermission.CanEdit(perm);
+            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
+            return null;
         }
 
         // GET: Registration/Index
         public async Task<IActionResult> Index(string statusFilter = "All", string searchTerm = "")
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             var registrationsQuery = _context.Registrations
                 .Include(r => r.Customers)
+                .Include(r => r.Project)
                 .AsQueryable();
 
             // Apply status filter
@@ -62,6 +85,8 @@ namespace PMS.Controllers
         // GET: Registration/Details/5
         public async Task<IActionResult> Details(string id)
         {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -69,6 +94,7 @@ namespace PMS.Controllers
 
             var registration = await _context.Registrations
                 .Include(r => r.Customers)
+                .Include(r => r.Project)
                 .FirstOrDefaultAsync(r => r.RegID == id);
 
             if (registration == null)
@@ -80,8 +106,14 @@ namespace PMS.Controllers
         }
 
         // GET: Registration/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            ViewBag.Projects = await _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .Select(p => new { p.ProjectID, p.ProjectName })
+                .ToListAsync();
             return View();
         }
 
@@ -90,6 +122,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Registration registration)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (ModelState.IsValid)
             {
                 using var transaction = await _context.Database.BeginTransactionAsync();
@@ -121,12 +155,39 @@ namespace PMS.Controllers
                 }
             }
 
+            ViewBag.Projects = await _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .Select(p => new { p.ProjectID, p.ProjectName })
+                .ToListAsync();
             return View(registration);
+        }
+
+        /// <summary>Returns sizes (CSV split) for a project. Used by Registration form to populate Size dropdown.</summary>
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSizes(string projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return Json(Array.Empty<string>());
+            }
+            var project = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectID == projectId)
+                .Select(p => p.Sizes)
+                .FirstOrDefaultAsync();
+            var sizes = string.IsNullOrWhiteSpace(project)
+                ? Array.Empty<string>()
+                : project.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+            return Json(sizes);
         }
 
         // GET: Registration/Edit/5
         public async Task<IActionResult> Edit(string id)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -138,6 +199,10 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
+            ViewBag.Projects = await _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .Select(p => new { p.ProjectID, p.ProjectName })
+                .ToListAsync();
             return View(registration);
         }
 
@@ -146,6 +211,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(string id, Registration registration)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             if (id != registration.RegID)
             {
                 return NotFound();
@@ -180,6 +247,10 @@ namespace PMS.Controllers
                 }
             }
 
+            ViewBag.Projects = await _context.Projects
+                .OrderBy(p => p.ProjectName)
+                .Select(p => new { p.ProjectID, p.ProjectName })
+                .ToListAsync();
             return View(registration);
         }
 
@@ -188,6 +259,8 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateStatus(string regID, string status)
         {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
             var registration = await _context.Registrations.FindAsync(regID);
             if (registration == null)
             {
@@ -211,6 +284,8 @@ namespace PMS.Controllers
         // GET: Registration/Delete/5
         public async Task<IActionResult> Delete(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             if (id == null)
             {
                 return NotFound();
@@ -218,6 +293,7 @@ namespace PMS.Controllers
 
             var registration = await _context.Registrations
                 .Include(r => r.Customers)
+                .Include(r => r.Project)
                 .FirstOrDefaultAsync(r => r.RegID == id);
 
             if (registration == null)
@@ -240,8 +316,11 @@ namespace PMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
             var registration = await _context.Registrations
                 .Include(r => r.Customers)
+                .Include(r => r.Project)
                 .FirstOrDefaultAsync(r => r.RegID == id);
 
             if (registration == null)

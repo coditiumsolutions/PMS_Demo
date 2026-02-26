@@ -1,0 +1,264 @@
+@model PMS.Models.Payment
+
+@{
+    ViewData["Title"] = "Audit Payment";
+    var auditStatus = Model.AuditStatus ?? "Pending";
+    var isPending   = auditStatus == "Pending";
+    var projectName = Model.PaymentSchedule?.PaymentPlan?.Project?.ProjectName ?? "—";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="mb-0"><i class="fas fa-gavel me-2"></i>Audit Payment</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Back to Audit List
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Payment Details -->
+    <div class="col-md-7">
+        <div class="card h-100">
+            <div class="card-header" style="background: linear-gradient(135deg,#6c757d,#495057); color:#fff;">
+                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar me-2"></i>Payment Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Payment ID</label>
+                            <p><code>@Model.PaymentID</code></p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Current Audit Status</label>
+                            <p>
+                                @{
+                                    var badgeClass = auditStatus == "Approved" ? "bg-success"
+                                                   : auditStatus == "Declined" ? "bg-danger"
+                                                   : "bg-warning text-dark";
+                                }
+                                <span class="badge @badgeClass fs-6">@auditStatus</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Customer ID</label>
+                            <p><code>@Model.CustomerID</code></p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Customer Name</label>
+                            <p>@(Model.Customer?.FullName ?? "—")</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Project</label>
+                            <p>@projectName</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Installment</label>
+                            <p>
+                                @(Model.PaymentSchedule?.PaymentDescription ?? "—")
+                                @if (Model.PaymentSchedule?.InstallmentNo != null)
+                                {
+                                    <span class="badge bg-secondary ms-1">#@Model.PaymentSchedule.InstallmentNo</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Amount (PKR)</label>
+                            <p class="fw-bold text-success fs-5">@Model.Amount.ToString("N0")</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Payment Method</label>
+                            <p>@(Model.Method ?? "—")</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Reference No</label>
+                            <p>@(Model.ReferenceNo ?? "—")</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Payment Date</label>
+                            <p>@Model.PaymentDate.ToString("MMMM dd, yyyy")</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-field">
+                            <label>Payment Status</label>
+                            <p>@(Model.Status ?? "—")</p>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="detail-field">
+                            <label>Remarks</label>
+                            <p>@(Model.Remarks ?? "—")</p>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.AuditedBy))
+                {
+                    <hr />
+                    <div class="row g-2 mt-1">
+                        <div class="col-6">
+                            <div class="detail-field">
+                                <label>Audited By</label>
+                                <p>@(Model.AuditedByUser?.UserID ?? Model.AuditedBy)</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="detail-field">
+                                <label>Audited At</label>
+                                <p>@Model.AuditedAt?.ToString("MMMM dd, yyyy hh:mm tt")</p>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="detail-field">
+                                <label>Audit Remarks</label>
+                                <p>@(Model.AuditRemarks ?? "—")</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Action -->
+    <div class="col-md-5">
+        @if (isPending && ViewBag.CanEdit == true)
+        {
+            <div class="card border-primary h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Audit Decision</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Audit" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="paymentId" value="@Model.PaymentID" />
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Decision <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-3 mt-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="auditStatus" id="radioApprove" value="Approved" required />
+                                    <label class="form-check-label text-success fw-semibold" for="radioApprove">
+                                        <i class="fas fa-check-circle me-1"></i>Approve
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="auditStatus" id="radioDecline" value="Declined" />
+                                    <label class="form-check-label text-danger fw-semibold" for="radioDecline">
+                                        <i class="fas fa-times-circle me-1"></i>Decline
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Audit Remarks</label>
+                            <textarea name="auditRemarks" class="form-control" rows="5"
+                                      placeholder="Enter remarks (required when declining)..." id="auditRemarksInput"></textarea>
+                            <small class="text-muted">Remarks are required when declining a payment.</small>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="btnSubmitAudit">
+                                <i class="fas fa-gavel me-2"></i>Submit Audit Decision
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+        else if (!isPending)
+        {
+            <div class="card border-0 bg-light h-100">
+                <div class="card-body text-center d-flex flex-column align-items-center justify-content-center gap-3">
+                    @if (auditStatus == "Approved")
+                    {
+                        <i class="fas fa-check-circle fa-4x text-success"></i>
+                        <h5 class="text-success">This payment has been Approved</h5>
+                    }
+                    else
+                    {
+                        <i class="fas fa-times-circle fa-4x text-danger"></i>
+                        <h5 class="text-danger">This payment has been Declined</h5>
+                    }
+                    <p class="text-muted small">Audited on @Model.AuditedAt?.ToString("MMMM dd, yyyy")</p>
+                    @if (ViewBag.CanAdmin == true)
+                    {
+                        <form asp-action="ResetAudit" method="post"
+                              onsubmit="return confirm('Reset audit status to Pending for @Model.PaymentID?')">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="paymentId" value="@Model.PaymentID" />
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-undo me-1"></i>Reset to Pending
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card border-0 bg-light h-100">
+                <div class="card-body text-center d-flex flex-column align-items-center justify-content-center">
+                    <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">You don't have permission to audit payments.</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .detail-field { padding: 8px 10px; background: linear-gradient(135deg,#f8f9fa 0%,#f3f0ff 100%); border-radius: 6px; }
+    .detail-field label { display: block; margin-bottom: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; font-weight: 600; }
+    .detail-field p { font-size: 14px; color: var(--text-dark,#333); margin-bottom: 0; font-weight: 500; }
+</style>
+
+@section Scripts {
+<script>
+    // Require remarks when declining
+    document.querySelector('form')?.addEventListener('submit', function(e) {
+        var status = document.querySelector('input[name="auditStatus"]:checked')?.value;
+        var remarks = (document.getElementById('auditRemarksInput')?.value || '').trim();
+        if (status === 'Declined' && !remarks) {
+            e.preventDefault();
+            alert('Remarks are required when declining a payment.');
+            document.getElementById('auditRemarksInput').focus();
+        }
+    });
+</script>
+}

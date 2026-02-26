@@ -64,6 +64,42 @@
                                 <input type="password" id="ConfirmPassword" class="form-control" placeholder="Re-enter password" required />
                                 <small id="passwordMatch" class="text-danger" style="display: none;">Passwords do not match</small>
                             </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Designation" class="form-label">Designation</label>
+                                <select asp-for="Designation" class="form-select">
+                                    <option value="">Select designation</option>
+                                    @if (ViewBag.Designations != null)
+                                    {
+                                        @foreach (var d in (IEnumerable<string>)ViewBag.Designations)
+                                        {
+                                            <option value="@d">@d</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="Department" class="form-label">Department</label>
+                                <select asp-for="Department" class="form-select">
+                                    <option value="">Select department</option>
+                                    @if (ViewBag.Departments != null)
+                                    {
+                                        @foreach (var d in (IEnumerable<string>)ViewBag.Departments)
+                                        {
+                                            <option value="@d">@d</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="UserType" class="form-label">User Type</label>
+                                <select asp-for="UserType" class="form-select">
+                                    <option value="">Select type</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="CRO">CRO</option>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- Role & Status -->
@@ -106,6 +142,45 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-lock me-2"></i>Module rights
+                    </h6>
+                    <p class="text-muted small">No Access = no access; Read = view only; Edit = Create + Edit + Read; Admin = full CRUD. These will be applied per module later.</p>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Module</th>
+                                    <th>Permission</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (ViewBag.ModuleKeys != null)
+                                    {
+                                    @foreach (var key in (string[])ViewBag.ModuleKeys)
+                                    {
+                                        var currentPerm = "NoAccess";
+                                        <tr>
+                                            <td>@key</td>
+                                            <td>
+                                                <select name="ModulePermissions_@key" class="form-select form-select-sm">
+                                                    @if (ViewBag.PermissionOptions != null)
+                                                    {
+                                                        @foreach (var opt in (string[])ViewBag.PermissionOptions)
+                                                        {
+                                                            <option value="@opt" selected="@(opt == currentPerm)">@opt</option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
                     </div>
 
                     <hr>

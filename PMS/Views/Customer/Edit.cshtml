@@ -52,7 +52,7 @@
                     </div>
                 }
 
-                <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <form id="customerEditForm" asp-action="Edit" method="post" enctype="multipart/form-data">
                     <input type="hidden" asp-for="CustomerID" />
                     <input type="hidden" asp-for="CreatedAt" />
                     <input type="hidden" asp-for="NomineeNICDocumentPath" />
@@ -68,7 +68,7 @@
                                     
                                     <div class="mb-3">
                                         <label asp-for="FullName" class="form-label">Full Name *</label>
-                                        <input asp-for="FullName" class="form-control" required />
+                                        <input asp-for="FullName" id="FullName" class="form-control" required />
                                         <span asp-validation-for="FullName" class="text-danger"></span>
                                     </div>
 
@@ -78,18 +78,31 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="CNIC" class="form-label">National ID</label>
-                                        <input asp-for="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
+                                        <label asp-for="CNIC" class="form-label">National ID (CNIC)</label>
+                                        <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
+                                        <small class="text-muted">Format: 5 digits, hyphen, 7 digits, hyphen, 1 digit. Required if no Passport.</small>
+                                        <span id="cnicValidationError" class="text-danger small d-none"></span>
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="PassportNo" class="form-label">Passport Number</label>
-                                        <input asp-for="PassportNo" class="form-control" />
+                                        <input asp-for="PassportNo" id="PassportNo" class="form-control" placeholder="Min 5 characters if no CNIC" />
+                                        <small class="text-muted">Provide at least 5 characters if not providing CNIC.</small>
+                                        <span id="passportValidationError" class="text-danger small d-none"></span>
+                                    </div>
+                                    <div id="cnicPassportRuleError" class="alert alert-warning small py-2 d-none" role="alert">
+                                        <i class="fas fa-exclamation-triangle me-1"></i><span id="cnicPassportRuleErrorText"></span>
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="DOB" class="form-label">Date of Birth</label>
-                                        <input asp-for="DOB" type="date" class="form-control" />
+                                        <input asp-for="DOB" type="date" id="DOB" class="form-control"
+                                               value="@(Model.DOB?.ToString("yyyy-MM-dd") ?? "1990-01-01")"
+                                               max="@(DateTime.Today.AddYears(-16).ToString("yyyy-MM-dd"))"
+                                               title="Must be at least 16 years ago" />
+                                        <small class="text-muted">Default: 01/01/1990. Must be at least 16 years old.</small>
+                                        <span id="dobValidationError" class="text-danger small d-none"></span>
+                                        <span asp-validation-for="DOB" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
@@ -139,13 +152,13 @@
 
                                     <div class="mb-3">
                                         <label asp-for="Phone" class="form-label">Phone Number *</label>
-                                        <input asp-for="Phone" class="form-control" required />
+                                        <input asp-for="Phone" id="Phone" class="form-control" required />
                                         <span asp-validation-for="Phone" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="City" class="form-label">City</label>
-                                        <select asp-for="City" class="form-select">
+                                        <label asp-for="City" class="form-label">City *</label>
+                                        <select asp-for="City" class="form-select" required>
                                             <option value="">Select City</option>
                                             @if (ViewBag.Cities != null)
                                             {
@@ -155,11 +168,12 @@
                                                 }
                                             }
                                         </select>
+                                        <span asp-validation-for="City" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="Country" class="form-label">Country</label>
-                                        <select asp-for="Country" class="form-select">
+                                        <label asp-for="Country" class="form-label">Country *</label>
+                                        <select asp-for="Country" class="form-select" required>
                                             <option value="">Select Country</option>
                                             @if (ViewBag.Countries != null)
                                             {
@@ -169,11 +183,13 @@
                                                 }
                                             }
                                         </select>
+                                        <span asp-validation-for="Country" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="MailingAddress" class="form-label">Mailing Address</label>
-                                        <textarea asp-for="MailingAddress" class="form-control" rows="2"></textarea>
+                                        <label asp-for="MailingAddress" class="form-label">Mailing Address *</label>
+                                        <textarea asp-for="MailingAddress" class="form-control" rows="2" required></textarea>
+                                        <span asp-validation-for="MailingAddress" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
@@ -260,7 +276,7 @@
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4">
                                         <label asp-for="ProjectID" class="form-label">Project *</label>
-                                        <select asp-for="ProjectID" class="form-select" required>
+                                        <select asp-for="ProjectID" id="ProjectID" class="form-select" required>
                                             <option value="">Select Project</option>
                                             @if (ViewBag.Projects != null)
                                             {
@@ -274,30 +290,42 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
-                                    <select asp-for="RegisteredSize" class="form-select">
-                                        <option value="">Select Size</option>
-                                        @if (ViewBag.Sizes != null)
-                                        {
-                                            @foreach (var size in ViewBag.Sizes)
-                                            {
-                                                <option value="@size">@size</option>
-                                            }
-                                        }
+                                    <select asp-for="RegisteredSize" id="RegisteredSize" class="form-select">
+                                        <option value="">Select Project first</option>
                                     </select>
+                                    <small class="text-muted">Sizes are loaded from the selected project.</small>
                                 </div>
                                 <div class="col-md-4">
-                                    <label asp-for="DealerID" class="form-label">Dealer *</label>
-                                    <select asp-for="DealerID" id="DealerID" class="form-select" required>
-                                        <option value="">Select Dealer</option>
-                                        @if (ViewBag.Dealers != null)
-                                        {
-                                            @foreach (var dealer in ViewBag.Dealers)
+                                    <label class="form-label">Is Dealer Registered?</label>
+                                    <div class="d-flex gap-3 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="IsDealerRegistered" id="dealerRegYes" value="1" @(Model?.IsDealerRegistered != 0 ? "checked" : null)>
+                                            <label class="form-check-label" for="dealerRegYes">Yes</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="IsDealerRegistered" id="dealerRegNo" value="0" @(Model?.IsDealerRegistered == 0 ? "checked" : null)>
+                                            <label class="form-check-label" for="dealerRegNo">No</label>
+                                        </div>
+                                    </div>
+                                    <div id="dealerDropdownWrap">
+                                        <label asp-for="DealerID" class="form-label">Select Dealer</label>
+                                        <select asp-for="DealerID" id="DealerID" class="form-select">
+                                            <option value="">Select Dealer</option>
+                                            @if (ViewBag.Dealers != null)
                                             {
-                                                <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                                @foreach (var dealer in ViewBag.Dealers)
+                                                {
+                                                    <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                                }
                                             }
-                                        }
-                                    </select>
-                                    <span asp-validation-for="DealerID" class="text-danger"></span>
+                                        </select>
+                                        <span asp-validation-for="DealerID" class="text-danger"></span>
+                                    </div>
+                                    <div id="dealerNameWrap" style="display:none;">
+                                        <label asp-for="DealerName" class="form-label">Dealer Name</label>
+                                        <input asp-for="DealerName" id="DealerName" class="form-control" placeholder="Enter dealer name manually" maxlength="200" />
+                                        <span asp-validation-for="DealerName" class="text-danger"></span>
+                                    </div>
                                 </div>
                                     </div>
 
@@ -310,7 +338,7 @@
                                             {
                                                 @foreach (var plan in ViewBag.PaymentPlans)
                                                 {
-                                                    <option value="@plan.PlanID">@plan.PlanName - @plan.TotalAmount.ToString("C")</option>
+                                                    <option value="@plan.PlanID">@plan.PlanName - PKR @plan.TotalAmount.ToString("N0")</option>
                                                 }
                                             }
                                         </select>
@@ -621,15 +649,138 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        // FullName: letters, spaces, dots, hyphens only
+        document.getElementById('FullName').addEventListener('input', function () {
+            this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+        });
+        // Phone: digits and + only
+        document.getElementById('Phone').addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9\+]/g, '');
+        });
+
         $(document).ready(function() {
+            // Load Registered Size options from selected project (same as Registration module)
+            function loadSizesForProject(projectId, selectValue) {
+                var $sizeSelect = $('#RegisteredSize');
+                $sizeSelect.html('<option value="">Select Size</option>').prop('disabled', !projectId);
+                if (projectId) {
+                    $.get('@Url.Action("GetProjectSizes", "Registration")', { projectId: projectId })
+                        .done(function(arr) {
+                            $(arr).each(function() {
+                                var opt = $('<option></option>').val(this).text(this);
+                                if (this === selectValue) opt.prop('selected', true);
+                                $sizeSelect.append(opt);
+                            });
+                        });
+                }
+            }
+            var currentSize = '@(Model.RegisteredSize ?? "")';
+            var currentProjectId = $('#ProjectID').val();
+            if (currentProjectId) loadSizesForProject(currentProjectId, currentSize);
+            else $('#RegisteredSize').prop('disabled', true);
+
+            $('#ProjectID').on('change', function() {
+                loadSizesForProject($(this).val(), '');
+                loadProperties();
+            });
+
             // Load properties when tab is shown
             $('#allotments-tab').on('shown.bs.tab', function() {
                 loadProperties();
             });
 
             // Refresh hidden filters when project/size change
-            $('#ProjectID, #RegisteredSize').on('change', function() {
+            $('#ProjectID, #RegisteredSize, #DealerID').on('change', function() {
                 loadProperties();
+            });
+
+            function toggleDealerFields() {
+                var isYes = $('#dealerRegYes').is(':checked');
+                $('#dealerDropdownWrap').toggle(isYes);
+                $('#dealerNameWrap').toggle(!isYes);
+                if (isYes) { $('#DealerName').val(''); } else { $('#DealerID').val(''); }
+                loadProperties();
+            }
+            $('#dealerRegYes, #dealerRegNo').on('change', toggleDealerFields);
+            toggleDealerFields();
+
+            $('form').on('submit', function() {
+                if ($('#dealerRegYes').is(':checked')) {
+                    $('#DealerName').val('');
+                } else {
+                    $('#DealerID').val('');
+                }
+            });
+
+            // CNIC/Passport rule: either CNIC format 5-7-1 or Passport min 5 chars
+            function validateCnicOrPassport() {
+                var cnic = ($('#CNIC').val() || '').trim();
+                var passport = ($('#PassportNo').val() || '').trim();
+                var cnicRegex = /^\d{5}-\d{7}-\d$/;
+                var cnicValid = cnicRegex.test(cnic);
+                var passportValid = passport.length >= 5;
+                $('#CNIC').removeClass('is-invalid');
+                $('#PassportNo').removeClass('is-invalid');
+                $('#cnicValidationError, #passportValidationError').addClass('d-none').text('');
+                $('#cnicPassportRuleError').addClass('d-none');
+                if (cnicValid || passportValid) return true;
+                $('#cnicPassportRuleError').removeClass('d-none');
+                $('#cnicPassportRuleErrorText').text('Either National ID (CNIC) in format XXXXX-XXXXXXX-X or Passport Number (min 5 characters) is required.');
+                if (cnic && !cnicValid) {
+                    $('#CNIC').addClass('is-invalid');
+                    $('#cnicValidationError').removeClass('d-none').text('CNIC must be XXXXX-XXXXXXX-X (5-7-1 digits).');
+                }
+                if (passport && passport.length > 0 && passport.length < 5) {
+                    $('#PassportNo').addClass('is-invalid');
+                    $('#passportValidationError').removeClass('d-none').text('Passport must be at least 5 characters.');
+                }
+                if (!cnic && !passport) {
+                    $('#CNIC').addClass('is-invalid');
+                    $('#PassportNo').addClass('is-invalid');
+                }
+                return false;
+            }
+            $('#CNIC, #PassportNo').on('input blur', function() {
+                var cnic = ($('#CNIC').val() || '').trim();
+                var passport = ($('#PassportNo').val() || '').trim();
+                if (cnic || passport) {
+                    var cnicValid = /^\d{5}-\d{7}-\d$/.test(cnic);
+                    var passportValid = passport.length >= 5;
+                    if (cnicValid || passportValid) {
+                        $('#CNIC, #PassportNo').removeClass('is-invalid');
+                        $('#cnicValidationError, #passportValidationError, #cnicPassportRuleError').addClass('d-none').text('');
+                    }
+                }
+            });
+            $('#customerEditForm').on('submit', function(e) {
+                if (!validateCnicOrPassport()) {
+                    e.preventDefault();
+                    $('#personal-tab').tab('show');
+                    $('html, body').animate({ scrollTop: $('#CNIC').offset().top - 20 }, 300);
+                    return false;
+                }
+                var dobVal = $('#DOB').val();
+                if (dobVal) {
+                    var maxDob = new Date(); maxDob.setFullYear(maxDob.getFullYear() - 16);
+                    if (new Date(dobVal) > maxDob) {
+                        e.preventDefault();
+                        $('#DOB').addClass('is-invalid');
+                        $('#dobValidationError').text('Date of Birth must be at least 16 years ago.').removeClass('d-none');
+                        $('#personal-tab').tab('show');
+                        $('html, body').animate({ scrollTop: $('#DOB').offset().top - 20 }, 300);
+                        return false;
+                    }
+                }
+            });
+            $('#DOB').on('change input', function() {
+                var d = $(this).val();
+                if (d) {
+                    var maxDob = new Date(); maxDob.setFullYear(maxDob.getFullYear() - 16);
+                    if (new Date(d) <= maxDob) {
+                        $(this).removeClass('is-invalid');
+                        $('#dobValidationError').addClass('d-none').text('');
+                    }
+                }
             });
 
             $('#selectedPropertyEdit').on('change', function() {
@@ -837,12 +988,12 @@
             var selectedSize = $('#RegisteredSize').val();
             var propertySelect = $('#selectedPropertyEdit');
             var message = $('#selectedPropertyEditMessage');
-            var dealerId = $('#DealerID').val();
+            var dealerId = $('#dealerRegYes').is(':checked') ? $('#DealerID').val() : null;
 
             if (!propertySelect.length) return;
 
-            if (!selectedProject || !selectedSize || !dealerId) {
-                propertySelect.html('<option value="">Select project, size, and dealer to view available properties</option>').data('selected', '');
+            if (!selectedProject || !selectedSize) {
+                propertySelect.html('<option value="">Select project and size to view available properties</option>').data('selected', '');
                 if (message.length) {
                     message.removeClass('text-danger').addClass('text-muted').text('Properties are filtered by the selected project, size, and dealer.');
                 }
