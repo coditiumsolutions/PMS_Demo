@@ -136,7 +136,7 @@ namespace PMS.Data
                 entity.Property(e => e.Email).HasMaxLength(150).IsRequired(false);
                 entity.Property(e => e.ProjectID).HasMaxLength(10).IsRequired(false);
                 entity.Property(e => e.Size).HasMaxLength(100).IsRequired(false);
-                entity.Property(e => e.Status).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Status).HasMaxLength(50).IsRequired(false).HasDefaultValue("Pending");
                 entity.HasOne(e => e.Project)
                       .WithMany()
                       .HasForeignKey(e => e.ProjectID)
@@ -530,6 +530,7 @@ namespace PMS.Data
                 entity.Property(e => e.Action).HasMaxLength(255);
                 entity.Property(e => e.RefType).HasMaxLength(50);
                 entity.Property(e => e.RefID).HasMaxLength(10);
+                entity.Property(e => e.Details).HasColumnType("nvarchar(max)");
 
                 entity.HasOne(e => e.User)
                       .WithMany(u => u.ActivityLogs)

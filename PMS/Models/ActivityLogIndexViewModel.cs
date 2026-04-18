@@ -42,6 +42,7 @@ namespace PMS.Models
         public string? Action { get; set; }
         public string? RefType { get; set; }
         public string? RefId { get; set; }
+        public string? Details { get; set; }
     }
 
     public class UserOption

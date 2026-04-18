@@ -47,6 +47,11 @@
                 <div class="a4-info-row"><span class="a4-info-label">Father's Name:</span><span class="a4-info-value">@(Model.FatherName ?? "—")</span></div>
                 <div class="a4-info-row"><span class="a4-info-label">CNIC:</span><span class="a4-info-value">@(Model.CNIC ?? "—")</span></div>
                 <div class="a4-info-row"><span class="a4-info-label">Phone:</span><span class="a4-info-value">@(Model.Phone ?? "—")</span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Mobile:</span><span class="a4-info-value">@(Model.MobileNo ?? "—")</span></div>
+                @if (!string.IsNullOrWhiteSpace(Model.MobileNo2))
+                {
+                <div class="a4-info-row"><span class="a4-info-label">Mobile 2:</span><span class="a4-info-value">@Model.MobileNo2</span></div>
+                }
                 <div class="a4-info-row"><span class="a4-info-label">Email:</span><span class="a4-info-value">@(Model.Email ?? "—")</span></div>
                 <div class="a4-info-row"><span class="a4-info-label">Address:</span><span class="a4-info-value">@(Model.MailingAddress ?? Model.PermanentAddress ?? "—")</span></div>
                 <div class="a4-info-row"><span class="a4-info-label">City / Country:</span><span class="a4-info-value">@(Model.City ?? "—") @(Model.Country != null ? ", " + Model.Country : "")</span></div>

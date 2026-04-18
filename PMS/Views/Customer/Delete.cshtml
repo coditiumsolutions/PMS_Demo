@@ -69,6 +69,13 @@
                         <div class="detail-field">
                             <label><i class="fas fa-phone me-2"></i>Phone</label>
                             <p>@Model.Phone</p>
+                            <label class="mt-2"><i class="fas fa-mobile-alt me-2"></i>Mobile</label>
+                            <p>@Model.MobileNo</p>
+                            @if (!string.IsNullOrWhiteSpace(Model.MobileNo2))
+                            {
+                                <label class="mt-2"><i class="fas fa-mobile-alt me-2"></i>Mobile 2</label>
+                                <p>@Model.MobileNo2</p>
+                            }
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">

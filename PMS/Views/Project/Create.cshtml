@@ -115,8 +115,8 @@
                 sizesList.innerHTML = '';
                 list.forEach(function (item, idx) {
                     var span = document.createElement('span');
-                    span.className = 'badge bg-primary me-1 mb-1';
-                    span.innerHTML = item + ' <button type="button" class="btn-close btn-close-white btn-close-sm" style="font-size: 0.6rem; vertical-align: middle;" data-idx="' + idx + '" aria-label="Remove"></button>';
+                    span.className = 'size-chip me-1 mb-1';
+                    span.innerHTML = item + ' <button type="button" class="btn-close btn-close-white btn-close-sm" data-idx="' + idx + '" aria-label="Remove"></button>';
                     span.querySelector('button').addEventListener('click', function () {
                         list.splice(parseInt(this.getAttribute('data-idx'), 10), 1);
                         renderList();

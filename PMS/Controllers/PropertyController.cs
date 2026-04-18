@@ -360,6 +360,7 @@ namespace PMS.Controllers
         public IActionResult Import()
         {
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+            ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
             return View();
         }
 
@@ -412,12 +413,16 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ImportPreview(IFormFile file, int dealerId)
+        public async Task<IActionResult> ImportPreview(IFormFile file, int dealerId, string projectId)
         {
+            ViewBag.SelectedDealerID = dealerId;
+            ViewBag.SelectedProjectID = projectId;
+
             if (file == null || file.Length == 0)
             {
                 TempData["Error"] = "Please select a file to upload.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
                 return View("Import");
             }
 
@@ -425,6 +430,7 @@ namespace PMS.Controllers
             {
                 TempData["Error"] = "Please select a dealer.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
                 return View("Import");
             }
 
@@ -434,6 +440,24 @@ namespace PMS.Controllers
             {
                 TempData["Error"] = "Selected dealer not found.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                return View("Import");
+            }
+
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                TempData["Error"] = "Please select a project.";
+                ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                return View("Import");
+            }
+
+            var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectID == projectId);
+            if (project == null)
+            {
+                TempData["Error"] = "Selected project not found.";
+                ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
                 return View("Import");
             }
 
@@ -463,36 +487,10 @@ namespace PMS.Controllers
                     return RedirectToAction(nameof(Import));
                 }
 
-                // Validate projects exist - ALL ProjectIDs must exist
-                var projectIds = properties.Select(p => p.ProjectID).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct().ToList();
-                var existingProjects = await _context.Projects
-                    .Where(p => p.ProjectID != null && projectIds.Contains(p.ProjectID))
-                    .Select(p => p.ProjectID!)
-                    .ToListAsync();
-
-                // Track invalid ProjectIDs
-                var invalidProjectIds = new List<string>();
-                var hasInvalidProjectId = false;
-
                 foreach (var property in properties)
                 {
-                    if (string.IsNullOrWhiteSpace(property.ProjectID))
-                    {
-                        property.IsValid = false;
-                        property.ErrorMessage = "ProjectID is required";
-                        hasInvalidProjectId = true;
-                    }
-                    else if (!existingProjects.Contains(property.ProjectID))
-                    {
-                        property.IsValid = false;
-                        property.ErrorMessage = $"ProjectID '{property.ProjectID}' not found in Projects table";
-                        if (!invalidProjectIds.Contains(property.ProjectID))
-                        {
-                            invalidProjectIds.Add(property.ProjectID);
-                        }
-                        hasInvalidProjectId = true;
-                    }
-                    else if (string.IsNullOrWhiteSpace(property.PlotNo))
+                    property.ProjectID = projectId;
+                    if (string.IsNullOrWhiteSpace(property.PlotNo))
                     {
                         property.IsValid = false;
                         property.ErrorMessage = "PlotNo is required";
@@ -503,12 +501,13 @@ namespace PMS.Controllers
                 ViewBag.ValidRows = properties.Count(p => p.IsValid);
                 ViewBag.InvalidRows = properties.Count(p => !p.IsValid);
                 ViewBag.FileName = file.FileName;
-                ViewBag.HasInvalidProjectId = hasInvalidProjectId;
-                ViewBag.InvalidProjectIds = invalidProjectIds;
+                ViewBag.ProjectName = project.ProjectName;
+                ViewBag.ProjectID = project.ProjectID;
 
                 // Store in session for confirmation
                 HttpContext.Session.SetString("ImportData", System.Text.Json.JsonSerializer.Serialize(properties));
                 HttpContext.Session.SetInt32("ImportDealerID", dealerId);
+                HttpContext.Session.SetString("ImportProjectID", projectId);
                 ViewBag.DealerName = dealer.DealershipName;
 
                 return View(properties);
@@ -526,6 +525,7 @@ namespace PMS.Controllers
         {
             var importDataJson = HttpContext.Session.GetString("ImportData");
             var dealerId = HttpContext.Session.GetInt32("ImportDealerID");
+            var projectId = HttpContext.Session.GetString("ImportProjectID");
             
             if (string.IsNullOrEmpty(importDataJson))
             {
@@ -539,6 +539,19 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Import));
             }
 
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                TempData["Error"] = "Project information not found. Please upload the file again.";
+                return RedirectToAction(nameof(Import));
+            }
+
+            var projectExists = await _context.Projects.AnyAsync(p => p.ProjectID == projectId);
+            if (!projectExists)
+            {
+                TempData["Error"] = "Selected project no longer exists. Please upload the file again.";
+                return RedirectToAction(nameof(Import));
+            }
+
             var properties = System.Text.Json.JsonSerializer.Deserialize<List<PropertyImportViewModel>>(importDataJson);
             if (properties == null || properties.Count == 0)
             {
@@ -546,42 +559,10 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Import));
             }
 
-            // Re-validate ProjectIDs before import - ALL must exist
-            var projectIds = properties.Select(p => p.ProjectID).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct().ToList();
-            var existingProjects = await _context.Projects
-                .Where(p => p.ProjectID != null && projectIds.Contains(p.ProjectID))
-                .Select(p => p.ProjectID!)
-                .ToListAsync();
-
-            // Check if any ProjectID is missing or invalid
-            var invalidProjectIds = projectIds.Where(pid => pid != null && !existingProjects.Contains(pid)).Select(p => p!).ToList();
-            if (invalidProjectIds.Any())
-            {
-                TempData["Error"] = $"Import blocked: The following ProjectIDs do not exist in Projects table: {string.Join(", ", invalidProjectIds)}. All ProjectIDs must be valid before import.";
-                return RedirectToAction(nameof(Import));
-            }
-
-            // Check for empty ProjectIDs
-            var hasEmptyProjectId = properties.Any(p => string.IsNullOrWhiteSpace(p.ProjectID));
-            if (hasEmptyProjectId)
-            {
-                TempData["Error"] = "Import blocked: Some properties have empty ProjectID. All ProjectIDs must be provided and valid before import.";
-                return RedirectToAction(nameof(Import));
-            }
-
             var validProperties = properties.Where(p => p.IsValid).ToList();
             if (validProperties.Count == 0)
             {
                 TempData["Error"] = "No valid properties to import.";
-                return RedirectToAction(nameof(Import));
-            }
-
-            // Final validation: Ensure all valid properties have existing ProjectIDs
-            var validProjectIds = validProperties.Select(p => p.ProjectID).Distinct().ToList();
-            var missingProjectIds = validProjectIds.Where(pid => !existingProjects.Contains(pid)).ToList();
-            if (missingProjectIds.Any())
-            {
-                TempData["Error"] = $"Import blocked: The following ProjectIDs do not exist in Projects table: {string.Join(", ", missingProjectIds)}. All ProjectIDs must be valid before import.";
                 return RedirectToAction(nameof(Import));
             }
 
@@ -595,7 +576,7 @@ namespace PMS.Controllers
                 {
                     // Check if property already exists (by ProjectID + PlotNo + Block)
                     var exists = await _context.Properties
-                        .AnyAsync(p => p.ProjectID == prop.ProjectID && 
+                        .AnyAsync(p => p.ProjectID == projectId && 
                                       p.PlotNo == prop.PlotNo && 
                                       p.Block == prop.Block);
 
@@ -608,7 +589,7 @@ namespace PMS.Controllers
                     var property = new Property
                     {
                         PropertyID = GenerateID(),
-                        ProjectID = prop.ProjectID,
+                        ProjectID = projectId!,
                         PlotNo = prop.PlotNo,
                         Street = prop.Street,
                         PlotType = prop.PlotType,
@@ -640,6 +621,7 @@ namespace PMS.Controllers
             }
 
             HttpContext.Session.Remove("ImportData");
+            HttpContext.Session.Remove("ImportProjectID");
 
             TempData["Success"] = $"Successfully imported {importedCount} properties. {skippedCount} skipped (duplicates or errors).";
             return RedirectToAction(nameof(Index));
@@ -652,6 +634,10 @@ namespace PMS.Controllers
             {
                 string? headerLine = reader.ReadLine();
                 if (headerLine == null) return properties;
+                var headerColumns = ParseCsvLine(headerLine);
+                var hasProjectColumn = headerColumns.Count > 0 &&
+                                       string.Equals(headerColumns[0]?.Trim(), "ProjectID", StringComparison.OrdinalIgnoreCase);
+                var startIndex = hasProjectColumn ? 1 : 0;
 
                 int rowNumber = 2; // Start from row 2 (after header)
                 while (!reader.EndOfStream)
@@ -660,20 +646,41 @@ namespace PMS.Controllers
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     var columns = ParseCsvLine(line);
-                    if (columns.Count >= 7) // At least 7 columns (Floor col 8, AdditionalInfo col 9 optional)
+                    if (columns.Count >= startIndex + 6) // PlotNo to Size required in template; Floor and AdditionalInfo optional
                     {
+                        var plotNo = columns[startIndex]?.Trim() ?? string.Empty;
+                        var street = columns.Count > startIndex + 1 ? columns[startIndex + 1]?.Trim() ?? string.Empty : string.Empty;
+                        var plotType = columns.Count > startIndex + 2 ? columns[startIndex + 2]?.Trim() ?? string.Empty : string.Empty;
+                        var block = columns.Count > startIndex + 3 ? columns[startIndex + 3]?.Trim() ?? string.Empty : string.Empty;
+                        var propertyType = columns.Count > startIndex + 4 ? columns[startIndex + 4]?.Trim() ?? string.Empty : string.Empty;
+                        var size = columns.Count > startIndex + 5 ? columns[startIndex + 5]?.Trim() ?? string.Empty : string.Empty;
+                        var floor = columns.Count > startIndex + 6 ? columns[startIndex + 6]?.Trim() ?? string.Empty : string.Empty;
+                        var additionalInfo = columns.Count > startIndex + 7 ? columns[startIndex + 7]?.Trim() ?? string.Empty : string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(plotNo) &&
+                            string.IsNullOrWhiteSpace(street) &&
+                            string.IsNullOrWhiteSpace(plotType) &&
+                            string.IsNullOrWhiteSpace(block) &&
+                            string.IsNullOrWhiteSpace(propertyType) &&
+                            string.IsNullOrWhiteSpace(size) &&
+                            string.IsNullOrWhiteSpace(floor) &&
+                            string.IsNullOrWhiteSpace(additionalInfo))
+                        {
+                            rowNumber++;
+                            continue;
+                        }
+
                         properties.Add(new PropertyImportViewModel
                         {
                             RowNumber = rowNumber,
-                            ProjectID = columns[0]?.Trim() ?? string.Empty,
-                            PlotNo = columns[1]?.Trim() ?? string.Empty,
-                            Street = columns[2]?.Trim() ?? string.Empty,
-                            PlotType = columns[3]?.Trim() ?? string.Empty,
-                            Block = columns[4]?.Trim() ?? string.Empty,
-                            PropertyType = columns[5]?.Trim() ?? string.Empty,
-                            Size = columns[6]?.Trim() ?? string.Empty,
-                            Floor = columns.Count > 7 ? columns[7]?.Trim() ?? string.Empty : string.Empty,
-                            AdditionalInfo = columns.Count > 8 ? columns[8]?.Trim() ?? string.Empty : string.Empty
+                            PlotNo = plotNo,
+                            Street = street,
+                            PlotType = plotType,
+                            Block = block,
+                            PropertyType = propertyType,
+                            Size = size,
+                            Floor = floor,
+                            AdditionalInfo = additionalInfo
                         });
                     }
                     rowNumber++;
@@ -724,27 +731,47 @@ namespace PMS.Controllers
                 using (var workbook = new XLWorkbook(stream))
                 {
                     var worksheet = workbook.Worksheets.First();
+                    var headerValue = GetCellValue(worksheet, 1, 1);
+                    var hasProjectColumn = string.Equals(headerValue, "ProjectID", StringComparison.OrdinalIgnoreCase);
+                    var startColumn = hasProjectColumn ? 2 : 1;
                     var rows = worksheet.RowsUsed().Skip(1); // Skip header row
                     
                     int rowNumber = 2;
                     foreach (var row in rows)
                     {
-                        var cells = row.CellsUsed().ToList();
-                        
-                        if (cells.Count < 7) continue;
+                        var plotNo = GetCellValue(worksheet, row.RowNumber(), startColumn) ?? string.Empty;
+                        var street = GetCellValue(worksheet, row.RowNumber(), startColumn + 1) ?? string.Empty;
+                        var plotType = GetCellValue(worksheet, row.RowNumber(), startColumn + 2) ?? string.Empty;
+                        var block = GetCellValue(worksheet, row.RowNumber(), startColumn + 3) ?? string.Empty;
+                        var propertyType = GetCellValue(worksheet, row.RowNumber(), startColumn + 4) ?? string.Empty;
+                        var size = GetCellValue(worksheet, row.RowNumber(), startColumn + 5) ?? string.Empty;
+                        var floor = GetCellValue(worksheet, row.RowNumber(), startColumn + 6) ?? string.Empty;
+                        var additionalInfo = GetCellValue(worksheet, row.RowNumber(), startColumn + 7) ?? string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(plotNo) &&
+                            string.IsNullOrWhiteSpace(street) &&
+                            string.IsNullOrWhiteSpace(plotType) &&
+                            string.IsNullOrWhiteSpace(block) &&
+                            string.IsNullOrWhiteSpace(propertyType) &&
+                            string.IsNullOrWhiteSpace(size) &&
+                            string.IsNullOrWhiteSpace(floor) &&
+                            string.IsNullOrWhiteSpace(additionalInfo))
+                        {
+                            rowNumber++;
+                            continue;
+                        }
                         
                         properties.Add(new PropertyImportViewModel
                         {
                             RowNumber = rowNumber,
-                            ProjectID = GetCellValue(worksheet, row.RowNumber(), 1) ?? string.Empty,
-                            PlotNo = GetCellValue(worksheet, row.RowNumber(), 2) ?? string.Empty,
-                            Street = GetCellValue(worksheet, row.RowNumber(), 3) ?? string.Empty,
-                            PlotType = GetCellValue(worksheet, row.RowNumber(), 4) ?? string.Empty,
-                            Block = GetCellValue(worksheet, row.RowNumber(), 5) ?? string.Empty,
-                            PropertyType = GetCellValue(worksheet, row.RowNumber(), 6) ?? string.Empty,
-                            Size = GetCellValue(worksheet, row.RowNumber(), 7) ?? string.Empty,
-                            Floor = GetCellValue(worksheet, row.RowNumber(), 8) ?? string.Empty,
-                            AdditionalInfo = GetCellValue(worksheet, row.RowNumber(), 9) ?? string.Empty
+                            PlotNo = plotNo,
+                            Street = street,
+                            PlotType = plotType,
+                            Block = block,
+                            PropertyType = propertyType,
+                            Size = size,
+                            Floor = floor,
+                            AdditionalInfo = additionalInfo
                         });
                         rowNumber++;
                     }

@@ -659,6 +659,60 @@
         background: transparent !important;
     }
 
+    /* Dark theme styling for inquiry modals */
+    html[data-theme="dark"] .modal .modal-content {
+        background-color: #0b1220;
+        color: var(--text-primary);
+        border: 1px solid #1f2937;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    html[data-theme="dark"] .modal .modal-header {
+        border-bottom-color: #1f2937;
+    }
+
+    html[data-theme="dark"] .modal .modal-body,
+    html[data-theme="dark"] .modal .modal-footer {
+        background-color: transparent;
+    }
+
+    html[data-theme="dark"] .modal label,
+    html[data-theme="dark"] .modal p,
+    html[data-theme="dark"] .modal small {
+        color: var(--text-primary);
+    }
+
+    html[data-theme="dark"] .modal .text-muted {
+        color: var(--text-secondary) !important;
+    }
+
+    html[data-theme="dark"] .modal .alert-light {
+        background-color: #111827;
+        border-color: #1f2937;
+        color: var(--text-primary);
+    }
+
+    html[data-theme="dark"] .modal .alert-info {
+        background-color: rgba(59,130,246,.15);
+        border-color: #1d4ed8;
+        color: #e5e7eb;
+    }
+
+    html[data-theme="dark"] .modal .form-control,
+    html[data-theme="dark"] .modal .form-select,
+    html[data-theme="dark"] .modal textarea {
+        background-color: #020617;
+        border-color: #374151;
+        color: var(--text-primary);
+    }
+
+    html[data-theme="dark"] .modal .form-control:focus,
+    html[data-theme="dark"] .modal .form-select:focus,
+    html[data-theme="dark"] .modal textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(59,130,246,.35);
+    }
+
     /* Make the Edit (Status) modal wider and responsive */
     .sales-inquiry-edit-modal {
         /* Desktop width: reduce by ~10% from 720px (now ~650px) */

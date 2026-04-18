@@ -56,6 +56,7 @@ namespace PMS.Controllers
             ViewBag.ProjectFilter = projectFilter;
             ViewBag.StatusFilter = statusFilter;
             ViewBag.SearchTerm = searchTerm;
+            ViewBag.PendingCustomersCount = await _context.Customers.CountAsync(c => c.Status == "Pending");
 
             // Build query
             var query = _context.Customers
@@ -86,6 +87,8 @@ namespace PMS.Controllers
                     (c.FullName != null && c.FullName.ToLower().Contains(searchTerm)) ||
                     (c.CNIC != null && c.CNIC.ToLower().Contains(searchTerm)) ||
                     (c.Phone != null && c.Phone.ToLower().Contains(searchTerm)) ||
+                    (c.MobileNo != null && c.MobileNo.ToLower().Contains(searchTerm)) ||
+                    (c.MobileNo2 != null && c.MobileNo2.ToLower().Contains(searchTerm)) ||
                     (c.Email != null && c.Email.ToLower().Contains(searchTerm))
                 );
             }
@@ -95,6 +98,93 @@ namespace PMS.Controllers
                 .ToListAsync();
 
             return View(customers);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BulkUpdatePendingCustomers(List<string> selectedCustomerIds, string bulkAction, string comments, string projectFilter = "All", string searchTerm = "")
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+
+            var selectedIds = (selectedCustomerIds ?? new List<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim())
+                .Distinct()
+                .ToList();
+
+            if (!selectedIds.Any())
+            {
+                TempData["ErrorMessage"] = "Please select at least one pending customer.";
+                return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
+            }
+
+            var targetStatus = bulkAction switch
+            {
+                "Activate" => "Active",
+                "MarkForDeletion" => "Marked for Deletion",
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrEmpty(targetStatus))
+            {
+                TempData["ErrorMessage"] = "Invalid bulk action.";
+                return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
+            }
+
+            var commentsText = (comments ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(commentsText))
+            {
+                TempData["ErrorMessage"] = "Comments are required for status change.";
+                return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
+            }
+
+            var customersToUpdate = await _context.Customers
+                .Where(c => c.CustomerID != null && selectedIds.Contains(c.CustomerID) && c.Status == "Pending")
+                .ToListAsync();
+
+            if (!customersToUpdate.Any())
+            {
+                TempData["ErrorMessage"] = "No pending customers matched the selected records.";
+                return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var actorName = User.Identity?.Name ?? userId ?? "Unknown User";
+            var changedAt = DateTime.Now;
+            var activityLogs = new List<ActivityLog>();
+
+            foreach (var customer in customersToUpdate)
+            {
+                var previousStatus = customer.Status ?? "Unknown";
+                customer.Status = targetStatus;
+
+                var additionalInfoLog = $"[{changedAt:yyyy-MM-dd HH:mm:ss}] Status changed by {actorName} ({userId ?? "Unknown"}): {previousStatus} -> {targetStatus}. Comments: {commentsText}";
+                customer.AdditionalInfo = string.IsNullOrWhiteSpace(customer.AdditionalInfo)
+                    ? additionalInfoLog
+                    : $"{customer.AdditionalInfo}{Environment.NewLine}{additionalInfoLog}";
+
+                var actionText = $"Bulk status update by {actorName}: {previousStatus} -> {targetStatus} at {changedAt:yyyy-MM-dd HH:mm:ss}. Comments: {commentsText}";
+                if (actionText.Length > 255)
+                {
+                    actionText = actionText.Substring(0, 252) + "...";
+                }
+
+                activityLogs.Add(new ActivityLog
+                {
+                    UserID = userId,
+                    Action = actionText,
+                    RefType = "Customer",
+                    RefID = customer.CustomerID,
+                    CreatedAt = changedAt
+                });
+            }
+
+            _context.ActivityLogs.AddRange(activityLogs);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"{customersToUpdate.Count} customer(s) updated to '{targetStatus}' with comments logged.";
+            return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
         }
 
         public async Task<IActionResult> ByProject()
@@ -242,7 +332,7 @@ namespace PMS.Controllers
 
             var customer = await _context.Customers
                 .Where(c => c.CustomerID == customerId.Trim())
-                .Select(c => new { c.CustomerID, c.FullName, c.Status, c.Phone, c.CNIC })
+                .Select(c => new { c.CustomerID, c.FullName, c.Status, c.Phone, c.MobileNo, c.MobileNo2, c.CNIC })
                 .FirstOrDefaultAsync();
 
             if (customer == null)
@@ -255,6 +345,8 @@ namespace PMS.Controllers
                 fullName = customer.FullName ?? "",
                 status = customer.Status ?? "N/A",
                 phone = customer.Phone ?? "",
+                mobileNo = customer.MobileNo ?? "",
+                mobileNo2 = customer.MobileNo2 ?? "",
                 cnic = customer.CNIC ?? ""
             });
         }
@@ -362,6 +454,8 @@ namespace PMS.Controllers
                         fullName = c.FullName,
                         fatherName = c.FatherName,
                         phone = c.Phone,
+                        mobileNo = c.MobileNo,
+                        mobileNo2 = c.MobileNo2,
                         email = c.Email,
                         city = c.City,
                         status = c.Status,
@@ -538,6 +632,33 @@ namespace PMS.Controllers
             {
                 return Json(new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSizes(string projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return Json(Array.Empty<string>());
+            }
+
+            var projectSizes = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectID == projectId)
+                .Select(p => p.Sizes)
+                .FirstOrDefaultAsync();
+
+            var sizes = string.IsNullOrWhiteSpace(projectSizes)
+                ? Array.Empty<string>()
+                : projectSizes
+                    .Split(',')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToArray();
+
+            return Json(sizes);
         }
 
         [HttpGet]
@@ -809,7 +930,7 @@ namespace PMS.Controllers
                 // Generate CustomerID based on Project Prefix
                 customer.CustomerID = await GenerateCustomerID(customer.ProjectID);
                 customer.CreatedAt = DateTime.Now;
-                customer.Status = "Active";
+                customer.Status = "Pending";
 
                 if (nomineeNICUpload != null && nomineeNICUpload.Length > 0)
                 {
@@ -1393,7 +1514,8 @@ namespace PMS.Controllers
                                 FullName = $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]}",
                                 FatherName = $"{firstNames[random.Next(firstNames.Length)]} {lastNames[random.Next(lastNames.Length)]}",
                                 CNIC = $"{random.Next(10000, 99999)}-{random.Next(1000000, 9999999)}-{random.Next(1, 9)}",
-                                Phone = $"03{random.Next(10, 99)}-{random.Next(1000000, 9999999)}",
+                                Phone = $"021-{random.Next(1000000, 9999999)}",
+                                MobileNo = $"03{random.Next(10, 99)}-{random.Next(1000000, 9999999)}",
                                 Email = $"customer{customerID.ToLower()}@example.com",
                                 Gender = genders[random.Next(genders.Length)],
                                 Nationality = "Pakistani",
@@ -1403,7 +1525,7 @@ namespace PMS.Controllers
                                 PermanentAddress = $"House #{random.Next(1, 999)}, Street {random.Next(1, 50)}, {cities[random.Next(cities.Length)]}",
                                 SubProject = subProjects[random.Next(subProjects.Length)],
                                 RegisteredSize = sizes[random.Next(sizes.Length)],
-                                Status = "Active",
+                                Status = "Pending",
                                 CreatedAt = DateTime.Now.AddDays(-random.Next(365))
                             };
 

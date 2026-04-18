@@ -189,7 +189,7 @@
                     <h6 class="text-primary mb-3">
                         <i class="fas fa-lock me-2"></i>Module rights
                     </h6>
-                    <p class="text-muted small">No Access = no access; Read = view only; Edit = Create + Edit + Read; Admin = full CRUD. These will be applied per module later.</p>
+                    <p class="text-muted small">No Access = no access; Read = view only; Author = write/create only (cannot edit existing); Edit = Create + Edit + Read; Admin = full CRUD. These will be applied per module later.</p>
                     <div class="table-responsive mb-3">
                         <table class="table table-sm table-bordered">
                             <thead class="table-light">
@@ -209,12 +209,21 @@
                                             <td>@key</td>
                                             <td>
                                                 <select name="ModulePermissions_@key" class="form-select form-select-sm">
-                                                    @if (ViewBag.PermissionOptions != null)
-                                                    {
-                                                        @foreach (var opt in (string[])ViewBag.PermissionOptions)
+                                                    @{
+                                                        var permissionOptions = new List<string>();
+                                                        if (ViewBag.PermissionOptions != null)
                                                         {
-                                                            <option value="@opt" selected="@(opt == current)">@opt</option>
+                                                            permissionOptions.AddRange((string[])ViewBag.PermissionOptions);
                                                         }
+
+                                                        if (!permissionOptions.Contains("Author"))
+                                                        {
+                                                            permissionOptions.Add("Author");
+                                                        }
+                                                    }
+                                                    @foreach (var opt in permissionOptions)
+                                                    {
+                                                        <option value="@opt" selected="@(opt == current)">@opt</option>
                                                     }
                                                 </select>
                                             </td>

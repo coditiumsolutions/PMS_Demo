@@ -154,6 +154,8 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
+            ViewBag.CustomersOnPlanCount = paymentPlan.Customers?.Count ?? 0;
+
             return View(paymentPlan);
         }
 
@@ -413,7 +415,7 @@ namespace PMS.Controllers
                 var actionText = string.IsNullOrEmpty(userName)
                     ? "Record Payment"
                     : $"Record Payment - {userName}";
-                await LogActivity(userId, actionText, "Payment", payment.PaymentID);
+                await LogActivityAsync(userId, actionText, "Payment", payment.PaymentID);
             }
 
             TempData["Success"] = $"Payment of PKR {amount:N2} recorded. Outstanding for this installment: PKR {totalDue - amount:N2}. You can record another payment if needed.";
@@ -530,7 +532,7 @@ namespace PMS.Controllers
                         ? $"Record Multiple Payments ({rows.Count} installments)"
                         : $"Record Multiple Payments ({rows.Count} installments) - {userName}";
                     foreach (var pid in savedIds)
-                        await LogActivity(userId, actionText, "Payment", pid);
+                        await LogActivityAsync(userId, actionText, "Payment", pid);
                 }
 
                 return Json(new { success = true, count = savedIds.Count, message = $"{savedIds.Count} payment(s) recorded successfully (PKR {sumRows:N2} total)." });
@@ -566,7 +568,7 @@ namespace PMS.Controllers
             if (!string.IsNullOrEmpty(userId))
             {
                 var actionText = $"Delete Payment. CustomerID: {payment.CustomerID ?? ""}";
-                await LogActivity(userId, actionText, "Payment", payment.PaymentID);
+                await LogActivityAsync(userId, actionText, "Payment", payment.PaymentID);
             }
 
             _context.Payments.Remove(payment);
@@ -673,7 +675,7 @@ namespace PMS.Controllers
             {
                 var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
                 var actionText = string.IsNullOrEmpty(userName) ? "Edit Payment" : $"Edit Payment - {userName}";
-                await LogActivity(userId, actionText, "Payment", payment.PaymentID);
+                await LogActivityAsync(userId, actionText, "Payment", payment.PaymentID);
             }
 
             TempData["Success"] = "Payment updated successfully.";
@@ -738,6 +740,18 @@ namespace PMS.Controllers
                 var tokenAmountUSD = scheduleData.IncludeToken && scheduleData.TokenAmountUSD.HasValue
                     ? scheduleData.TokenAmountUSD.Value
                     : (scheduleData.IncludeToken ? Math.Round(tokenAmount / exchangeRate, 2, MidpointRounding.AwayFromZero) : 0);
+                var possessionAmount = scheduleData.PossessionAmount.GetValueOrDefault();
+                if (possessionAmount < 0)
+                {
+                    return Json(new { success = false, message = "Possession amount cannot be negative." });
+                }
+                if (possessionAmount > 0 && string.IsNullOrWhiteSpace(scheduleData.PossessionPaymentDescription))
+                {
+                    return Json(new { success = false, message = "Possession account head is required when possession amount is greater than zero." });
+                }
+                var possessionAmountUSD = scheduleData.PossessionAmountUSD.HasValue && scheduleData.PossessionAmountUSD.Value > 0
+                    ? Math.Round(scheduleData.PossessionAmountUSD.Value, 2, MidpointRounding.AwayFromZero)
+                    : (possessionAmount > 0 ? Math.Round(possessionAmount / exchangeRate, 2, MidpointRounding.AwayFromZero) : 0);
 
                 if (totalInstallments <= 0)
                 {
@@ -750,26 +764,31 @@ namespace PMS.Controllers
                     return Json(new { success = false, message = "Token amount cannot exceed total plan amount." });
                 }
 
-                var baseInstallmentAmount = Math.Round(distributableAmount / totalInstallments, 2, MidpointRounding.AwayFromZero);
-                var totalBaseAmount = baseInstallmentAmount * Math.Max(totalInstallments - 1, 0);
-                var lastInstallmentAmount = Math.Round(distributableAmount - totalBaseAmount, 2, MidpointRounding.AwayFromZero);
-                var baseInstallmentAmountUSD = Math.Round(baseInstallmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
-                var lastInstallmentAmountUSD = Math.Round(lastInstallmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
-
-                if (lastInstallmentAmount < 0)
+                var installmentAmount = scheduleData.InstallmentAmount;
+                if (installmentAmount <= 0 && scheduleData.InstallmentAmountUSD > 0 && exchangeRate > 0)
                 {
-                    return Json(new { success = false, message = "Calculated installment amount is negative. Please review the input values." });
+                    installmentAmount = Math.Round(scheduleData.InstallmentAmountUSD * exchangeRate, 2, MidpointRounding.AwayFromZero);
                 }
 
-                var totalInstallmentsAmount = totalBaseAmount + lastInstallmentAmount;
-                decimal grandTotal = totalInstallmentsAmount + tokenAmount;
+                installmentAmount = Math.Round(installmentAmount, 2, MidpointRounding.AwayFromZero);
+                if (installmentAmount <= 0)
+                {
+                    return Json(new { success = false, message = "Installment amount (PKR) must be greater than zero." });
+                }
+
+                var installmentAmountUSD = scheduleData.InstallmentAmountUSD > 0
+                    ? Math.Round(scheduleData.InstallmentAmountUSD, 2, MidpointRounding.AwayFromZero)
+                    : Math.Round(installmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+
+                var totalInstallmentsAmount = Math.Round(totalInstallments * installmentAmount, 2, MidpointRounding.AwayFromZero);
+                decimal grandTotal = totalInstallmentsAmount + tokenAmount + possessionAmount;
 
                 if (grandTotal > planData.TotalAmount)
                 {
                     decimal excess = grandTotal - planData.TotalAmount;
                     return Json(new { 
                         success = false, 
-                        message = $"Total Installments Amount (PKR {totalInstallmentsAmount:N2}) + Token Amount (PKR {tokenAmount:N2}) = PKR {grandTotal:N2} exceeds Parent Total Amount (PKR {planData.TotalAmount:N2}). Excess: PKR {excess:N2}." 
+                        message = $"Total Installments Amount (PKR {totalInstallmentsAmount:N2}) + Token Amount (PKR {tokenAmount:N2}) + Possession Amount (PKR {possessionAmount:N2}) = PKR {grandTotal:N2} exceeds Parent Total Amount (PKR {planData.TotalAmount:N2}). Excess: PKR {excess:N2}." 
                     });
                 }
 
@@ -798,27 +817,16 @@ namespace PMS.Controllers
                 var frequency = scheduleData.Frequency ?? "Monthly";
                 var firstDueDate = scheduleData.FirstInstallmentDueDate;
                 var paymentDescription = scheduleData.PaymentDescription ?? "Installment";
+                var tokenPaymentDescription = string.IsNullOrWhiteSpace(scheduleData.TokenPaymentDescription)
+                    ? "Token"
+                    : scheduleData.TokenPaymentDescription.Trim();
+                var possessionPaymentDescription = string.IsNullOrWhiteSpace(scheduleData.PossessionPaymentDescription)
+                    ? "Possession"
+                    : scheduleData.PossessionPaymentDescription.Trim();
                 var surchargeApplied = scheduleData.SurchargeApplied;
                 var surchargeRate = scheduleData.SurchargeRate;
 
                 int installmentNo = 0;
-
-                // Precompute installment amounts
-                var installmentAmounts = new List<decimal>();
-                var installmentAmountsUSD = new List<decimal>();
-                for (int i = 0; i < totalInstallments; i++)
-                {
-                    if (i == totalInstallments - 1)
-                    {
-                        installmentAmounts.Add(lastInstallmentAmount);
-                        installmentAmountsUSD.Add(lastInstallmentAmountUSD);
-                    }
-                    else
-                    {
-                        installmentAmounts.Add(baseInstallmentAmount);
-                        installmentAmountsUSD.Add(baseInstallmentAmountUSD);
-                    }
-                }
 
                 // Create Token if included (Installment 0 - no surcharge)
                 if (includeToken && scheduleData.TokenAmount.HasValue)
@@ -827,7 +835,7 @@ namespace PMS.Controllers
                     {
                         ScheduleID = GenerateID(),
                         PlanID = paymentPlan.PlanID,
-                        PaymentDescription = paymentDescription,
+                        PaymentDescription = tokenPaymentDescription,
                         InstallmentNo = 0,
                         DueDate = firstDueDate,
                         Amount = scheduleData.TokenAmount.Value,
@@ -851,13 +859,32 @@ namespace PMS.Controllers
                         PaymentDescription = paymentDescription,
                         InstallmentNo = installmentNo,
                         DueDate = dueDate,
-                        Amount = installmentAmounts[i],
-                        AmountUSD = installmentAmountsUSD[i],
+                        Amount = installmentAmount,
+                        AmountUSD = installmentAmountUSD,
                         SurchargeApplied = surchargeApplied,
                         SurchargeRate = surchargeRate
                     };
                     schedules.Add(schedule);
                     installmentNo++;
+                }
+
+                // Create Possession as the last payment (manual, no surcharge)
+                if (possessionAmount > 0)
+                {
+                    var possessionDueDate = CalculateDueDate(firstDueDate, frequency, totalInstallments);
+                    var possessionSchedule = new PaymentSchedule
+                    {
+                        ScheduleID = GenerateID(),
+                        PlanID = paymentPlan.PlanID,
+                        PaymentDescription = possessionPaymentDescription,
+                        InstallmentNo = installmentNo,
+                        DueDate = possessionDueDate,
+                        Amount = Math.Round(possessionAmount, 2, MidpointRounding.AwayFromZero),
+                        AmountUSD = possessionAmountUSD,
+                        SurchargeApplied = false,
+                        SurchargeRate = 0m
+                    };
+                    schedules.Add(possessionSchedule);
                 }
 
                 _context.PaymentSchedules.AddRange(schedules);
@@ -866,7 +893,7 @@ namespace PMS.Controllers
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    await LogActivity(userId, "Create Payment Plan", "PaymentPlan", paymentPlan.PlanID);
+                    await LogActivityAsync(userId, "Create Payment Plan", "PaymentPlan", paymentPlan.PlanID);
                 }
 
                 return Json(new { success = true, planId = paymentPlan.PlanID });
@@ -973,7 +1000,7 @@ namespace PMS.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
-                await LogActivity(userId, "Create Payment Schedule", "PaymentSchedule", schedule.ScheduleID);
+                await LogActivityAsync(userId, "Create Payment Schedule", "PaymentSchedule", schedule.ScheduleID);
             }
 
             TempData["Success"] = "Installment created successfully.";
@@ -982,60 +1009,93 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditPaymentSchedule(PaymentSchedule schedule)
+        public async Task<IActionResult> EditPaymentSchedule(
+            PaymentSchedule schedule,
+            bool adjustPlanTotal = false,
+            decimal? newPlanTotalPkr = null,
+            string? changeReason = null)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
-            try
+
+            schedule.SurchargeRate = schedule.SurchargeRate / 100m;
+
+            var plan = await _context.PaymentPlans
+                .Include(p => p.PaymentSchedules)
+                .FirstOrDefaultAsync(p => p.PlanID == schedule.PlanID);
+            if (plan == null)
+                return NotFound();
+
+            var existingSchedule = plan.PaymentSchedules.FirstOrDefault(ps => ps.ScheduleID == schedule.ScheduleID);
+            if (existingSchedule == null)
+                return NotFound();
+
+            var amountUsd = schedule.AmountUSD.GetValueOrDefault();
+            var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
+
+            if (amountUsd <= 0 && exchangeRate > 0)
             {
-                // Convert surcharge rate from percentage to decimal
-                // Form always sends percentage values, so always divide by 100
-                schedule.SurchargeRate = schedule.SurchargeRate / 100m;
+                amountUsd = Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                schedule.AmountUSD = amountUsd;
+            }
+            else if (amountUsd > 0 && schedule.Amount <= 0 && exchangeRate > 0)
+            {
+                schedule.Amount = Math.Round(amountUsd * exchangeRate, 2, MidpointRounding.AwayFromZero);
+            }
 
-                // Guard: editing installment should not cause total to exceed plan total
-                var plan = await _context.PaymentPlans
-                    .Include(p => p.PaymentSchedules)
-                    .FirstOrDefaultAsync(p => p.PlanID == schedule.PlanID);
-                if (plan == null)
-                {
-                    return NotFound();
-                }
+            var customersAssignedCount = await _context.Customers.AsNoTracking()
+                .CountAsync(c => c.PlanID == schedule.PlanID);
 
-                // Find existing schedule to get old amount
-                var existingSchedule = await _context.PaymentSchedules.AsNoTracking()
-                    .FirstOrDefaultAsync(ps => ps.ScheduleID == schedule.ScheduleID);
-                if (existingSchedule == null)
-                {
-                    return NotFound();
-                }
+            var totalWithoutThis = plan.PaymentSchedules.Where(ps => ps.ScheduleID != schedule.ScheduleID).Sum(ps => ps.Amount);
+            var projectedSchedulesTotal = Math.Round(totalWithoutThis + schedule.Amount, 2, MidpointRounding.AwayFromZero);
+            var planTotalExceeded = projectedSchedulesTotal > Math.Round(plan.TotalAmount, 2, MidpointRounding.AwayFromZero);
 
-                var amountUsd = schedule.AmountUSD.GetValueOrDefault();
-                var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
+            if (planTotalExceeded && !adjustPlanTotal)
+            {
+                var remaining = plan.TotalAmount - totalWithoutThis;
+                TempData["Error"] =
+                    $"Installments total would exceed the plan total (remaining for this installment: PKR {remaining:N2}). " +
+                    $"{customersAssignedCount} customer(s) are assigned to this plan. " +
+                    "Open the installment again, enable \"Increase payment plan total\", enter a reason, and save — or reduce the amount.";
+                return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
+            }
 
-                if (amountUsd <= 0 && exchangeRate > 0)
+            decimal? newPlanTotalApplied = null;
+            if (planTotalExceeded && adjustPlanTotal)
+            {
+                if (string.IsNullOrWhiteSpace(changeReason))
                 {
-                    amountUsd = Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero);
-                    schedule.AmountUSD = amountUsd;
-                }
-                else if (amountUsd > 0 && schedule.Amount <= 0 && exchangeRate > 0)
-                {
-                    schedule.Amount = Math.Round(amountUsd * exchangeRate, 2, MidpointRounding.AwayFromZero);
-                }
-
-                var totalWithoutThis = plan.PaymentSchedules.Where(ps => ps.ScheduleID != schedule.ScheduleID).Sum(ps => ps.Amount);
-                var projectedTotal = totalWithoutThis + schedule.Amount;
-                if (projectedTotal > plan.TotalAmount)
-                {
-                    var remaining = plan.TotalAmount - totalWithoutThis;
-                    TempData["Error"] = $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} PKR.";
+                    TempData["Error"] = "When increasing the payment plan total, a written reason is required (audit trail).";
                     return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
                 }
 
-                // Update existing schedule properties
-                existingSchedule = await _context.PaymentSchedules.FindAsync(schedule.ScheduleID);
-                if (existingSchedule == null)
+                var targetTotal = newPlanTotalPkr.HasValue && newPlanTotalPkr.Value > 0
+                    ? newPlanTotalPkr.Value
+                    : projectedSchedulesTotal;
+                targetTotal = Math.Round(targetTotal, 2, MidpointRounding.AwayFromZero);
+
+                if (targetTotal < projectedSchedulesTotal)
                 {
-                    return NotFound();
+                    TempData["Error"] = $"New plan total must be at least PKR {projectedSchedulesTotal:N2} (sum of all installments after this change).";
+                    return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
+                }
+
+                newPlanTotalApplied = targetTotal;
+            }
+
+            var oldScheduleAmount = existingSchedule.Amount;
+            var oldScheduleAmountUsd = existingSchedule.AmountUSD;
+            var oldPlanTotal = plan.TotalAmount;
+            var oldPlanTotalUsd = plan.TotalAmountUSD;
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                if (newPlanTotalApplied.HasValue)
+                {
+                    plan.TotalAmount = newPlanTotalApplied.Value;
+                    if (exchangeRate > 0)
+                        plan.TotalAmountUSD = Math.Round(plan.TotalAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
                 }
 
                 existingSchedule.InstallmentNo = schedule.InstallmentNo;
@@ -1047,18 +1107,50 @@ namespace PMS.Controllers
                 existingSchedule.SurchargeApplied = schedule.SurchargeApplied;
                 existingSchedule.Description = schedule.Description;
 
-                await _context.SaveChangesAsync();
-
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    await LogActivity(userId, "Update Payment Schedule", "PaymentSchedule", schedule.ScheduleID);
+                    var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                    var auditPayload = new
+                    {
+                        eventType = "PaymentScheduleEdit",
+                        timestampUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                        actorUserId = userId,
+                        actorUserName = userName,
+                        planId = plan.PlanID,
+                        planName = plan.PlanName,
+                        scheduleId = schedule.ScheduleID,
+                        installmentNo = schedule.InstallmentNo,
+                        customersAssignedCount,
+                        scheduleAmountPkr = new { from = oldScheduleAmount, to = schedule.Amount },
+                        scheduleAmountUsd = new { from = oldScheduleAmountUsd, to = schedule.AmountUSD },
+                        planTotalPkr = newPlanTotalApplied.HasValue
+                            ? new { from = oldPlanTotal, to = plan.TotalAmount }
+                            : new { from = oldPlanTotal, to = oldPlanTotal },
+                        planTotalUsd = newPlanTotalApplied.HasValue
+                            ? new { from = oldPlanTotalUsd, to = plan.TotalAmountUSD }
+                            : new { from = oldPlanTotalUsd, to = oldPlanTotalUsd },
+                        projectedSchedulesTotalPkrAfterEdit = projectedSchedulesTotal,
+                        planTotalAdjusted = newPlanTotalApplied.HasValue,
+                        changeReason = changeReason?.Trim()
+                    };
+                    var detailsJson = JsonSerializer.Serialize(auditPayload, jsonOptions);
+                    var actionSummary = newPlanTotalApplied.HasValue
+                        ? $"Installment updated; plan total PKR {oldPlanTotal:N2}→{plan.TotalAmount:N2} ({customersAssignedCount} customers on plan)"
+                        : $"Installment updated (schedule {schedule.ScheduleID})";
+                    await LogActivityAsync(userId, actionSummary, "PaymentSchedule", schedule.ScheduleID, detailsJson, saveImmediately: false);
                 }
 
-                TempData["Success"] = "Installment updated successfully.";
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+                TempData["Success"] = newPlanTotalApplied.HasValue
+                    ? $"Installment saved. Payment plan total increased to PKR {plan.TotalAmount:N2}. {customersAssignedCount} customer(s) remain on this plan."
+                    : "Installment updated successfully.";
             }
             catch (Exception ex)
             {
+                await tx.RollbackAsync();
                 TempData["Error"] = $"An error occurred while updating the installment: {ex.Message}";
             }
 
@@ -1080,7 +1172,7 @@ namespace PMS.Controllers
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    await LogActivity(userId, "Delete Payment Schedule", "PaymentSchedule", scheduleId);
+                    await LogActivityAsync(userId, "Delete Payment Schedule", "PaymentSchedule", scheduleId);
                 }
 
                 TempData["Success"] = "Installment deleted successfully.";
@@ -1127,7 +1219,7 @@ namespace PMS.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
-                await LogActivity(userId, "Add Penalty", "Penalty", penalty.PenaltyID);
+                await LogActivityAsync(userId, "Add Penalty", "Penalty", penalty.PenaltyID);
             }
 
             return RedirectToAction(nameof(Penalties));
@@ -1173,25 +1265,34 @@ namespace PMS.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
             {
-                await LogActivity(userId, "Add Waiver", "Waiver", waiver.WaiverID);
+                await LogActivityAsync(userId, "Add Waiver", "Waiver", waiver.WaiverID);
             }
 
             return RedirectToAction(nameof(Waivers));
         }
 
-        private async Task LogActivity(string userId, string action, string refType, string refId)
+        private static string TruncateForLog(string? value, int maxLen)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return value.Length <= maxLen ? value : value[..maxLen];
+        }
+
+        /// <param name="saveImmediately">When false, caller must call <c>SaveChangesAsync</c> (e.g. within a transaction).</param>
+        private async Task LogActivityAsync(string? userId, string action, string refType, string refId, string? details = null, bool saveImmediately = true)
         {
             var activityLog = new ActivityLog
             {
-                UserID = userId,
-                Action = action,
-                RefType = refType,
-                RefID = refId,
+                UserID = string.IsNullOrEmpty(userId) ? null : TruncateForLog(userId, 10),
+                Action = TruncateForLog(action, 255),
+                RefType = TruncateForLog(refType, 50),
+                RefID = TruncateForLog(refId, 10),
+                Details = details,
                 CreatedAt = DateTime.Now
             };
 
             _context.ActivityLogs.Add(activityLog);
-            await _context.SaveChangesAsync();
+            if (saveImmediately)
+                await _context.SaveChangesAsync();
         }
 
         private string GenerateID()

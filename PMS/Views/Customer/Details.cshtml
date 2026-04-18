@@ -159,6 +159,18 @@
                     </div>
                     <div class="col-md-6 mb-2">
                         <div class="detail-field">
+                            <label><i class="fas fa-mobile-alt me-2"></i>Mobile</label>
+                            <p>@Model.MobileNo</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="detail-field">
+                            <label><i class="fas fa-mobile-alt me-2"></i>Mobile 2</label>
+                            <p>@(string.IsNullOrWhiteSpace(Model.MobileNo2) ? "—" : Model.MobileNo2)</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="detail-field">
                             <label><i class="fas fa-envelope me-2"></i>Email</label>
                             <p>@Model.Email</p>
                         </div>

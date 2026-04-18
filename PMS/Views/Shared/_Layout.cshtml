@@ -1,9 +1,12 @@
+@using PMS.Services
+@inject ISiteConfigService SiteConfigService
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Juba Smart City PMS</title>
+    <title>@ViewData["Title"]</title>
     <link rel="icon" href="~/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -251,7 +254,7 @@
             font-size: 20px;
             font-weight: 700;
             color: var(--sidebar-font-color);
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             line-height: 1.2;
         }
 
@@ -618,7 +621,7 @@
         .d-flex .btn-secondary,
         .d-flex .btn-outline-secondary,
         .d-flex .btn-cancel {
-            align-self: center;
+            align-self: auto;
         }
 
         /* Button groups - center secondary buttons */
@@ -641,6 +644,17 @@
         .form-row .btn-outline-secondary,
         .form-row .btn-cancel {
             align-self: center;
+        }
+
+        /* Keep Search/Clear actions on one baseline in filter toolbars */
+        form .row.g-3 > [class*="col-"] > .d-flex.gap-2 {
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        form .row.g-3 > [class*="col-"] > .d-flex.gap-2 .btn {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         /* Tab content buttons */
@@ -698,6 +712,85 @@
             color: white;
         }
 
+        /* Consistent "View Details" style across modules */
+        .btn-outline-info,
+        .btn-outline-theme {
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .btn-outline-info:not(.btn-sm),
+        .btn-outline-theme:not(.btn-sm) {
+            height: 32px;
+            min-height: 32px;
+            padding: 5px 12px;
+            font-size: 12px;
+            line-height: 1.2;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        /* Respect Bootstrap compact variants across filter/toolbars */
+        .form-control-sm {
+            font-size: 12px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+        }
+
+        .form-select-sm {
+            font-size: 12px !important;
+            padding: 4px 28px 4px 8px !important;
+            border-radius: 8px !important;
+        }
+
+        .btn-sm {
+            font-size: 12px !important;
+            padding: 4px 10px !important;
+            border-radius: 8px !important;
+            line-height: 1.4;
+        }
+
+        /* Keep compact toolbar/filter buttons short across modules */
+        .btn.btn-sm,
+        .btn-sm.btn-primary,
+        .btn-sm.btn-secondary,
+        .btn-sm.btn-outline-secondary,
+        .btn-sm.btn-outline-primary,
+        .btn-sm.btn-warning,
+        .btn-sm.btn-danger,
+        .btn-sm.btn-success,
+        .btn-sm.btn-info {
+            height: 30px !important;
+            min-height: 30px !important;
+            padding: 4px 10px !important;
+            font-size: 12px !important;
+            line-height: 1.2 !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Compact top action bar buttons (Add New, Reports, By Project, etc.) */
+        .content-body > .d-flex.justify-content-between.align-items-center.mb-4 .btn-group .btn,
+        .content-body > .d-flex.justify-content-between.align-items-center.mb-4 > .btn {
+            height: 32px;
+            min-height: 32px;
+            padding: 5px 10px;
+            font-size: 12px;
+            line-height: 1.2;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .form-label {
+            font-size: 12px;
+        }
+
         .table {
             border-radius: 12px;
             overflow: hidden;
@@ -712,6 +805,22 @@
             font-weight: 600;
             font-family: 'Inter', sans-serif;
             font-size: 12px;
+        }
+
+        /* Ensure table headers and grid text stay readable in dark theme */
+        [data-theme="dark"] .table thead th,
+        [data-theme="dark"] .table thead tr {
+            background-color: #0f172a !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table.table-hover tbody tr:hover {
+            background-color: rgba(148, 163, 184, 0.14) !important;
+        }
+
+        [data-theme="dark"] .table tbody td {
+            color: var(--text-primary) !important;
+            border-color: #1e293b !important;
         }
 
         .table tbody td {
@@ -766,6 +875,33 @@
         .badge.bg-success {
             background: var(--success) !important;
             color: white !important;
+        }
+
+        /* Compact removable chips (e.g., Project sizes tags) */
+        .size-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.1;
+        }
+
+        .size-chip .btn-close {
+            width: 0.6rem;
+            height: 0.6rem;
+            opacity: 0.85;
+            filter: brightness(0) invert(1);
+            margin-top: 0;
+            margin-left: 2px;
+        }
+
+        .size-chip .btn-close:hover {
+            opacity: 1;
         }
 
         .form-control, .form-select {
@@ -915,6 +1051,30 @@
             box-shadow: 0 0 0 3px rgba(72, 123, 165, 0.1);
         }
 
+        /* DataTables chrome in dark mode */
+        [data-theme="dark"] .dataTables_wrapper .dataTables_length select,
+        [data-theme="dark"] .dataTables_wrapper .dataTables_filter input {
+            background-color: #0f172a !important;
+            color: #e5e7eb !important;
+            border-color: #475569 !important;
+        }
+
+        [data-theme="dark"] .dataTables_wrapper .dataTables_length label,
+        [data-theme="dark"] .dataTables_wrapper .dataTables_filter label,
+        [data-theme="dark"] .dataTables_wrapper .dataTables_info {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: var(--primary) !important;
+            border-color: var(--primary) !important;
+            color: #0b1120 !important;
+        }
+
         .dataTables_wrapper .dataTables_paginate .paginate_button {
             font-size: 12px !important;
             padding: 4px 10px !important;
@@ -1016,9 +1176,15 @@
                     <nav class="col-md-3 col-lg-3 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="brand-section" style="background: var(--sidebar-bg);">
-                        <img src="~/images/PMS.png" alt="PMS Logo" class="brand-logo-img mb-2" />
-                        <!-- <div class="brand-logo">JUBA Smart City</div> -->
-                        <div style="color: white; font-weight: 600;" class="brand-subtitle">Property Management System</div>
+                        @{
+                            var siteConfig = await SiteConfigService.GetAsync();
+                            var logoPath = siteConfig?.LogoPath ?? "~/images/PMS.png";
+                            var projectName = string.IsNullOrWhiteSpace(siteConfig?.ProjectName) ? "PMS" : siteConfig!.ProjectName!;
+                            var tagline = string.IsNullOrWhiteSpace(siteConfig?.Tagline) ? "Property Management System" : siteConfig!.Tagline!;
+                        }
+                        <img src="@Url.Content(logoPath)" alt="@projectName" class="brand-logo-img mb-2" />
+                        <div class="brand-logo">@projectName</div>
+                        <div class="brand-subtitle">@tagline</div>
                     </div>
                     
                     <ul class="nav flex-column">

@@ -12,7 +12,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Juba Smart City PMS</title>
+    <title>@ViewData["Title"]</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/juba-theme.css" asp-append-version="true" />
@@ -57,9 +57,20 @@
                         <span class="a4-info-value">@(Model.MailingAddress ?? Model.PermanentAddress ?? "-")</span>
                     </div>
                     <div class="a4-info-row">
-                        <span class="a4-info-label">Mobile:</span>
+                        <span class="a4-info-label">Phone:</span>
                         <span class="a4-info-value">@Model.Phone</span>
                     </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Mobile:</span>
+                        <span class="a4-info-value">@Model.MobileNo</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.MobileNo2))
+                    {
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Mobile 2:</span>
+                        <span class="a4-info-value">@Model.MobileNo2</span>
+                    </div>
+                    }
                 </div>
                 <div class="a4-info-block">
                     <h6>Plot / Plan Information</h6>

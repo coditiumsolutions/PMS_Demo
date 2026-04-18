@@ -88,14 +88,15 @@
                         <th>Action</th>
                         <th style="width: 140px;">Ref Type</th>
                         <th style="width: 140px;">Ref ID</th>
+                        <th style="width: 70px;">Details</th>
                         <th style="width: 90px;" class="text-end">LogID</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Logs.Count == 0)
                     {
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
                                 No rows in ActivityLog table.
                             </td>
                         </tr>
@@ -104,7 +105,7 @@
                     {
                         foreach (var row in Model.Logs)
                         {
-                            var logJson = System.Text.Json.JsonSerializer.Serialize(new { logId = row.LogId, createdAt = row.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"), userId = row.UserId ?? "", userName = row.UserName ?? "", action = row.Action ?? "", refType = row.RefType ?? "", refId = row.RefId ?? "" });
+                            var logJson = System.Text.Json.JsonSerializer.Serialize(new { logId = row.LogId, createdAt = row.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"), userId = row.UserId ?? "", userName = row.UserName ?? "", action = row.Action ?? "", refType = row.RefType ?? "", refId = row.RefId ?? "", details = row.Details ?? "" });
                             var logAttr = logJson.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
                             <tr class="log-row cursor-pointer" role="button" tabindex="0" data-log="@Html.Raw(logAttr)">
                                 <td>@row.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
@@ -112,6 +113,7 @@
                                 <td>@row.Action</td>
                                 <td>@row.RefType</td>
                                 <td>@row.RefId</td>
+                                <td class="small text-muted">@(string.IsNullOrEmpty(row.Details) ? "—" : "JSON")</td>
                                 <td class="text-end">@row.LogId</td>
                             </tr>
                         }
@@ -184,6 +186,9 @@
 
                     <dt class="col-sm-4 text-muted">Ref ID</dt>
                     <dd class="col-sm-8" id="dlg-refId">—</dd>
+
+                    <dt class="col-sm-4 text-muted align-top">Details</dt>
+                    <dd class="col-sm-8"><pre class="small mb-0 text-break" style="max-height: 240px; overflow: auto; white-space: pre-wrap;" id="dlg-details">—</pre></dd>
                 </dl>
             </div>
             <div class="modal-footer">
@@ -204,7 +209,7 @@
         var modalEl = document.getElementById('logDetailModal');
         if (!modalEl) return;
         var modal = new bootstrap.Modal(modalEl);
-        var fields = ['logId', 'createdAt', 'userId', 'userName', 'action', 'refType', 'refId'];
+        var fields = ['logId', 'createdAt', 'userId', 'userName', 'action', 'refType', 'refId', 'details'];
         document.querySelectorAll('.log-row').forEach(function (tr) {
             tr.addEventListener('click', function () {
                 var raw = tr.getAttribute('data-log');

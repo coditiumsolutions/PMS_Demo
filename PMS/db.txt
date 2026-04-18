@@ -123,7 +123,9 @@ CREATE TABLE Customers (
     Nationality NVARCHAR(100),
 
     -- Contact Info
-    Phone NVARCHAR(50),
+    Phone NVARCHAR(50) NOT NULL,        -- Landline / primary contact (mandatory)
+    MobileNo NVARCHAR(50) NOT NULL,     -- Primary mobile (mandatory; must differ from Phone digits)
+    MobileNo2 NVARCHAR(50) NULL,        -- Secondary mobile (optional; must differ from Phone and MobileNo)
     Email NVARCHAR(150),
     MailingAddress NVARCHAR(255),
     PermanentAddress NVARCHAR(255),
@@ -136,7 +138,7 @@ CREATE TABLE Customers (
 
     -- System Info
     CreatedAt DATETIME DEFAULT GETDATE(),
-    Status NVARCHAR(50) DEFAULT 'Active',
+    Status NVARCHAR(50) DEFAULT 'Pending',
 
     -- Nominee Info
     NomineeName NVARCHAR(100),

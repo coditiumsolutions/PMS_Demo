@@ -33,9 +33,8 @@
                             <li>Data starts from row 2</li>
                         </ul>
 
-                        <h6 class="text-primary mt-3">Required Columns (A to I):</h6>
+                        <h6 class="text-primary mt-3">Required Columns (A to H):</h6>
                         <ol>
-                            <li><strong>ProjectID</strong> - Must exist in Projects table</li>
                             <li><strong>PlotNo</strong> - Plot/Unit number (required)</li>
                             <li><strong>Street</strong> - Street name</li>
                             <li><strong>PlotType</strong> - Type of plot (e.g., General, Corner, Park Facing)</li>
@@ -52,7 +51,6 @@
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>ProjectID</th>
                                         <th>PlotNo</th>
                                         <th>Street</th>
                                         <th>PlotType</th>
@@ -65,7 +63,6 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>PROJ00001</td>
                                         <td>1</td>
                                         <td>Main Street</td>
                                         <td>General</td>
@@ -85,10 +82,12 @@
                             <ul class="mb-0 mt-2">
                                 <li>PropertyID will be auto-generated</li>
                                 <li>Status will be set to "Available"</li>
+                                <li>Project must be selected before upload</li>
+                                <li>All imported properties will be assigned to the selected project</li>
                                 <li>Dealer must be selected before upload</li>
                                 <li>All imported properties will be assigned to the selected dealer</li>
                                 <li>CreatedAt will be set automatically</li>
-                                <li>Duplicate properties (same ProjectID + PlotNo + Block) will be skipped</li>
+                                <li>Duplicate properties (same selected project + PlotNo + Block) will be skipped</li>
                             </ul>
                         </div>
                     </div>
@@ -110,7 +109,26 @@
                     @Html.AntiForgeryToken()
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="projectId" class="form-label">Project *</label>
+                                <select class="form-select" id="projectId" name="projectId" required>
+                                    <option value="">Select Project</option>
+                                    @if (ViewBag.Projects != null)
+                                    {
+                                        @foreach (var project in ViewBag.Projects)
+                                        {
+                                            <option value="@project.ProjectID" selected="@(ViewBag.SelectedProjectID == project.ProjectID ? "selected" : null)">
+                                                @project.ProjectName (@project.ProjectID)
+                                            </option>
+                                        }
+                                    }
+                                </select>
+                                <small class="form-text text-muted">Select one project for this bulk upload</small>
+                                <span class="text-danger field-validation-valid" data-valmsg-for="projectId" data-valmsg-replace="true"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="dealerId" class="form-label">Dealer *</label>
                                 <select class="form-select" id="dealerId" name="dealerId" required>
@@ -119,7 +137,9 @@
                                     {
                                         @foreach (var dealer in ViewBag.Dealers)
                                         {
-                                            <option value="@dealer.DealerID">@dealer.DealershipName</option>
+                                            <option value="@dealer.DealerID" selected="@(ViewBag.SelectedDealerID == dealer.DealerID ? "selected" : null)">
+                                                @dealer.DealershipName
+                                            </option>
                                         }
                                     }
                                 </select>
@@ -127,7 +147,7 @@
                                 <span class="text-danger field-validation-valid" data-valmsg-for="dealerId" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="file" class="form-label">Select File (CSV or Excel) *</label>
                                 <input type="file" class="form-control" id="file" name="file" accept=".csv,.xlsx,.xls" required />

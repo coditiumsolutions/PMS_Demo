@@ -151,9 +151,22 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="Phone" class="form-label">Phone Number *</label>
+                                        <label asp-for="Phone" class="form-label">Phone (landline / primary contact) *</label>
                                         <input asp-for="Phone" id="Phone" class="form-control" required />
                                         <span asp-validation-for="Phone" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="MobileNo" class="form-label">Mobile *</label>
+                                        <input asp-for="MobileNo" id="MobileNo" class="form-control" required />
+                                        <span asp-validation-for="MobileNo" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="MobileNo2" class="form-label">Mobile 2</label>
+                                        <input asp-for="MobileNo2" id="MobileNo2" class="form-control" />
+                                        <span asp-validation-for="MobileNo2" class="text-danger"></span>
+                                        <small class="form-text text-muted">Optional. Must differ from Phone and Mobile.</small>
                                     </div>
 
                                     <div class="mb-3">
@@ -465,9 +478,12 @@
         document.getElementById('FullName').addEventListener('input', function () {
             this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
         });
-        // Phone: digits and + only
-        document.getElementById('Phone').addEventListener('input', function () {
-            this.value = this.value.replace(/[^0-9\+]/g, '');
+        // Phone / Mobile: digits and + only
+        ['Phone', 'MobileNo', 'MobileNo2'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9\+]/g, '');
+            });
         });
 
         let currentStep = 1;
@@ -572,11 +588,14 @@
             var $sizeSelect = $('#RegisteredSize');
             $sizeSelect.html('<option value="">Select Size</option>').prop('disabled', !projectId);
             if (projectId) {
-                $.get('@Url.Action("GetProjectSizes", "Registration")', { projectId: projectId })
+                $.get('@Url.Action("GetProjectSizes", "Customer")', { projectId: projectId })
                     .done(function(arr) {
                         $(arr).each(function() {
                             $sizeSelect.append($('<option></option>').val(this).text(this));
                         });
+                    })
+                    .fail(function() {
+                        $sizeSelect.html('<option value="">Could not load sizes</option>');
                     });
             }
         });

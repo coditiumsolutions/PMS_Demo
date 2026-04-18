@@ -21,6 +21,9 @@ namespace PMS.Models
         [StringLength(100)]
         public string? RefID { get; set; }
 
+        /// <summary>Optional structured audit payload (JSON) for compliance and investigations.</summary>
+        public string? Details { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         // Navigation properties

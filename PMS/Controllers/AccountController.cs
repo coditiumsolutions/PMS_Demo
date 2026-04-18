@@ -15,6 +15,7 @@ namespace PMS.Controllers
     {
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
+        private readonly ISiteConfigService _siteConfigService;
 
         private static readonly string[] ModuleKeys = new[]
         {
@@ -25,10 +26,11 @@ namespace PMS.Controllers
 
         private static readonly string[] PermissionOptions = new[] { "NoAccess", "Read", "Edit", "Admin" };
 
-        public AccountController(PMSDbContext context, IModulePermissionService modulePermission)
+        public AccountController(PMSDbContext context, IModulePermissionService modulePermission, ISiteConfigService siteConfigService)
         {
             _context = context;
             _modulePermission = modulePermission;
+            _siteConfigService = siteConfigService;
         }
 
         [HttpGet]
@@ -43,7 +45,8 @@ namespace PMS.Controllers
                 else
                     return RedirectToAction("Workspace", "Home");
             }
-            return View();
+            var siteConfig = await _siteConfigService.GetAsync();
+            return View(siteConfig);
         }
 
         [HttpPost]
@@ -52,7 +55,8 @@ namespace PMS.Controllers
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
                 ViewBag.Error = "Please enter both email and password.";
-                return View();
+                var cfg = await _siteConfigService.GetAsync();
+                return View(cfg);
             }
 
             // Case-insensitive email comparison
@@ -135,7 +139,8 @@ namespace PMS.Controllers
             }
 
             ViewBag.Error = "Invalid email or password.";
-            return View();
+            var siteConfig = await _siteConfigService.GetAsync();
+            return View(siteConfig);
         }
 
         [HttpGet]

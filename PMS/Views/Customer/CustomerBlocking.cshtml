@@ -64,6 +64,8 @@
                                 <div class="col-6 fw-semibold" id="infoCnic">—</div>
                                 <div class="col-6 text-muted">Phone:</div>
                                 <div class="col-6 fw-semibold" id="infoPhone">—</div>
+                                <div class="col-6 text-muted">Mobile:</div>
+                                <div class="col-6 fw-semibold" id="infoMobile">—</div>
                                 <div class="col-6 text-muted">Current Status:</div>
                                 <div class="col-6" id="infoStatus">—</div>
                             </div>
@@ -128,6 +130,7 @@
             document.getElementById('infoId').textContent = '—';
             document.getElementById('infoCnic').textContent = '—';
             document.getElementById('infoPhone').textContent = '—';
+            document.getElementById('infoMobile').textContent = '—';
             document.getElementById('infoStatus').textContent = '—';
             document.getElementById('infoStatus').className = '';
         }
@@ -161,6 +164,8 @@
                     document.getElementById('infoId').textContent    = data.customerID;
                     document.getElementById('infoCnic').textContent  = data.cnic || '—';
                     document.getElementById('infoPhone').textContent = data.phone || '—';
+                    var mob = (data.mobileNo || '') + (data.mobileNo2 ? (' / ' + data.mobileNo2) : '');
+                    document.getElementById('infoMobile').textContent = mob.trim() ? mob : '—';
 
                     var statusEl = document.getElementById('infoStatus');
                     statusEl.textContent = data.status;

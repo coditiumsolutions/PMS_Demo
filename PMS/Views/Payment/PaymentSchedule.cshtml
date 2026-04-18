@@ -4,6 +4,7 @@
     ViewData["Title"] = "Payment Plan Details";
     var planExchangeRate = Model.ExchangeRate.GetValueOrDefault();
     var planTotalUsd = Model.TotalAmountUSD.GetValueOrDefault();
+    var customersOnPlan = (int)(ViewBag.CustomersOnPlanCount ?? 0);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -64,6 +65,10 @@
                 <small class="text-muted">Total Schedules</small>
                 <p class="fw-bold">@(Model.PaymentSchedules?.Count ?? 0)</p>
             </div>
+            <div class="col-md-4">
+                <small class="text-muted">Customers on this plan</small>
+                <p class="fw-bold">@customersOnPlan</p>
+            </div>
         </div>
         @if (!string.IsNullOrEmpty(Model.Description))
         {
@@ -100,6 +105,7 @@
                     <tbody>
                         @foreach (var schedule in Model.PaymentSchedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
                         {
+                            var othersAmountSum = Model.PaymentSchedules.Where(s => s.ScheduleID != schedule.ScheduleID).Sum(s => s.Amount);
                             var totalPaid = schedule.Payments?.Where(p => p.Status == "Completed").Sum(p => p.Amount) ?? 0;
                             var isPaid = totalPaid >= schedule.Amount;
                             var isOverdue = schedule.DueDate < DateTime.Now && !isPaid;
@@ -209,6 +215,7 @@
             <!-- Modals for each schedule (placed outside table) -->
             @foreach (var schedule in Model.PaymentSchedules.OrderBy(s => s.InstallmentNo ?? int.MaxValue))
             {
+                var othersAmountSum = Model.PaymentSchedules.Where(s => s.ScheduleID != schedule.ScheduleID).Sum(s => s.Amount);
                 var totalPaid = schedule.Payments?.Where(p => p.Status == "Completed").Sum(p => p.Amount) ?? 0;
                 var isPaid = totalPaid >= schedule.Amount;
                 var amountUsdDisplay = schedule.AmountUSD.HasValue ? schedule.AmountUSD.Value.ToString("N2") : "0.00";
@@ -314,11 +321,20 @@
                                 </h6>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
-                            <form asp-action="EditPaymentSchedule" method="post">
+                            <form asp-action="EditPaymentSchedule" method="post" class="edit-schedule-form"
+                                  data-plan-total="@Model.TotalAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                  data-others-sum="@othersAmountSum.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                  data-customers-on-plan="@customersOnPlan">
                                 @Html.AntiForgeryToken()
                                 <div class="modal-body">
                                     <input type="hidden" name="ScheduleID" value="@schedule.ScheduleID" />
                                     <input type="hidden" name="PlanID" value="@schedule.PlanID" />
+
+                                    <div class="alert alert-light border small mb-3 mb-md-0">
+                                        <i class="fas fa-users me-1 text-primary"></i>
+                                        <strong>@customersOnPlan</strong> customer(s) are assigned to this payment plan.
+                                        Changing amounts or the plan total affects their contract template.
+                                    </div>
 
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
@@ -342,7 +358,7 @@
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Amount (PKR)</label>
-                                            <input type="number" name="Amount" step="0.01" class="form-control" value="@schedule.Amount" required />
+                                            <input type="number" name="Amount" step="0.01" class="form-control js-installment-amount" value="@schedule.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
                                         </div>
 
                                         <div class="col-md-6 mb-3">
@@ -370,6 +386,24 @@
                                         <div class="col-md-12 mb-3">
                                             <label class="form-label">Additional Notes</label>
                                             <textarea name="Description" class="form-control" rows="2">@schedule.Description</textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="plan-total-adjust-panel alert alert-warning py-3 mt-2 d-none" role="region" aria-label="Plan total adjustment">
+                                        <p class="small mb-2 plan-total-adjust-message"></p>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" name="adjustPlanTotal" value="true" id="adjustPlanTotal_@schedule.ScheduleID" />
+                                            <label class="form-check-label" for="adjustPlanTotal_@schedule.ScheduleID">
+                                                Increase payment plan total (PKR) to fit this installment change
+                                            </label>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small">New plan total (PKR)</label>
+                                            <input type="number" name="newPlanTotalPkr" step="0.01" min="0" class="form-control form-control-sm input-new-plan-total" placeholder="Defaults to sum of all installments" />
+                                        </div>
+                                        <div class="mb-0">
+                                            <label class="form-label small">Reason for plan total change <span class="text-danger">*</span></label>
+                                            <textarea name="changeReason" class="form-control form-control-sm input-change-reason" rows="2" maxlength="2000" placeholder="Required when increasing plan total (audit)"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -526,6 +560,66 @@
 
             // Also remove backdrops periodically as a safeguard
             setInterval(removeBackdrops, 100);
+
+            document.querySelectorAll('form.edit-schedule-form').forEach(function (form) {
+                var amountInput = form.querySelector('.js-installment-amount');
+                var panel = form.querySelector('.plan-total-adjust-panel');
+                var msg = form.querySelector('.plan-total-adjust-message');
+                var newTotalInput = form.querySelector('.input-new-plan-total');
+                var chk = form.querySelector('input[name="adjustPlanTotal"]');
+                var reasonInput = form.querySelector('.input-change-reason');
+
+                function fmt(n) {
+                    return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+
+                function syncPlanAdjustPanel() {
+                    if (!amountInput || !panel || !msg) return;
+                    var planTotal = parseFloat(form.getAttribute('data-plan-total')) || 0;
+                    var others = parseFloat(form.getAttribute('data-others-sum')) || 0;
+                    var amt = parseFloat(amountInput.value) || 0;
+                    var projected = others + amt;
+                    var customers = parseInt(form.getAttribute('data-customers-on-plan') || '0', 10) || 0;
+                    if (projected > planTotal + 0.000001) {
+                        panel.classList.remove('d-none');
+                        msg.textContent = 'Sum of all installments would be PKR ' + fmt(projected) + ', above the current plan total PKR ' + fmt(planTotal) +
+                            '. ' + customers + ' customer(s) are on this plan. Check the box below and enter a reason to raise the plan total, or reduce this amount.';
+                        var cur = parseFloat(newTotalInput && newTotalInput.value);
+                        if (!newTotalInput || !newTotalInput.value || isNaN(cur) || cur < projected - 0.000001)
+                            if (newTotalInput) newTotalInput.value = projected.toFixed(2);
+                    } else {
+                        panel.classList.add('d-none');
+                        if (chk) chk.checked = false;
+                    }
+                }
+
+                if (amountInput) {
+                    amountInput.addEventListener('input', syncPlanAdjustPanel);
+                    amountInput.addEventListener('change', syncPlanAdjustPanel);
+                }
+                var modalEl = form.closest('.modal');
+                if (modalEl) modalEl.addEventListener('shown.bs.modal', syncPlanAdjustPanel);
+
+                form.addEventListener('submit', function (e) {
+                    var planTotal = parseFloat(form.getAttribute('data-plan-total')) || 0;
+                    var others = parseFloat(form.getAttribute('data-others-sum')) || 0;
+                    var amt = parseFloat(amountInput && amountInput.value) || 0;
+                    var projected = others + amt;
+                    if (projected > planTotal + 0.000001) {
+                        if (!chk || !chk.checked) {
+                            e.preventDefault();
+                            alert('This change would exceed the plan total. Enable "Increase payment plan total" and enter a reason, or reduce the amount.');
+                            return;
+                        }
+                        var reason = reasonInput ? reasonInput.value.trim() : '';
+                        if (!reason) {
+                            e.preventDefault();
+                            alert('Enter a reason for the plan total change (required for the audit log).');
+                            return;
+                        }
+                    }
+                });
+            });
         });
     </script>
 }

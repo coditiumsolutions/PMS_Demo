@@ -27,6 +27,10 @@ namespace PMS.Models
         public bool IncludeToken { get; set; }
         public decimal? TokenAmount { get; set; }
         public decimal? TokenAmountUSD { get; set; }
+        public string? TokenPaymentDescription { get; set; }
+        public decimal? PossessionAmount { get; set; }
+        public decimal? PossessionAmountUSD { get; set; }
+        public string? PossessionPaymentDescription { get; set; }
         public int TotalInstallments { get; set; }
         public decimal InstallmentAmount { get; set; }
         public decimal InstallmentAmountUSD { get; set; }

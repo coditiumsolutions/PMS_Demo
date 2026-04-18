@@ -101,7 +101,7 @@ namespace PMS.Controllers
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = $@"
-SELECT a.LogID, a.CreatedAt, a.UserID, a.Action, a.RefType, a.RefID, u.FullName
+SELECT a.LogID, a.CreatedAt, a.UserID, a.Action, a.RefType, a.RefID, u.FullName, a.Details
 FROM ActivityLog a
 LEFT JOIN Users u ON a.UserID = u.UserID
 {whereSql}
@@ -126,7 +126,8 @@ OFFSET {offset} ROWS FETCH NEXT {pageSize} ROWS ONLY";
                             UserName = reader.IsDBNull(6) || string.IsNullOrEmpty(reader.GetString(6)) ? (reader.IsDBNull(2) ? "—" : reader.GetString(2)) : reader.GetString(6),
                             Action = reader.IsDBNull(3) ? null : reader.GetString(3),
                             RefType = reader.IsDBNull(4) ? null : reader.GetString(4),
-                            RefId = reader.IsDBNull(5) ? null : reader.GetString(5)
+                            RefId = reader.IsDBNull(5) ? null : reader.GetString(5),
+                            Details = !reader.IsDBNull(7) ? reader.GetString(7) : null
                         });
                     }
                 }

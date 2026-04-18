@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Search Customers";
+    var showBulkSelection = (ViewBag.StatusFilter as string) == "Pending" && ViewBag.CanEdit == true;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -18,6 +19,10 @@
         <a asp-action="ByProject" class="btn btn-outline-primary">
             <i class="fas fa-layer-group me-2"></i>Customers By Project
         </a>
+        <a asp-action="Index" asp-route-statusFilter="Pending" class="btn btn-outline-warning">
+            <i class="fas fa-clock me-2"></i>Pending Customers
+            <span class="badge bg-warning text-dark ms-1">@ViewBag.PendingCustomersCount</span>
+        </a>
         <a asp-action="Reports" class="btn btn-outline-primary">
             <i class="fas fa-chart-bar me-2"></i>Customer Reports
         </a>
@@ -27,11 +32,26 @@
     </div>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
 <!-- Filters -->
 <form method="get" asp-action="Index" class="mb-4">
     <div class="card">
         <div class="card-body">
-            <div class="row g-3">
+            <div class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label class="form-label fw-bold">Filter by Project</label>
                     <select name="projectFilter" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -52,7 +72,9 @@
                     <select name="statusFilter" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
                         <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
+                        <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
                         <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
+                        <option value="Marked for Deletion" selected="@(ViewBag.StatusFilter == "Marked for Deletion")">Marked for Deletion</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -62,8 +84,7 @@
                            value="@ViewBag.SearchTerm" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">&nbsp;</label>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 align-items-center">
                         <button type="submit" class="btn btn-primary btn-sm">
                             <i class="fas fa-search me-2"></i>Search
                         </button>
@@ -77,12 +98,49 @@
     </div>
 </form>
 
+@if (showBulkSelection)
+{
+    <form asp-action="BulkUpdatePendingCustomers" method="post" class="card mb-3">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="projectFilter" value="@ViewBag.ProjectFilter" />
+        <input type="hidden" name="searchTerm" value="@ViewBag.SearchTerm" />
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="fw-bold">Pending Customer Actions:</span>
+                <select name="bulkAction" id="bulkAction" class="form-select form-select-sm" style="width: 240px;" required>
+                    <option value="">Select Action</option>
+                    <option value="Activate">Make Active</option>
+                    <option value="MarkForDeletion">Mark for Deletion</option>
+                </select>
+                <button type="submit" class="btn btn-warning btn-sm" id="applyBulkActionBtn" disabled>
+                    <i class="fas fa-check-double me-1"></i>Apply to Selected
+                </button>
+                <small class="text-muted">Select customers below, choose action, and enter comments.</small>
+            </div>
+            <div class="mt-2">
+                <label for="bulkActionComments" class="form-label fw-bold mb-1">Comments <span class="text-danger">*</span></label>
+                <textarea id="bulkActionComments"
+                          name="comments"
+                          class="form-control form-control-sm"
+                          rows="2"
+                          maxlength="1000"
+                          placeholder="Enter reason/comments for this status change"
+                          required></textarea>
+            </div>
+        </div>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-striped table-hover" id="customersTable">
                 <thead class="table-dark">
                     <tr>
+                        @if (showBulkSelection)
+                        {
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAllPendingCustomers" title="Select all" />
+                            </th>
+                        }
                         <th>Customer ID</th>
                         <th>Full Name</th>
                         <th>Project</th>
@@ -97,6 +155,16 @@
                     @foreach (var customer in Model)
                     {
                         <tr>
+                            @if (showBulkSelection)
+                            {
+                                <td>
+                                    <input type="checkbox"
+                                           class="pending-customer-checkbox"
+                                           name="selectedCustomerIds"
+                                           value="@(customer.CustomerID ?? "")"
+                                           @(string.IsNullOrWhiteSpace(customer.CustomerID) ? "disabled" : "") />
+                                </td>
+                            }
                             <td>
                                 <span class="badge bg-secondary">@(customer.CustomerID ?? "-")</span>
                             </td>
@@ -165,17 +233,146 @@
         </div>
     </div>
 </div>
+    </form>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="customersTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Full Name</th>
+                            <th>Project</th>
+                            <th>Allotment Status</th>
+                            <th>City</th>
+                            <th>Status</th>
+                            <th>Created Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var customer in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge bg-secondary">@(customer.CustomerID ?? "-")</span>
+                                </td>
+                                <td>
+                                    <strong>@customer.FullName</strong>
+                                    @if (!string.IsNullOrEmpty(customer.FatherName))
+                                    {
+                                        <br><small class="text-muted">S/O @customer.FatherName</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (customer.PaymentPlan?.Project != null)
+                                    {
+                                        <span class="badge bg-info">@customer.PaymentPlan.Project.ProjectName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No Project</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (customer.Allotments != null && customer.Allotments.Any())
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Allotted
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-times-circle me-1"></i>Not Allotted
+                                        </span>
+                                    }
+                                </td>
+                                <td>@customer.City</td>
+                                <td>
+                                    <span class="badge @((customer.Status ?? "Active") == "Active" ? "bg-success" : "bg-warning")">
+                                        @(customer.Status ?? "Active")
+                                    </span>
+                                </td>
+                                <td>@customer.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        @if (ViewBag.CanEdit == true)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-success" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-theme" title="Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if (ViewBag.CanDelete == true)
+                                        {
+                                            <a asp-action="Delete" asp-route-id="@(customer.CustomerID ?? "")"
+                                               class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
 
 @section Scripts {
     <script>
         $(document).ready(function() {
+            var showBulkSelection = @showBulkSelection.ToString().ToLowerInvariant();
+            var createdDateColumnIndex = showBulkSelection ? 7 : 6;
+            var actionsColumnIndex = showBulkSelection ? 8 : 7;
+
             $('#customersTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 6, "desc" ]], // Created Date is now column 6
+                "order": [[ createdDateColumnIndex, "desc" ]],
                 "columnDefs": [
-                    { "orderable": false, "targets": 7 } // Actions column is now column 7
+                    { "orderable": false, "targets": actionsColumnIndex }
                 ]
             });
+
+            if (showBulkSelection) {
+                var $selectAll = $('#selectAllPendingCustomers');
+                var $rowChecks = $('.pending-customer-checkbox');
+                var $applyBtn = $('#applyBulkActionBtn');
+                var $bulkAction = $('#bulkAction');
+                var $comments = $('#bulkActionComments');
+
+                function refreshBulkButtonState() {
+                    var anyChecked = $('.pending-customer-checkbox:checked').length > 0;
+                    var hasAction = ($bulkAction.val() || '').trim().length > 0;
+                    var hasComments = ($comments.val() || '').trim().length > 0;
+                    $applyBtn.prop('disabled', !(anyChecked && hasAction && hasComments));
+                }
+
+                $selectAll.on('change', function() {
+                    $rowChecks.prop('checked', this.checked);
+                    refreshBulkButtonState();
+                });
+
+                $(document).on('change', '.pending-customer-checkbox', function() {
+                    var total = $rowChecks.length;
+                    var checked = $('.pending-customer-checkbox:checked').length;
+                    $selectAll.prop('checked', total > 0 && total === checked);
+                    refreshBulkButtonState();
+                });
+
+                $bulkAction.on('change', refreshBulkButtonState);
+                $comments.on('input', refreshBulkButtonState);
+
+                refreshBulkButtonState();
+            }
         });
     </script>
 }

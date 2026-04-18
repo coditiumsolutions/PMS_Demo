@@ -44,10 +44,15 @@ namespace PMS.Models
         [StringLength(100)]
         public string? Nationality { get; set; }
 
-        // Contact Info
+        // Contact Info (Phone & MobileNo required — format validated in IValidatableObject after trim)
         [StringLength(50)]
-        [RegularExpression(@"^[0-9\+]+$", ErrorMessage = "Phone must contain digits and '+' only.")]
         public string? Phone { get; set; }
+
+        [StringLength(50)]
+        public string? MobileNo { get; set; }
+
+        [StringLength(50)]
+        public string? MobileNo2 { get; set; }
 
         [StringLength(150)]
         public string? Email { get; set; }
@@ -80,7 +85,7 @@ namespace PMS.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         [StringLength(50)]
-        public string? Status { get; set; } = "Active";
+        public string? Status { get; set; } = "Pending";
 
         // Nominee Info
         [StringLength(100)]
@@ -136,6 +141,23 @@ namespace PMS.Models
         /// <summary>Either CNIC format 5-7-1 (e.g. 11111-1111111-1) or Passport No with at least 5 characters.</summary>
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
+            Phone = Phone?.Trim() ?? "";
+            MobileNo = MobileNo?.Trim() ?? "";
+            MobileNo2 = string.IsNullOrWhiteSpace(MobileNo2) ? null : MobileNo2.Trim();
+
+            if (string.IsNullOrWhiteSpace(Phone))
+                yield return new ValidationResult("Phone is required.", new[] { nameof(Phone) });
+            else if (!Regex.IsMatch(Phone, @"^[0-9\+]+$"))
+                yield return new ValidationResult("Phone must contain digits and '+' only.", new[] { nameof(Phone) });
+
+            if (string.IsNullOrWhiteSpace(MobileNo))
+                yield return new ValidationResult("Mobile number is required.", new[] { nameof(MobileNo) });
+            else if (!Regex.IsMatch(MobileNo, @"^[0-9\+]+$"))
+                yield return new ValidationResult("Mobile must contain digits and '+' only.", new[] { nameof(MobileNo) });
+
+            if (!string.IsNullOrEmpty(MobileNo2) && !Regex.IsMatch(MobileNo2, @"^[0-9\+]+$"))
+                yield return new ValidationResult("Mobile 2 must contain digits and '+' only.", new[] { nameof(MobileNo2) });
+
             var cnicTrimmed = CNIC?.Trim() ?? "";
             var passportTrimmed = PassportNo?.Trim() ?? "";
             var cnicValid = Regex.IsMatch(cnicTrimmed, @"^\d{5}-\d{7}-\d$");
@@ -167,6 +189,30 @@ namespace PMS.Models
                 if (string.IsNullOrWhiteSpace(DealerName))
                     yield return new ValidationResult("Please enter the dealer name when dealer is not registered.", new[] { nameof(DealerName) });
             }
+
+            // Phone, Mobile, and optional Mobile 2 must be different numbers (digits compared, ignoring formatting)
+            var phoneNorm = NormalizePhoneDigits(Phone);
+            var mobileNorm = NormalizePhoneDigits(MobileNo);
+            var mobile2Norm = NormalizePhoneDigits(MobileNo2);
+            if (!string.IsNullOrEmpty(phoneNorm) && !string.IsNullOrEmpty(mobileNorm) &&
+                string.Equals(phoneNorm, mobileNorm, StringComparison.Ordinal))
+            {
+                yield return new ValidationResult("Phone and Mobile must be different numbers.", new[] { nameof(Phone), nameof(MobileNo) });
+            }
+            if (!string.IsNullOrEmpty(mobile2Norm))
+            {
+                if (!string.IsNullOrEmpty(phoneNorm) && string.Equals(phoneNorm, mobile2Norm, StringComparison.Ordinal))
+                    yield return new ValidationResult("Mobile 2 must be a different number than Phone.", new[] { nameof(MobileNo2), nameof(Phone) });
+                if (!string.IsNullOrEmpty(mobileNorm) && string.Equals(mobileNorm, mobile2Norm, StringComparison.Ordinal))
+                    yield return new ValidationResult("Mobile 2 must be a different number than Mobile.", new[] { nameof(MobileNo2), nameof(MobileNo) });
+            }
+        }
+
+        private static string NormalizePhoneDigits(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            var digits = new string(value.Where(char.IsDigit).ToArray());
+            return digits;
         }
     }
 }

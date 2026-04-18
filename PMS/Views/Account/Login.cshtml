@@ -1,5 +1,8 @@
+@model PMS.Services.SiteConfig
+
 @{
-    ViewData["Title"] = "Login - Juba Smart City PMS";
+    var projectName = string.IsNullOrWhiteSpace(Model?.ProjectName) ? "PMS" : Model.ProjectName;
+    ViewData["Title"] = "Login - " + projectName;
     Layout = null;
 }
 
@@ -268,13 +271,27 @@
             <!-- Left Side - Branding -->
             <div class="login-left">
                 <div class="logo-section">
-                    <img src="~/images/PMS.png" alt="PMS Logo" class="logo-img" />
-                    <h1 class="welcome-title">Welcome Back</h1>
+                    @{
+                        var logoPath = string.IsNullOrWhiteSpace(Model?.LogoPath) ? "~/images/PMS.png" : Model.LogoPath;
+                        var tagline = string.IsNullOrWhiteSpace(Model?.Tagline) ? "Property Management System" : Model.Tagline;
+                        var website = Model?.WebsiteUrl;
+                        var email = Model?.Email;
+                    }
+                    <img src="@Url.Content(logoPath)" alt="@projectName" class="logo-img" />
+                    <h1 class="welcome-title">@projectName</h1>
                     <p class="welcome-subtitle">
-                        Access your Property Management System dashboard and manage your real estate portfolio with ease.
+                        @tagline
                     </p>
-                    
+
                     <ul class="features-list">
+                        @if (!string.IsNullOrWhiteSpace(website))
+                        {
+                            <li><i class="fas fa-globe"></i>@website</li>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(email))
+                        {
+                            <li><i class="fas fa-envelope"></i>@email</li>
+                        }
                         <li><i class="fas fa-building"></i>Manage Properties & Projects</li>
                         <li><i class="fas fa-users"></i>Customer Management</li>
                         <li><i class="fas fa-money-bill-wave"></i>Payment Tracking</li>

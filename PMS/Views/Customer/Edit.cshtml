@@ -151,9 +151,22 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="Phone" class="form-label">Phone Number *</label>
+                                        <label asp-for="Phone" class="form-label">Phone (landline / primary contact) *</label>
                                         <input asp-for="Phone" id="Phone" class="form-control" required />
                                         <span asp-validation-for="Phone" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="MobileNo" class="form-label">Mobile *</label>
+                                        <input asp-for="MobileNo" id="MobileNo" class="form-control" required />
+                                        <span asp-validation-for="MobileNo" class="text-danger"></span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="MobileNo2" class="form-label">Mobile 2</label>
+                                        <input asp-for="MobileNo2" id="MobileNo2" class="form-control" />
+                                        <span asp-validation-for="MobileNo2" class="text-danger"></span>
+                                        <small class="form-text text-muted">Optional. Must differ from Phone and Mobile.</small>
                                     </div>
 
                                     <div class="mb-3">
@@ -291,7 +304,14 @@
                                 <div class="col-md-4">
                                     <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
                                     <select asp-for="RegisteredSize" id="RegisteredSize" class="form-select">
-                                        <option value="">Select Project first</option>
+                                        @if (!string.IsNullOrWhiteSpace(Model.RegisteredSize))
+                                        {
+                                            <option value="@Model.RegisteredSize" selected>@Model.RegisteredSize</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="">Select Project first</option>
+                                        }
                                     </select>
                                     <small class="text-muted">Sizes are loaded from the selected project.</small>
                                 </div>
@@ -454,8 +474,8 @@
                                     <h6 class="mb-3"><i class="fas fa-paperclip me-2"></i>Customer Attachments</h6>
                                     
                                     <!-- Customer Picture Section -->
-                                    <div class="card mb-4" style="border-color: rgb(104, 167, 226);">
-                                        <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <div class="card mb-4" style="border-color: var(--primary);">
+                                        <div class="card-header text-white" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
                                             <h6 class="mb-0"><i class="fas fa-user-circle me-2"></i>Customer Picture</h6>
                                         </div>
                                         <div class="card-body">
@@ -475,7 +495,7 @@
                                                         <input type="file" id="customerPictureFile" class="form-control" accept="image/*" />
                                                         <small class="text-muted">Only image files (JPG, PNG, GIF, BMP). Max size: 8MB</small>
                                                     </div>
-                                                    <button type="button" class="btn text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" onclick="uploadAttachment('CustomerPicture', 'customerPictureFile')">
+                                                    <button type="button" class="btn text-white" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);" onclick="uploadAttachment('CustomerPicture', 'customerPictureFile')">
                                                         <i class="fas fa-upload me-2"></i>Upload Picture
                                                     </button>
                                                 </div>
@@ -484,8 +504,8 @@
                                     </div>
 
                                     <!-- ID Card Section -->
-                                    <div class="card mb-4" style="border-color: rgb(104, 167, 226);">
-                                        <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <div class="card mb-4" style="border-color: var(--primary);">
+                                        <div class="card-header text-white" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
                                             <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Customer ID Card</h6>
                                         </div>
                                         <div class="card-body">
@@ -505,7 +525,7 @@
                                                         <input type="file" id="idCardFile" class="form-control" accept="image/*,.pdf" />
                                                         <small class="text-muted">Image files (JPG, PNG, GIF, BMP) or PDF. Max size: 8MB</small>
                                                     </div>
-                                                    <button type="button" class="btn text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" onclick="uploadAttachment('IDCard', 'idCardFile')">
+                                                    <button type="button" class="btn text-white" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);" onclick="uploadAttachment('IDCard', 'idCardFile')">
                                                         <i class="fas fa-upload me-2"></i>Upload ID Card
                                                     </button>
                                                 </div>
@@ -514,8 +534,8 @@
                                     </div>
 
                                     <!-- Other Attachments Section -->
-                                    <div class="card mb-4" style="border-color: rgb(104, 167, 226);">
-                                        <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <div class="card mb-4" style="border-color: var(--primary);">
+                                        <div class="card-header text-white" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
                                             <h6 class="mb-0"><i class="fas fa-folder-open me-2"></i>Other Attachments</h6>
                                         </div>
                                         <div class="card-body">
@@ -530,7 +550,7 @@
                                                         <input type="text" id="otherAttachmentDescription" class="form-control" placeholder="Description (optional)" />
                                                     </div>
                                                     <div class="col-md-2">
-                                                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" onclick="uploadAttachment('Other', 'otherAttachmentFile', 'otherAttachmentDescription')">
+                                                        <button type="button" class="btn text-white w-100" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);" onclick="uploadAttachment('Other', 'otherAttachmentFile', 'otherAttachmentDescription')">
                                                             <i class="fas fa-upload me-2"></i>Upload
                                                         </button>
                                                     </div>
@@ -580,13 +600,13 @@
 <style>
     /* Tab Styling */
     .customer-tabs {
-        border-bottom: 2px solid #6f42c1;
-        background: linear-gradient(135deg, #f8f9fa 0%, #f3f0ff 100%);
+        border-bottom: 2px solid var(--primary);
+        background: var(--primary-bg);
         padding: 0.5rem 1rem 0;
     }
 
     .customer-tabs .nav-link {
-        color: #666;
+        color: var(--text-secondary);
         font-weight: 600;
         border: none;
         border-bottom: 3px solid transparent;
@@ -596,15 +616,15 @@
     }
 
     .customer-tabs .nav-link:hover {
-        color: #6f42c1;
-        background: rgba(111, 66, 193, 0.05);
-        border-bottom-color: #9370db;
+        color: var(--primary);
+        background: rgba(0, 0, 0, 0.04);
+        border-bottom-color: var(--primary-light);
     }
 
     .customer-tabs .nav-link.active {
-        color: #6f42c1;
-        background: white;
-        border-bottom-color: #6f42c1;
+        color: var(--primary);
+        background: var(--card-bg);
+        border-bottom-color: var(--primary);
         font-weight: 700;
     }
 
@@ -627,10 +647,10 @@
 
     /* Section Headers within Tabs */
     .tab-pane h6 {
-        color: #6f42c1;
+        color: var(--primary);
         font-weight: 700;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e8dcff;
+        border-bottom: 2px solid var(--primary-light);
     }
 
     /* Responsive Tabs */
@@ -654,23 +674,47 @@
             this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
         });
         // Phone: digits and + only
-        document.getElementById('Phone').addEventListener('input', function () {
-            this.value = this.value.replace(/[^0-9\+]/g, '');
+        ['Phone', 'MobileNo', 'MobileNo2'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9\+]/g, '');
+            });
         });
 
         $(document).ready(function() {
             // Load Registered Size options from selected project (same as Registration module)
+            function normalizeSizeValue(value) {
+                return (value || '').toString().trim().toLowerCase();
+            }
+
             function loadSizesForProject(projectId, selectValue) {
                 var $sizeSelect = $('#RegisteredSize');
+                var desiredValue = (selectValue || $sizeSelect.val() || '').toString().trim();
                 $sizeSelect.html('<option value="">Select Size</option>').prop('disabled', !projectId);
                 if (projectId) {
-                    $.get('@Url.Action("GetProjectSizes", "Registration")', { projectId: projectId })
+                    $.get('@Url.Action("GetProjectSizes", "Customer")', { projectId: projectId })
                         .done(function(arr) {
+                            var desiredValueNormalized = normalizeSizeValue(desiredValue);
+                            var matched = false;
                             $(arr).each(function() {
-                                var opt = $('<option></option>').val(this).text(this);
-                                if (this === selectValue) opt.prop('selected', true);
+                                var itemValue = (this || '').toString();
+                                var opt = $('<option></option>').val(itemValue).text(itemValue);
+                                if (!matched && normalizeSizeValue(itemValue) === desiredValueNormalized) {
+                                    opt.prop('selected', true);
+                                    matched = true;
+                                }
                                 $sizeSelect.append(opt);
                             });
+
+                            // Keep previous/saved value visible even if not found in project size list.
+                            if (!matched && desiredValue) {
+                                $sizeSelect.append(
+                                    $('<option></option>')
+                                        .val(desiredValue)
+                                        .text(desiredValue + ' (current)')
+                                        .prop('selected', true)
+                                );
+                            }
                         });
                 }
             }

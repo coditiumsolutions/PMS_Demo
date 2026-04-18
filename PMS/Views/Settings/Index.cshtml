@@ -21,9 +21,14 @@
     <h2>
         <!-- <i class="fas fa-cogs me-2"></i>System Configuration -->
     </h2>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
-        <i class="fas fa-plus me-2"></i>Add Configuration
-    </button>
+    <div class="d-flex gap-2">
+        <a asp-action="SiteConfig" asp-controller="Settings" class="btn btn-outline-primary">
+            <i class="fas fa-sliders-h me-2"></i>Site Configuration
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+            <i class="fas fa-plus me-2"></i>Add Configuration
+        </button>
+    </div>
 </div>
 
 <!-- Configuration Statistics -->

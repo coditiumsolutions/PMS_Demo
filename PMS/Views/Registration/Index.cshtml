@@ -137,6 +137,7 @@
                 <table class="table table-hover align-middle" id="registrationsTable">
                     <thead class="table-light">
                         <tr>
+                            <th>Actions</th>
                             <th>Registration ID</th>
                             <th>Full Name</th>
                             <th>Project</th>
@@ -146,13 +147,34 @@
                             <th>Registration Date</th>
                             <th>Status</th>
                             <th>Customer Link</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var registration in Model)
                         {
                             <tr>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        @if (ViewBag.CanEdit == true)
+                                        {
+                                        <a asp-action="Edit" asp-route-id="@registration.RegID" 
+                                           class="btn btn-sm btn-outline-success" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@registration.RegID" 
+                                           class="btn btn-sm btn-outline-theme" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if ((ViewBag.CanDelete == true) && (registration.Customers == null || !registration.Customers.Any()))
+                                        {
+                                            <a asp-action="Delete" asp-route-id="@registration.RegID" 
+                                               class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
                                 <td>
                                     <code>@registration.RegID</code>
                                 </td>
@@ -227,28 +249,6 @@
                                         <span class="text-muted small">Not converted</span>
                                     }
                                 </td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        @if (ViewBag.CanEdit == true)
-                                        {
-                                        <a asp-action="Edit" asp-route-id="@registration.RegID" 
-                                           class="btn btn-sm btn-outline-success" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        }
-                                        <a asp-action="Details" asp-route-id="@registration.RegID" 
-                                           class="btn btn-sm btn-outline-theme" title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        @if ((ViewBag.CanDelete == true) && (registration.Customers == null || !registration.Customers.Any()))
-                                        {
-                                            <a asp-action="Delete" asp-route-id="@registration.RegID" 
-                                               class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        }
-                                    </div>
-                                </td>
                             </tr>
                         }
                     </tbody>
@@ -309,6 +309,23 @@
         font-size: 12px;
         font-weight: 600;
     }
+
+    /* Improve registration grid readability in dark theme */
+    html[data-theme="dark"] #registrationsTable thead,
+    html[data-theme="dark"] #registrationsTable thead tr,
+    html[data-theme="dark"] #registrationsTable thead th {
+        background-color: #0f172a !important;
+        color: var(--text-primary) !important;
+    }
+
+    html[data-theme="dark"] #registrationsTable tbody td {
+        color: var(--text-primary) !important;
+    }
+
+    html[data-theme="dark"] #registrationsTable code {
+        background: rgba(148, 163, 184, 0.18);
+        color: #e5e7eb;
+    }
 </style>
 
 @section Scripts {
@@ -319,9 +336,9 @@
         $(document).ready(function () {
             $('#registrationsTable').DataTable({
                 "pageLength": 25,
-                "order": [[4, "desc"]], // Sort by date descending
+                "order": [[7, "desc"]], // Sort by date descending
                 "columnDefs": [
-                    { "orderable": false, "targets": [6, 7] }
+                    { "orderable": false, "targets": [0, 9] }
                 ]
             });
         });
