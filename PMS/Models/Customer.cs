@@ -151,26 +151,27 @@ namespace PMS.Models
                 yield return new ValidationResult("Phone must contain digits and '+' only.", new[] { nameof(Phone) });
 
             if (string.IsNullOrWhiteSpace(MobileNo))
+            {
                 yield return new ValidationResult("Mobile number is required.", new[] { nameof(MobileNo) });
-            else if (!Regex.IsMatch(MobileNo, @"^[0-9\+]+$"))
-                yield return new ValidationResult("Mobile must contain digits and '+' only.", new[] { nameof(MobileNo) });
+            }
+            else
+            {
+                var mobileDigits = NormalizePhoneDigits(MobileNo);
+                if (!Regex.IsMatch(MobileNo, @"^[0-9]+$") || mobileDigits.Length < 11 || mobileDigits.Length > 13)
+                    yield return new ValidationResult("Mobile must contain digits only and be 11 to 13 digits long.", new[] { nameof(MobileNo) });
+            }
 
-            if (!string.IsNullOrEmpty(MobileNo2) && !Regex.IsMatch(MobileNo2, @"^[0-9\+]+$"))
-                yield return new ValidationResult("Mobile 2 must contain digits and '+' only.", new[] { nameof(MobileNo2) });
+            if (!string.IsNullOrEmpty(MobileNo2))
+            {
+                var mobile2Digits = NormalizePhoneDigits(MobileNo2);
+                if (!Regex.IsMatch(MobileNo2, @"^[0-9]+$") || mobile2Digits.Length < 11 || mobile2Digits.Length > 13)
+                    yield return new ValidationResult("Mobile 2 must contain digits only and be 11 to 13 digits long.", new[] { nameof(MobileNo2) });
+            }
 
             var cnicTrimmed = CNIC?.Trim() ?? "";
-            var passportTrimmed = PassportNo?.Trim() ?? "";
             var cnicValid = Regex.IsMatch(cnicTrimmed, @"^\d{5}-\d{7}-\d$");
-            var passportValid = passportTrimmed.Length >= 5;
-            if (!cnicValid && !passportValid)
-            {
-                if (string.IsNullOrEmpty(cnicTrimmed) && string.IsNullOrEmpty(passportTrimmed))
-                    yield return new ValidationResult("Either National ID (CNIC) in format XXXXX-XXXXXXX-X or Passport Number (min 5 characters) is required.", new[] { nameof(CNIC), nameof(PassportNo) });
-                else if (!string.IsNullOrEmpty(cnicTrimmed) && !cnicValid)
-                    yield return new ValidationResult("National ID (CNIC) must be in format XXXXX-XXXXXXX-X (5 digits, hyphen, 7 digits, hyphen, 1 digit). Otherwise provide Passport Number with at least 5 characters.", new[] { nameof(CNIC) });
-                else
-                    yield return new ValidationResult("Passport Number must be at least 5 characters. Otherwise provide National ID (CNIC) in format XXXXX-XXXXXXX-X.", new[] { nameof(PassportNo) });
-            }
+            if (!cnicValid)
+                yield return new ValidationResult("National ID (CNIC) is required and must be in format XXXXX-XXXXXXX-X (5 digits, hyphen, 7 digits, hyphen, 1 digit).", new[] { nameof(CNIC) });
             // Date of Birth: must be at least 16 years ago
             if (DOB.HasValue)
             {

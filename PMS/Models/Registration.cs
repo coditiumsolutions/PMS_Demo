@@ -37,6 +37,9 @@ namespace PMS.Models
         [Required(ErrorMessage = "Size is required.")]
         public string? Size { get; set; }
 
+        [StringLength(100)]
+        public string? SubProject { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         [StringLength(50)]

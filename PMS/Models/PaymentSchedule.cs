@@ -28,7 +28,7 @@ namespace PMS.Models
 
         public bool SurchargeApplied { get; set; } = true;
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Column(TypeName = "decimal(18,6)")]
         public decimal SurchargeRate { get; set; } = 0.05m;
 
         [StringLength(255)]

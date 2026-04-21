@@ -2,3 +2,5 @@ https://github.com/pakabbas/PMS_ZKB.git
 
 cd d:\PMS\PMS\PMS
 .\DeployToIIS.bat
+
+PlotNo	Street	PlotType	Block	PropertyType	Size	Additional Info	SubProject

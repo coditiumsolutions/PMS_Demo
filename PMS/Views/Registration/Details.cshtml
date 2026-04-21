@@ -116,6 +116,12 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <div class="detail-field">
+                            <label><i class="fas fa-layer-group me-2"></i>SubProject</label>
+                            <p>@(Model.SubProject ?? "N/A")</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="detail-field">
                             <label><i class="fas fa-calendar me-2"></i>Registration Date</label>
                             <p>@Model.CreatedAt.ToString("MMMM dd, yyyy hh:mm tt")</p>
                         </div>

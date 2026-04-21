@@ -64,6 +64,171 @@ namespace PMS.Controllers
             return View(paymentPlans);
         }
 
+        /// <summary>JSON for delete confirmation: customers, schedules, and whether payments block deletion.</summary>
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentPlanDeleteSummary(string planId)
+        {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
+
+            if (string.IsNullOrWhiteSpace(planId))
+            {
+                return Json(new { found = false, message = "Plan ID is required." });
+            }
+
+            var plan = await _context.PaymentPlans
+                .AsNoTracking()
+                .Include(p => p.Project)
+                .Include(p => p.Customers)
+                .Include(p => p.PaymentSchedules)
+                .FirstOrDefaultAsync(p => p.PlanID == planId);
+
+            if (plan == null)
+            {
+                return Json(new { found = false, message = "Payment plan was not found." });
+            }
+
+            var scheduleIds = plan.PaymentSchedules?.Select(s => s.ScheduleID).Where(id => !string.IsNullOrEmpty(id)).ToList() ?? new List<string>();
+            var paymentCount = scheduleIds.Count == 0
+                ? 0
+                : await _context.Payments.AsNoTracking().CountAsync(p => p.ScheduleID != null && scheduleIds.Contains(p.ScheduleID));
+
+            var customers = (plan.Customers ?? new List<Customer>())
+                .OrderBy(c => c.FullName)
+                .Take(100)
+                .Select(c => new { customerId = c.CustomerID, fullName = c.FullName })
+                .ToList();
+
+            return Json(new
+            {
+                found = true,
+                planId = plan.PlanID,
+                planName = plan.PlanName,
+                customerCount = plan.Customers?.Count ?? 0,
+                customers,
+                scheduleCount = plan.PaymentSchedules?.Count ?? 0,
+                paymentCount,
+                canDelete = paymentCount == 0,
+                message = paymentCount > 0
+                    ? $"This plan cannot be deleted because {paymentCount} payment record(s) are linked to its installments. Remove or reassign those payments first."
+                    : null
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePaymentPlan(string planId)
+        {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
+
+            if (string.IsNullOrWhiteSpace(planId))
+            {
+                TempData["Error"] = "Plan ID is required.";
+                return RedirectToAction(nameof(PaymentPlans));
+            }
+
+            var plan = await _context.PaymentPlans
+                .Include(p => p.Project)
+                .Include(p => p.Customers)
+                .Include(p => p.PaymentSchedules)
+                .FirstOrDefaultAsync(p => p.PlanID == planId);
+
+            if (plan == null)
+            {
+                TempData["Error"] = "Payment plan was not found.";
+                return RedirectToAction(nameof(PaymentPlans));
+            }
+
+            var scheduleIds = plan.PaymentSchedules?.Select(s => s.ScheduleID).Where(id => !string.IsNullOrEmpty(id)).ToList() ?? new List<string>();
+            var paymentCount = scheduleIds.Count == 0
+                ? 0
+                : await _context.Payments.AsNoTracking().CountAsync(p => p.ScheduleID != null && scheduleIds.Contains(p.ScheduleID));
+
+            if (paymentCount > 0)
+            {
+                TempData["Error"] =
+                    $"Cannot delete plan \"{plan.PlanName}\": {paymentCount} payment record(s) are linked to its installments. Remove or reassign those payments first.";
+                return RedirectToAction(nameof(PaymentPlans));
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var customerList = (plan.Customers ?? new List<Customer>())
+                .OrderBy(c => c.FullName)
+                .Take(100)
+                .Select(c => new { customerId = c.CustomerID, fullName = c.FullName })
+                .ToList();
+            var schedulesSnapshot = (plan.PaymentSchedules ?? new List<PaymentSchedule>())
+                .OrderBy(s => s.InstallmentNo ?? int.MaxValue)
+                .Select(s => new
+                {
+                    s.ScheduleID,
+                    installmentNo = s.InstallmentNo,
+                    s.PaymentDescription,
+                    amountPkr = s.Amount,
+                    amountUsd = s.AmountUSD,
+                    dueDate = s.DueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    s.SurchargeApplied,
+                    surchargeRate = s.SurchargeRate
+                })
+                .ToList();
+
+            var auditPayload = new
+            {
+                eventType = "PaymentPlanDelete",
+                timestampUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                actorUserId = userId,
+                actorUserName = userName,
+                planId = plan.PlanID,
+                planName = plan.PlanName,
+                projectId = plan.ProjectID,
+                projectName = plan.Project?.ProjectName,
+                totalAmountPkr = plan.TotalAmount,
+                totalAmountUsd = plan.TotalAmountUSD,
+                exchangeRate = plan.ExchangeRate,
+                currency = plan.Currency,
+                durationMonths = plan.DurationMonths,
+                frequency = plan.Frequency,
+                description = plan.Description,
+                customerCount = plan.Customers?.Count ?? 0,
+                customers = customerList,
+                scheduleCount = plan.PaymentSchedules?.Count ?? 0,
+                schedules = schedulesSnapshot,
+                paymentsAttachedCount = paymentCount
+            };
+            var detailsJson = JsonSerializer.Serialize(auditPayload, jsonOptions);
+            var actionSummary =
+                $"Delete Payment Plan: {plan.PlanName} (PlanID {plan.PlanID}; {plan.Customers?.Count ?? 0} customer(s); {plan.PaymentSchedules?.Count ?? 0} schedule(s))";
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(plan.PlanID))
+                {
+                    await LogActivityAsync(userId, actionSummary, "PaymentPlan", plan.PlanID, detailsJson, saveImmediately: false);
+                }
+
+                _context.PaymentPlans.Remove(plan);
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                var custN = plan.Customers?.Count ?? 0;
+                TempData["Success"] =
+                    custN > 0
+                        ? $"Payment plan \"{plan.PlanName}\" and all {plan.PaymentSchedules?.Count ?? 0} installment row(s) were deleted. {custN} customer(s) no longer have this plan assigned (Plan ID cleared)."
+                        : $"Payment plan \"{plan.PlanName}\" and all {plan.PaymentSchedules?.Count ?? 0} installment row(s) were deleted.";
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                TempData["Error"] = $"Could not delete payment plan: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(PaymentPlans));
+        }
+
         // Payment Schedules (Installments) Management
         public async Task<IActionResult> Schedules()
         {
@@ -713,33 +878,24 @@ namespace PMS.Controllers
                 var scheduleData = viewModel.PaymentSchedules;
 
                 var exchangeRate = planData.ExchangeRate > 0 ? planData.ExchangeRate : await GetUsdToPkrRateAsync();
-
-                if (exchangeRate <= 0)
-                {
-                    return Json(new { success = false, message = "Invalid USD to PKR exchange rate configuration." });
-                }
-
-                if (planData.TotalAmount <= 0 && planData.TotalAmountUSD <= 0)
-                {
-                    return Json(new { success = false, message = "Total amount must be provided in either PKR or USD." });
-                }
+                var hasExchangeRate = exchangeRate > 0;
 
                 if (planData.TotalAmount <= 0)
                 {
-                    planData.TotalAmount = Math.Round(planData.TotalAmountUSD * exchangeRate, 2, MidpointRounding.AwayFromZero);
-                }
-                if (planData.TotalAmountUSD <= 0)
-                {
-                    planData.TotalAmountUSD = Math.Round(planData.TotalAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                    return Json(new { success = false, message = "Total amount (PKR) must be greater than zero." });
                 }
 
                 // Validate total amount: Token + Installments must not exceed Plan Total Amount
                 var totalInstallments = scheduleData.TotalInstallments;
                 var totalPlanAmount = planData.TotalAmount;
                 var tokenAmount = scheduleData.IncludeToken && scheduleData.TokenAmount.HasValue ? scheduleData.TokenAmount.Value : 0;
-                var tokenAmountUSD = scheduleData.IncludeToken && scheduleData.TokenAmountUSD.HasValue
-                    ? scheduleData.TokenAmountUSD.Value
-                    : (scheduleData.IncludeToken ? Math.Round(tokenAmount / exchangeRate, 2, MidpointRounding.AwayFromZero) : 0);
+                decimal? tokenAmountUSD = null;
+                if (scheduleData.IncludeToken)
+                {
+                    tokenAmountUSD = hasExchangeRate
+                        ? Math.Round(tokenAmount / exchangeRate, 2, MidpointRounding.AwayFromZero)
+                        : null;
+                }
                 var possessionAmount = scheduleData.PossessionAmount.GetValueOrDefault();
                 if (possessionAmount < 0)
                 {
@@ -749,9 +905,13 @@ namespace PMS.Controllers
                 {
                     return Json(new { success = false, message = "Possession account head is required when possession amount is greater than zero." });
                 }
-                var possessionAmountUSD = scheduleData.PossessionAmountUSD.HasValue && scheduleData.PossessionAmountUSD.Value > 0
-                    ? Math.Round(scheduleData.PossessionAmountUSD.Value, 2, MidpointRounding.AwayFromZero)
-                    : (possessionAmount > 0 ? Math.Round(possessionAmount / exchangeRate, 2, MidpointRounding.AwayFromZero) : 0);
+                decimal? possessionAmountUSD = null;
+                if (possessionAmount > 0)
+                {
+                    possessionAmountUSD = hasExchangeRate
+                        ? Math.Round(possessionAmount / exchangeRate, 2, MidpointRounding.AwayFromZero)
+                        : null;
+                }
 
                 if (totalInstallments <= 0)
                 {
@@ -765,20 +925,15 @@ namespace PMS.Controllers
                 }
 
                 var installmentAmount = scheduleData.InstallmentAmount;
-                if (installmentAmount <= 0 && scheduleData.InstallmentAmountUSD > 0 && exchangeRate > 0)
-                {
-                    installmentAmount = Math.Round(scheduleData.InstallmentAmountUSD * exchangeRate, 2, MidpointRounding.AwayFromZero);
-                }
-
                 installmentAmount = Math.Round(installmentAmount, 2, MidpointRounding.AwayFromZero);
                 if (installmentAmount <= 0)
                 {
                     return Json(new { success = false, message = "Installment amount (PKR) must be greater than zero." });
                 }
 
-                var installmentAmountUSD = scheduleData.InstallmentAmountUSD > 0
-                    ? Math.Round(scheduleData.InstallmentAmountUSD, 2, MidpointRounding.AwayFromZero)
-                    : Math.Round(installmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero);
+                decimal? installmentAmountUSD = hasExchangeRate
+                    ? Math.Round(installmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero)
+                    : null;
 
                 var totalInstallmentsAmount = Math.Round(totalInstallments * installmentAmount, 2, MidpointRounding.AwayFromZero);
                 decimal grandTotal = totalInstallmentsAmount + tokenAmount + possessionAmount;
@@ -799,7 +954,9 @@ namespace PMS.Controllers
                     PlanName = planData.PlanName,
                     ProjectID = string.IsNullOrEmpty(planData.ProjectID) ? null : planData.ProjectID,
                     TotalAmount = planData.TotalAmount,
-                    TotalAmountUSD = planData.TotalAmountUSD,
+                    TotalAmountUSD = hasExchangeRate
+                        ? Math.Round(planData.TotalAmount / exchangeRate, 2, MidpointRounding.AwayFromZero)
+                        : null,
                     ExchangeRate = exchangeRate,
                     Currency = planData.Currency,
                     DurationMonths = planData.DurationMonths,
@@ -825,19 +982,28 @@ namespace PMS.Controllers
                     : scheduleData.PossessionPaymentDescription.Trim();
                 var surchargeApplied = scheduleData.SurchargeApplied;
                 var surchargeRate = scheduleData.SurchargeRate;
+                if (surchargeApplied && surchargeRate <= 0m)
+                {
+                    surchargeRate = 0.05m;
+                }
 
                 int installmentNo = 0;
 
                 // Create Token if included (Installment 0 - no surcharge)
                 if (includeToken && scheduleData.TokenAmount.HasValue)
                 {
+                    if (!scheduleData.TokenDueDate.HasValue || scheduleData.TokenDueDate.Value == default)
+                    {
+                        return Json(new { success = false, message = "Token due date is required when token payment is included." });
+                    }
+
                     var tokenSchedule = new PaymentSchedule
                     {
                         ScheduleID = GenerateID(),
                         PlanID = paymentPlan.PlanID,
                         PaymentDescription = tokenPaymentDescription,
                         InstallmentNo = 0,
-                        DueDate = firstDueDate,
+                        DueDate = scheduleData.TokenDueDate.Value.Date,
                         Amount = scheduleData.TokenAmount.Value,
                         AmountUSD = tokenAmountUSD,
                         SurchargeApplied = false, // Token has no surcharge
@@ -871,14 +1037,18 @@ namespace PMS.Controllers
                 // Create Possession as the last payment (manual, no surcharge)
                 if (possessionAmount > 0)
                 {
-                    var possessionDueDate = CalculateDueDate(firstDueDate, frequency, totalInstallments);
+                    if (!scheduleData.PossessionDueDate.HasValue || scheduleData.PossessionDueDate.Value == default)
+                    {
+                        return Json(new { success = false, message = "Possession due date is required when possession amount is greater than zero." });
+                    }
+
                     var possessionSchedule = new PaymentSchedule
                     {
                         ScheduleID = GenerateID(),
                         PlanID = paymentPlan.PlanID,
                         PaymentDescription = possessionPaymentDescription,
                         InstallmentNo = installmentNo,
-                        DueDate = possessionDueDate,
+                        DueDate = scheduleData.PossessionDueDate.Value.Date,
                         Amount = Math.Round(possessionAmount, 2, MidpointRounding.AwayFromZero),
                         AmountUSD = possessionAmountUSD,
                         SurchargeApplied = false,
@@ -943,7 +1113,12 @@ namespace PMS.Controllers
             }
 
             ViewBag.PaymentPlan = paymentPlan;
-            return View();
+            return View(new PaymentSchedule
+            {
+                PlanID = planId,
+                SurchargeApplied = true,
+                SurchargeRate = 0.05m
+            });
         }
 
         [HttpPost]
@@ -952,9 +1127,11 @@ namespace PMS.Controllers
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
-            // Convert surcharge rate from percentage to decimal
-            // Form always sends percentage values, so always divide by 100
-            schedule.SurchargeRate = schedule.SurchargeRate / 100m;
+            // Surcharge rate is handled as a fractional value end-to-end (e.g. 0.05 = 5%).
+            if (schedule.SurchargeApplied && schedule.SurchargeRate <= 0m)
+            {
+                schedule.SurchargeRate = 0.05m;
+            }
 
             // Server-side guard: total of installments must not exceed plan total
             var plan = await _context.PaymentPlans
@@ -974,18 +1151,10 @@ namespace PMS.Controllers
                 ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} PKR.");
             }
 
-            var amountUsd = schedule.AmountUSD.GetValueOrDefault();
             var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
-
-            if (amountUsd <= 0 && exchangeRate > 0)
-            {
-                amountUsd = Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero);
-                schedule.AmountUSD = amountUsd;
-            }
-            else if (amountUsd > 0 && schedule.Amount <= 0 && exchangeRate > 0)
-            {
-                schedule.Amount = Math.Round(amountUsd * exchangeRate, 2, MidpointRounding.AwayFromZero);
-            }
+            schedule.AmountUSD = exchangeRate > 0
+                ? Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero)
+                : null;
 
             if (!ModelState.IsValid)
             {
@@ -1018,7 +1187,10 @@ namespace PMS.Controllers
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
 
-            schedule.SurchargeRate = schedule.SurchargeRate / 100m;
+            if (schedule.SurchargeApplied && schedule.SurchargeRate <= 0m)
+            {
+                schedule.SurchargeRate = 0.05m;
+            }
 
             var plan = await _context.PaymentPlans
                 .Include(p => p.PaymentSchedules)
@@ -1030,18 +1202,10 @@ namespace PMS.Controllers
             if (existingSchedule == null)
                 return NotFound();
 
-            var amountUsd = schedule.AmountUSD.GetValueOrDefault();
             var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
-
-            if (amountUsd <= 0 && exchangeRate > 0)
-            {
-                amountUsd = Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero);
-                schedule.AmountUSD = amountUsd;
-            }
-            else if (amountUsd > 0 && schedule.Amount <= 0 && exchangeRate > 0)
-            {
-                schedule.Amount = Math.Round(amountUsd * exchangeRate, 2, MidpointRounding.AwayFromZero);
-            }
+            schedule.AmountUSD = exchangeRate > 0
+                ? Math.Round(schedule.Amount / exchangeRate, 2, MidpointRounding.AwayFromZero)
+                : null;
 
             var customersAssignedCount = await _context.Customers.AsNoTracking()
                 .CountAsync(c => c.PlanID == schedule.PlanID);

@@ -136,6 +136,7 @@ namespace PMS.Data
                 entity.Property(e => e.Email).HasMaxLength(150).IsRequired(false);
                 entity.Property(e => e.ProjectID).HasMaxLength(10).IsRequired(false);
                 entity.Property(e => e.Size).HasMaxLength(100).IsRequired(false);
+                entity.Property(e => e.SubProject).HasMaxLength(100).IsRequired(false);
                 entity.Property(e => e.Status).HasMaxLength(50).IsRequired(false).HasDefaultValue("Pending");
                 entity.HasOne(e => e.Project)
                       .WithMany()
@@ -168,7 +169,7 @@ namespace PMS.Data
                 entity.Property(e => e.PlanID).HasMaxLength(10);
                 entity.Property(e => e.PaymentDescription).HasMaxLength(250);
                 entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.SurchargeRate).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.SurchargeRate).HasColumnType("decimal(18,6)");
                 entity.Property(e => e.Description).HasMaxLength(255);
                 entity.HasOne(e => e.PaymentPlan)
                       .WithMany(p => p.PaymentSchedules)
@@ -263,6 +264,7 @@ namespace PMS.Data
                 entity.Property(e => e.Type).HasMaxLength(50);
                 entity.Property(e => e.Location).HasMaxLength(150);
                 entity.Property(e => e.Sizes).HasMaxLength(1000);
+                entity.Property(e => e.SubProjects).HasMaxLength(1000);
                 entity.Property(e => e.PropertyTypes).HasMaxLength(500);
             });
 

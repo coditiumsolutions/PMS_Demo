@@ -183,6 +183,27 @@ namespace PMS.Controllers
             return Json(sizes);
         }
 
+        /// <summary>Returns subprojects (CSV split) for a project. Used by Registration form to populate SubProject dropdown.</summary>
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSubProjects(string projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return Json(Array.Empty<string>());
+            }
+            var project = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectID == projectId)
+                .Select(p => p.SubProjects)
+                .FirstOrDefaultAsync();
+            var subProjects = string.IsNullOrWhiteSpace(project)
+                ? Array.Empty<string>()
+                : project.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+            return Json(subProjects);
+        }
+
         // GET: Registration/Edit/5
         public async Task<IActionResult> Edit(string id)
         {

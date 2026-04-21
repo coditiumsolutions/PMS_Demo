@@ -91,7 +91,7 @@
                                     <div class="mb-3">
                                         <label asp-for="CNIC" class="form-label">National ID (CNIC)</label>
                                         <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
-                                        <small class="text-muted">Format: 5 digits, hyphen, 7 digits, hyphen, 1 digit. Required if no Passport.</small>
+                                        <small class="text-muted">Required format: 5 digits, hyphen, 7 digits, hyphen, 1 digit (e.g. 11111-1111111-1).</small>
                                         <span id="cnicValidationError" class="text-danger small d-none"></span>
                                     </div>
 
@@ -154,12 +154,14 @@
                                         <label asp-for="Phone" class="form-label">Phone (landline / primary contact) *</label>
                                         <input asp-for="Phone" id="Phone" class="form-control" required />
                                         <span asp-validation-for="Phone" class="text-danger"></span>
+                                        <span id="phoneValidationError" class="text-danger small d-none"></span>
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="MobileNo" class="form-label">Mobile *</label>
                                         <input asp-for="MobileNo" id="MobileNo" class="form-control" required />
                                         <span asp-validation-for="MobileNo" class="text-danger"></span>
+                                        <span id="mobileValidationError" class="text-danger small d-none"></span>
                                     </div>
 
                                     <div class="mb-3">
@@ -167,6 +169,7 @@
                                         <input asp-for="MobileNo2" id="MobileNo2" class="form-control" />
                                         <span asp-validation-for="MobileNo2" class="text-danger"></span>
                                         <small class="form-text text-muted">Optional. Must differ from Phone and Mobile.</small>
+                                        <span id="mobile2ValidationError" class="text-danger small d-none"></span>
                                     </div>
 
                                     <div class="mb-3">
@@ -311,14 +314,14 @@
 
                                     <div class="mb-3">
                                         <label asp-for="SubProject" class="form-label">Sub Project *</label>
-                                        <select asp-for="SubProject" class="form-select" required>
-                                            <option value="">Select Sub Project</option>
-                                            @if (ViewBag.SubProjects != null)
+                                        <select asp-for="SubProject" id="SubProject" class="form-select" required disabled>
+                                            @if (!string.IsNullOrWhiteSpace(Model?.SubProject))
                                             {
-                                                @foreach (var subProject in ViewBag.SubProjects)
-                                                {
-                                                    <option value="@subProject">@subProject</option>
-                                                }
+                                                <option value="@Model.SubProject" selected>@Model.SubProject</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="">Select Project first</option>
                                             }
                                         </select>
                                         <span asp-validation-for="SubProject" class="text-danger"></span>
@@ -529,10 +532,18 @@
         }
 
         function nextStep() {
-            // Step 1: enforce CNIC (5-7-1 format) or Passport (min 5 chars) before allowing Next
+            // Step 1: enforce identity/contact rules before allowing Next
             if (currentStep === 1) {
-                if (!validateCnicOrPassport()) {
+                if (!validateStep1IdentityAndMobile()) {
                     $('html, body').animate({ scrollTop: $('#step1').offset().top - 20 }, 300);
+                    return;
+                }
+                if (!validateStep1Dob()) {
+                    $('html, body').animate({ scrollTop: $('#DOB').offset().top - 20 }, 300);
+                    return;
+                }
+                if (!validateStep1ContactRules()) {
+                    $('html, body').animate({ scrollTop: $('#Phone').offset().top - 20 }, 300);
                     return;
                 }
             }
@@ -582,22 +593,98 @@
             }
         }
 
-        // Load Registered Size options from selected project (same as Registration module)
-        $('#projectIDSelect').on('change', function() {
-            var projectId = $(this).val();
+        function normalizeDropdownValue(value) {
+            return (value || '').toString().trim().toLowerCase();
+        }
+
+        function loadSizes(projectId, selectedValue) {
             var $sizeSelect = $('#RegisteredSize');
+            var desiredValue = (selectedValue || $sizeSelect.val() || '').toString().trim();
             $sizeSelect.html('<option value="">Select Size</option>').prop('disabled', !projectId);
-            if (projectId) {
-                $.get('@Url.Action("GetProjectSizes", "Customer")', { projectId: projectId })
-                    .done(function(arr) {
-                        $(arr).each(function() {
-                            $sizeSelect.append($('<option></option>').val(this).text(this));
-                        });
-                    })
-                    .fail(function() {
-                        $sizeSelect.html('<option value="">Could not load sizes</option>');
-                    });
+            if (!projectId) {
+                return;
             }
+
+            $.get('@Url.Action("GetProjectSizes", "Customer")', { projectId: projectId })
+                .done(function(arr) {
+                    var desiredValueNormalized = normalizeDropdownValue(desiredValue);
+                    var matched = false;
+                    $(arr).each(function() {
+                        var itemValue = (this || '').toString();
+                        var opt = $('<option></option>').val(itemValue).text(itemValue);
+                        if (!matched && normalizeDropdownValue(itemValue) === desiredValueNormalized) {
+                            opt.prop('selected', true);
+                            matched = true;
+                        }
+                        $sizeSelect.append(opt);
+                    });
+
+                    // Keep posted value visible if not currently present in project size list.
+                    if (!matched && desiredValue) {
+                        $sizeSelect.append(
+                            $('<option></option>')
+                                .val(desiredValue)
+                                .text(desiredValue + ' (current)')
+                                .prop('selected', true)
+                        );
+                    }
+                    loadAvailablePropertiesPreview();
+                })
+                .fail(function() {
+                    $sizeSelect.html('<option value="">Could not load sizes</option>');
+                });
+        }
+
+        function loadSubProjects(projectId, selectedValue) {
+            var $subProjectSelect = $('#SubProject');
+            var desiredValue = (selectedValue || $subProjectSelect.val() || '').toString().trim();
+            $subProjectSelect.html('<option value="">Select Sub Project</option>').prop('disabled', !projectId);
+            if (!projectId) {
+                return;
+            }
+
+            $.get('@Url.Action("GetProjectSubProjects", "Customer")', { projectId: projectId })
+                .done(function(arr) {
+                    var desiredValueNormalized = normalizeDropdownValue(desiredValue);
+                    var matched = false;
+
+                    $(arr).each(function() {
+                        var itemValue = (this || '').toString();
+                        var opt = $('<option></option>').val(itemValue).text(itemValue);
+                        if (!matched && normalizeDropdownValue(itemValue) === desiredValueNormalized) {
+                            opt.prop('selected', true);
+                            matched = true;
+                        }
+                        $subProjectSelect.append(opt);
+                    });
+
+                    // Keep the posted value visible if it isn't currently in project's subproject list.
+                    if (!matched && desiredValue) {
+                        $subProjectSelect.append(
+                            $('<option></option>')
+                                .val(desiredValue)
+                                .text(desiredValue + ' (current)')
+                                .prop('selected', true)
+                        );
+                    }
+                })
+                .fail(function() {
+                    $subProjectSelect.html('<option value="">Could not load sub projects</option>');
+                });
+        }
+
+        var currentProjectId = $('#projectIDSelect').val();
+        var currentRegisteredSize = '@(Model?.RegisteredSize ?? "")';
+        var currentSubProject = '@(Model?.SubProject ?? "")';
+        if (currentProjectId) {
+            loadSizes(currentProjectId, currentRegisteredSize);
+            loadSubProjects(currentProjectId, currentSubProject);
+        }
+
+        $('#projectIDSelect').on('change', function() {
+            var selectedProjectId = $(this).val();
+            loadSizes(selectedProjectId, '');
+            loadSubProjects(selectedProjectId, '');
         });
 
         // Update Customer ID Preview when Project is selected
@@ -632,6 +719,13 @@
                         $('#CNIC').val(r.cnic || '');
                         $('#Phone').val(r.phone || '');
                         $('#Email').val(r.email || '');
+
+                        if (r.projectID) {
+                            $('#projectIDSelect').val(r.projectID);
+                            loadSizes(r.projectID, r.size || '');
+                            loadSubProjects(r.projectID, r.subProject || '');
+                        }
+
                         $msg.addClass('text-success').text('Registration found. Details pre-filled.');
                     } else {
                         $msg.addClass('text-danger').text(data.message || 'Registration not found.');
@@ -750,47 +844,201 @@
             });
         }
 
-        // CNIC/Passport rule: either CNIC format 5-7-1 or Passport min 5 chars
-        function validateCnicOrPassport() {
+        // Step 1 identity + mobile rules:
+        // CNIC is required with XXXXX-XXXXXXX-X format.
+        // Mobile is required and must be 11-13 digits.
+        // Mobile 2 is optional but when provided must be 11-13 digits.
+        function validateStep1IdentityAndMobile(showAlert) {
+            if (showAlert === undefined) showAlert = true;
             var cnic = ($('#CNIC').val() || '').trim();
-            var passport = ($('#PassportNo').val() || '').trim();
+            var phoneRaw = ($('#Phone').val() || '').trim();
+            var mobileRaw = ($('#MobileNo').val() || '').trim();
+            var mobile2Raw = ($('#MobileNo2').val() || '').trim();
             var cnicRegex = /^\d{5}-\d{7}-\d$/;
+            var phoneDigits = normalizePhoneDigits(phoneRaw);
+            var mobileDigits = normalizePhoneDigits(mobileRaw);
+            var mobile2Digits = normalizePhoneDigits(mobile2Raw);
             var cnicValid = cnicRegex.test(cnic);
-            var passportValid = passport.length >= 5;
+            var phoneValid = !!phoneRaw;
+            var mobileValid = /^\d+$/.test(mobileRaw) && mobileDigits.length >= 11 && mobileDigits.length <= 13;
+            var mobile2Valid = !mobile2Raw || (/^\d+$/.test(mobile2Raw) && mobile2Digits.length >= 11 && mobile2Digits.length <= 13);
             $('#CNIC').removeClass('is-invalid');
-            $('#PassportNo').removeClass('is-invalid');
-            $('#cnicValidationError, #passportValidationError').addClass('d-none').text('');
+            $('#Phone').removeClass('is-invalid');
+            $('#MobileNo').removeClass('is-invalid');
+            $('#MobileNo2').removeClass('is-invalid');
+            $('#cnicValidationError').addClass('d-none').text('');
+            $('#phoneValidationError').addClass('d-none').text('');
+            $('#mobileValidationError').addClass('d-none').text('');
+            $('#mobile2ValidationError').addClass('d-none').text('');
             $('#cnicPassportRuleError').addClass('d-none');
-            if (cnicValid || passportValid) return true;
-            $('#cnicPassportRuleError').removeClass('d-none');
-            $('#cnicPassportRuleErrorText').text('Either National ID (CNIC) in format XXXXX-XXXXXXX-X or Passport Number (min 5 characters) is required.');
-            if (cnic && !cnicValid) {
+            if (!cnicValid) {
                 $('#CNIC').addClass('is-invalid');
-                $('#cnicValidationError').removeClass('d-none').text('CNIC must be XXXXX-XXXXXXX-X (5-7-1 digits).');
+                $('#cnicValidationError').removeClass('d-none').text('CNIC is required in XXXXX-XXXXXXX-X format.');
+                $('#cnicPassportRuleError').removeClass('d-none');
+                $('#cnicPassportRuleErrorText').text('Please enter a valid CNIC in format XXXXX-XXXXXXX-X.');
+                return false;
             }
-            if (passport && passport.length > 0 && passport.length < 5) {
-                $('#PassportNo').addClass('is-invalid');
-                $('#passportValidationError').removeClass('d-none').text('Passport must be at least 5 characters.');
+            if (!phoneValid) {
+                $('#Phone').addClass('is-invalid');
+                $('#phoneValidationError').removeClass('d-none').text('Phone is required.');
+                if (showAlert) alert('Phone is required.');
+                return false;
             }
-            if (!cnic && !passport) {
-                $('#CNIC').addClass('is-invalid');
-                $('#PassportNo').addClass('is-invalid');
+            if (!mobileValid) {
+                $('#MobileNo').addClass('is-invalid');
+                $('#mobileValidationError').removeClass('d-none').text('Mobile must contain only digits (11 to 13 digits).');
+                if (showAlert) alert('Mobile is required and must contain only digits (11 to 13 digits).');
+                return false;
             }
-            return false;
+            if (!mobile2Valid) {
+                $('#MobileNo2').addClass('is-invalid');
+                $('#mobile2ValidationError').removeClass('d-none').text('Mobile 2 must contain only digits (11 to 13 digits).');
+                if (showAlert) alert('Mobile 2 must contain only digits (11 to 13 digits).');
+                return false;
+            }
+            return true;
         }
 
-        $('#CNIC, #PassportNo').on('input blur', function() {
+        $('#CNIC').on('input blur', function() {
             var cnic = ($('#CNIC').val() || '').trim();
-            var passport = ($('#PassportNo').val() || '').trim();
-            if (cnic || passport) {
-                var cnicValid = /^\d{5}-\d{7}-\d$/.test(cnic);
-                var passportValid = passport.length >= 5;
-                if (cnicValid || passportValid) {
-                    $('#CNIC, #PassportNo').removeClass('is-invalid');
-                    $('#cnicValidationError, #passportValidationError, #cnicPassportRuleError').addClass('d-none').text('');
-                }
+            var cnicValid = /^\d{5}-\d{7}-\d$/.test(cnic);
+            if (cnicValid) {
+                $('#CNIC').removeClass('is-invalid');
+                $('#cnicValidationError, #cnicPassportRuleError').addClass('d-none').text('');
             }
         });
+
+        $('#MobileNo, #MobileNo2').on('input blur', function() {
+            var id = $(this).attr('id');
+            var raw = ($(this).val() || '').trim();
+            var digits = normalizePhoneDigits(raw);
+            var valid = !raw || (/^\d+$/.test(raw) && digits.length >= 11 && digits.length <= 13);
+            if (id === 'MobileNo') {
+                valid = /^\d+$/.test(raw) && digits.length >= 11 && digits.length <= 13;
+            }
+            if (valid) {
+                $(this).removeClass('is-invalid');
+            }
+        });
+
+        function normalizePhoneDigits(value) {
+            return (value || '').toString().replace(/\D/g, '');
+        }
+
+        function validateStep1ContactRules(showAlert) {
+            if (showAlert === undefined) showAlert = true;
+            var phone = normalizePhoneDigits($('#Phone').val());
+            var mobile = normalizePhoneDigits($('#MobileNo').val());
+            var mobile2 = normalizePhoneDigits($('#MobileNo2').val());
+            $('#Phone, #MobileNo, #MobileNo2').removeClass('is-invalid');
+            $('#phoneValidationError').addClass('d-none').text('');
+            $('#mobileValidationError').addClass('d-none').text('');
+            $('#mobile2ValidationError').addClass('d-none').text('');
+
+            if (phone && mobile && phone === mobile) {
+                $('#Phone, #MobileNo').addClass('is-invalid');
+                $('#phoneValidationError').removeClass('d-none').text('Phone must be different from Mobile.');
+                $('#mobileValidationError').removeClass('d-none').text('Mobile must be different from Phone.');
+                if (showAlert) alert('Phone and Mobile must be different numbers.');
+                return false;
+            }
+            if (mobile2) {
+                if (phone && mobile2 === phone) {
+                    $('#Phone, #MobileNo2').addClass('is-invalid');
+                    $('#phoneValidationError').removeClass('d-none').text('Phone must be different from Mobile 2.');
+                    $('#mobile2ValidationError').removeClass('d-none').text('Mobile 2 must be different from Phone.');
+                    if (showAlert) alert('Mobile 2 must be different from Phone.');
+                    return false;
+                }
+                if (mobile && mobile2 === mobile) {
+                    $('#MobileNo, #MobileNo2').addClass('is-invalid');
+                    $('#mobileValidationError').removeClass('d-none').text('Mobile must be different from Mobile 2.');
+                    $('#mobile2ValidationError').removeClass('d-none').text('Mobile 2 must be different from Mobile.');
+                    if (showAlert) alert('Mobile 2 must be different from Mobile.');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function validateStep1Field(fieldId) {
+            var $field = $('#' + fieldId);
+            if (!$field.length) return true;
+            var value = ($field.val() || '').toString().trim();
+
+            if (fieldId === 'CNIC' || fieldId === 'Phone' || fieldId === 'MobileNo' || fieldId === 'MobileNo2') {
+                var identityOk = validateStep1IdentityAndMobile(false);
+                var contactOk = validateStep1ContactRules(false);
+                return identityOk && contactOk;
+            }
+
+            if (fieldId === 'DOB') {
+                return validateStep1Dob();
+            }
+
+            if (fieldId === 'PassportNo') {
+                return validateCnicPassportPair();
+            }
+
+            if (fieldId === 'Email') {
+                if (!value) {
+                    $field.removeClass('is-invalid');
+                    return true;
+                }
+                var emailValid = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(value);
+                $field.toggleClass('is-invalid', !emailValid);
+                return emailValid;
+            }
+
+            if ($field.prop('required')) {
+                var ok = !!value;
+                $field.toggleClass('is-invalid', !ok);
+                return ok;
+            }
+
+            return true;
+        }
+
+        function validateCnicPassportPair() {
+            var cnic = ($('#CNIC').val() || '').trim();
+            var passport = ($('#PassportNo').val() || '').trim();
+            var cnicValid = /^\d{5}-\d{7}-\d$/.test(cnic);
+            var passportValid = passport.length >= 3;
+
+            $('#PassportNo').removeClass('is-invalid');
+            $('#passportValidationError').addClass('d-none').text('');
+            if (passport && !/^[a-zA-Z0-9]+$/.test(passport)) {
+                $('#PassportNo').addClass('is-invalid');
+                $('#passportValidationError').removeClass('d-none').text('Passport must be alphanumeric only.');
+                return false;
+            }
+
+            if (!cnicValid && !passportValid) {
+                $('#CNIC, #PassportNo').addClass('is-invalid');
+                $('#cnicPassportRuleError').removeClass('d-none');
+                $('#cnicPassportRuleErrorText').text('Either valid CNIC or Passport Number (min 3 chars) is required.');
+                return false;
+            }
+
+            $('#cnicPassportRuleError').addClass('d-none');
+            return true;
+        }
+
+        function validateStep1Dob() {
+            var dobVal = $('#DOB').val();
+            if (!dobVal) return true;
+            var maxDob = new Date();
+            maxDob.setFullYear(maxDob.getFullYear() - 16);
+            var dob = new Date(dobVal);
+            if (dob > maxDob) {
+                $('#DOB').addClass('is-invalid');
+                $('#dobValidationError').text('Date of Birth must be at least 16 years ago.').removeClass('d-none');
+                return false;
+            }
+            $('#DOB').removeClass('is-invalid');
+            $('#dobValidationError').addClass('d-none').text('');
+            return true;
+        }
 
         // Form submission handler
         $('#customerWizardForm').on('submit', function(e) {
@@ -802,106 +1050,36 @@
                 updateWizardUI();
                 return false;
             }
-            if (!validateCnicOrPassport()) {
-                e.preventDefault();
-                $('html, body').animate({ scrollTop: $('#step1').offset().top - 20 }, 300);
-                return false;
-            }
-            // DOB must be at least 16 years ago
-            var dobVal = $('#DOB').val();
-            if (dobVal) {
-                var maxDob = new Date();
-                maxDob.setFullYear(maxDob.getFullYear() - 16);
-                var dob = new Date(dobVal);
-                if (dob > maxDob) {
-                    e.preventDefault();
-                    $('#DOB').addClass('is-invalid');
-                    $('#dobValidationError').text('Date of Birth must be at least 16 years ago.').removeClass('d-none');
-                    $('html, body').animate({ scrollTop: $('#DOB').offset().top - 20 }, 300);
-                    return false;
-                }
-            }
             
-            // Validate all required fields in all steps
+            // Validate required fields in final step only (Step 1/2 are validated on their own step transitions).
+            var step3Element = $('#step3');
             var isValid = true;
-            var firstInvalidStep = null;
             var invalidFields = [];
-            
-            for (var step = 1; step <= totalSteps; step++) {
-                var stepElement = $('#step' + step);
-                var requiredFields = stepElement.find('[required]');
-                
-                requiredFields.each(function() {
-                    var field = $(this);
-                    var value = field.val();
-                    var fieldName = field.attr('name') || field.attr('id') || 'field';
-                    
-                    // Check if it's a select and has a value
-                    if (field.is('select')) {
-                        if (!value || value === '' || value === null) {
-                            isValid = false;
-                            field.addClass('is-invalid');
-                            invalidFields.push(fieldName);
-                            if (firstInvalidStep === null) {
-                                firstInvalidStep = step;
-                            }
-                        } else {
-                            field.removeClass('is-invalid');
-                        }
-                    } else if (field.is('input[type="email"]')) {
-                        // Email validation - simple check without complex regex to avoid Razor parsing issues
-                        function isValidEmail(email) {
-                            if (!email || email.trim() === '') return false;
-                            var trimmed = email.trim();
-                            var atSymbol = String.fromCharCode(64); // @@ symbol
-                            var atIndex = trimmed.indexOf(atSymbol);
-                            if (atIndex <= 0 || atIndex >= trimmed.length - 1) return false;
-                            var dotIndex = trimmed.lastIndexOf('.');
-                            if (dotIndex <= atIndex || dotIndex >= trimmed.length - 1) return false;
-                            return true;
-                        }
-                        
-                        if (field.attr('required')) {
-                            if (!value || value.trim() === '' || !isValidEmail(value)) {
-                                isValid = false;
-                                field.addClass('is-invalid');
-                                invalidFields.push(fieldName);
-                                if (firstInvalidStep === null) {
-                                    firstInvalidStep = step;
-                                }
-                            } else {
-                                field.removeClass('is-invalid');
-                            }
-                        } else if (value && value.trim() !== '') {
-                            // If email is provided but not required, validate format
-                            if (!isValidEmail(value)) {
-                                isValid = false;
-                                field.addClass('is-invalid');
-                                invalidFields.push(fieldName);
-                                if (firstInvalidStep === null) {
-                                    firstInvalidStep = step;
-                                }
-                            } else {
-                                field.removeClass('is-invalid');
-                            }
-                        } else {
-                            field.removeClass('is-invalid');
-                        }
+            var requiredFields = step3Element.find('[required]');
+
+            requiredFields.each(function() {
+                var field = $(this);
+                var value = field.val();
+                var fieldName = field.attr('name') || field.attr('id') || 'field';
+
+                if (field.is('select')) {
+                    if (!value || value === '' || value === null) {
+                        isValid = false;
+                        field.addClass('is-invalid');
+                        invalidFields.push(fieldName);
                     } else {
-                        // For input fields
-                        if (!value || value.trim() === '') {
-                            isValid = false;
-                            field.addClass('is-invalid');
-                            invalidFields.push(fieldName);
-                            if (firstInvalidStep === null) {
-                                firstInvalidStep = step;
-                            }
-                        } else {
-                            field.removeClass('is-invalid');
-                        }
+                        field.removeClass('is-invalid');
                     }
-                });
-            }
+                } else {
+                    if (!value || value.trim() === '') {
+                        isValid = false;
+                        field.addClass('is-invalid');
+                        invalidFields.push(fieldName);
+                    } else {
+                        field.removeClass('is-invalid');
+                    }
+                }
+            });
             
             if (!isValid) {
                 e.preventDefault();
@@ -919,15 +1097,7 @@
                     }
                 }
                 alert(message);
-                
-                // Navigate to first invalid step
-                if (firstInvalidStep !== null) {
-                    currentStep = firstInvalidStep;
-                    updateWizardUI();
-                    $('html, body').animate({
-                        scrollTop: $('.card').offset().top - 100
-                    }, 300);
-                }
+                $('html, body').animate({ scrollTop: $('#step3').offset().top - 100 }, 300);
                 return false;
             }
             
@@ -955,15 +1125,41 @@
                 }
             });
             // Check if we're returning from a validation error (ModelState has errors)
-            @if (!ViewData.ModelState.IsValid)
-            {
-                <text>
-                // If there are validation errors, show step 3 (Payment Plan Info)
-                currentStep = 3;
-                </text>
+            var serverErrorKeys = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                ViewData.ModelState
+                    .Where(x => x.Value != null && x.Value.Errors.Count > 0)
+                    .Select(x => x.Key)
+                    .ToList()
+            ));
+            if (Array.isArray(serverErrorKeys) && serverErrorKeys.length > 0) {
+                var step1Fields = ['FullName', 'FatherName', 'CNIC', 'PassportNo', 'DOB', 'Gender', 'Nationality', 'Phone', 'MobileNo', 'MobileNo2', 'Email', 'City', 'Country', 'MailingAddress', 'PermanentAddress', 'RegID'];
+                var step2Fields = ['NomineeName', 'NomineeID', 'NomineeRelation', 'NomineeNICDocumentPath', 'NomineePicturePath'];
+                var step3Fields = ['ProjectID', 'PlanID', 'SubProject', 'RegisteredSize', 'DealerID', 'DealerName', 'AdditionalInfo'];
+
+                var targetStep = 3;
+                if (serverErrorKeys.some(function (k) { return step1Fields.indexOf(k) >= 0; })) {
+                    targetStep = 1;
+                } else if (serverErrorKeys.some(function (k) { return step2Fields.indexOf(k) >= 0; })) {
+                    targetStep = 2;
+                } else if (serverErrorKeys.some(function (k) { return step3Fields.indexOf(k) >= 0; })) {
+                    targetStep = 3;
+                }
+                currentStep = targetStep;
             }
             updateWizardUI();
             loadAvailablePropertiesPreview();
+
+            // Live field-level validation on leave/change for Step 1 fields
+            var step1FieldIds = ['FullName', 'CNIC', 'PassportNo', 'DOB', 'Phone', 'MobileNo', 'MobileNo2', 'Email', 'City', 'Country', 'MailingAddress'];
+            step1FieldIds.forEach(function(fieldId) {
+                var $field = $('#' + fieldId);
+                if (!$field.length) return;
+
+                var eventName = $field.is('select') ? 'change' : 'blur';
+                $field.on(eventName, function() {
+                    validateStep1Field(fieldId);
+                });
+            });
         });
     </script>
 }

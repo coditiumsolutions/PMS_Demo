@@ -1,10 +1,13 @@
 @model PMS.Models.PaymentPlan
+@using System.Globalization
 
 @{
     ViewData["Title"] = "Payment Plan Details";
-    var planExchangeRate = Model.ExchangeRate.GetValueOrDefault();
-    var planTotalUsd = Model.TotalAmountUSD.GetValueOrDefault();
+    var EnUs = CultureInfo.GetCultureInfo("en-US");
     var customersOnPlan = (int)(ViewBag.CustomersOnPlanCount ?? 0);
+    var schedulesSumPkr = Model.PaymentSchedules?.Sum(s => s.Amount) ?? 0m;
+    var balancePkr = Model.TotalAmount - schedulesSumPkr;
+    var balanceState = balancePkr > 0.0000001m ? "positive" : balancePkr < -0.0000001m ? "negative" : "zero";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -36,20 +39,26 @@
             <div class="col-md-3">
                 <small class="text-muted">Total Amount (PKR)</small>
                 <p class="fw-bold" style="color: #9C6ADE; font-size: 1.2rem;">
-                    <span data-format-number="@Model.TotalAmount">@Model.TotalAmount.ToString("N0")</span>
+                    @Model.TotalAmount.ToString("N0", EnUs)
                 </p>
-            </div>
-            <div class="col-md-3">
-                <small class="text-muted">Total Amount (USD)</small>
-                <p class="fw-bold">@($"{planTotalUsd:N2}")</p>
-            </div>
-            <div class="col-md-3">
-                <small class="text-muted">Exchange Rate</small>
-                <p class="fw-bold">@(planExchangeRate > 0 ? $"1 USD = {planExchangeRate:N4} PKR" : "N/A")</p>
             </div>
             <div class="col-md-3">
                 <small class="text-muted">Primary Currency</small>
                 <p class="fw-bold text-uppercase">@Model.Currency</p>
+            </div>
+        </div>
+        <div class="plan-balance-callout plan-balance--@balanceState mt-3" role="region" aria-label="Plan balance">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                <div class="flex-grow-1">
+                    <div class="plan-balance-callout-title">
+                        <i class="fas fa-scale-balanced me-2" aria-hidden="true"></i>Balance (unallocated)
+                    </div>
+                    <div class="plan-balance-callout-pkr">
+                        @balancePkr.ToString("N0", EnUs)
+                        <span class="plan-balance-callout-currency">PKR</span>
+                    </div>
+                    <div class="plan-balance-callout-hint">Plan total minus the sum of all installment amounts on this plan.</div>
+                </div>
             </div>
         </div>
         <div class="row mt-3">
@@ -109,11 +118,7 @@
                             var totalPaid = schedule.Payments?.Where(p => p.Status == "Completed").Sum(p => p.Amount) ?? 0;
                             var isPaid = totalPaid >= schedule.Amount;
                             var isOverdue = schedule.DueDate < DateTime.Now && !isPaid;
-                            var amountUsdDisplay = schedule.AmountUSD.HasValue ? schedule.AmountUSD.Value.ToString("N2") : "0.00";
-                            var totalPaidUsdDisplay = planExchangeRate > 0m && schedule.AmountUSD.HasValue
-                                ? Math.Round(totalPaid / planExchangeRate, 2, MidpointRounding.AwayFromZero).ToString("N2")
-                                : "0.00";
-                            
+
                             <tr class="@(isPaid ? "table-success" : isOverdue ? "table-warning" : "")">
                                 <td>
                                     <strong>#@(schedule.InstallmentNo?.ToString() ?? "N/A")</strong>
@@ -135,19 +140,18 @@
                                 </td>
                                 <td>
                                     <strong style="color: #9C6ADE;">
-                                        PKR <span data-format-number="@schedule.Amount">@schedule.Amount.ToString("N0")</span><br />
-                                        <small class="text-muted">USD @amountUsdDisplay</small>
+                                        PKR @schedule.Amount.ToString("N0", EnUs)
                                     </strong>
                                     @if (totalPaid > 0)
                                     {
-                                        <br /><small class="text-muted">Paid: <span data-format-number="@totalPaid">@totalPaid.ToString("N0")</span> PKR / USD @totalPaidUsdDisplay</small>
+                                        <br /><small class="text-muted">Paid: @totalPaid.ToString("N0", EnUs) PKR</small>
                                     }
                                 </td>
                                 <td>
                                     @if (schedule.SurchargeApplied)
                                     {
                                         <span class="badge bg-warning">
-                                            @((schedule.SurchargeRate * 100).ToString("N1"))%
+                                            @schedule.SurchargeRate.ToString("0.####")
                                         </span>
                                     }
                                     else
@@ -218,8 +222,7 @@
                 var othersAmountSum = Model.PaymentSchedules.Where(s => s.ScheduleID != schedule.ScheduleID).Sum(s => s.Amount);
                 var totalPaid = schedule.Payments?.Where(p => p.Status == "Completed").Sum(p => p.Amount) ?? 0;
                 var isPaid = totalPaid >= schedule.Amount;
-                var amountUsdDisplay = schedule.AmountUSD.HasValue ? schedule.AmountUSD.Value.ToString("N2") : "0.00";
-                
+
                 <!-- View Details Modal -->
                 <div class="modal fade" id="scheduleModal@(schedule.ScheduleID)" tabindex="-1" data-bs-backdrop="false">
                     <div class="modal-dialog modal-lg">
@@ -251,12 +254,8 @@
                                     <div class="col-6">
                                         <label class="text-muted small">Amount (PKR)</label>
                                         <p><strong style="color: #9C6ADE;">
-                                            <span data-format-number="@schedule.Amount">@($"{schedule.Amount:N0}")</span>
+                                            @schedule.Amount.ToString("N0", EnUs)
                                         </strong></p>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="text-muted small">Amount (USD)</label>
-                                        <p><strong>@amountUsdDisplay</strong></p>
                                     </div>
                                     <div class="col-6">
                                         <label class="text-muted small">Surcharge Applied</label>
@@ -264,7 +263,7 @@
                                     </div>
                                     <div class="col-6">
                                         <label class="text-muted small">Surcharge Rate</label>
-                                        <p>@((schedule.SurchargeRate * 100).ToString("N1"))%</p>
+                                        <p>@schedule.SurchargeRate.ToString("0.####")</p>
                                     </div>
                                 </div>
 
@@ -287,7 +286,7 @@
                                                 {
                                                     <tr>
                                                         <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
-                                                        <td><strong>@($"{payment.Amount:N2}") PKR</strong></td>
+                                                        <td><strong>@payment.Amount.ToString("N2", EnUs) PKR</strong></td>
                                                         <td>@payment.Method</td>
                                                         <td><small>@payment.ReferenceNo</small></td>
                                                     </tr>
@@ -360,17 +359,12 @@
                                             <label class="form-label">Amount (PKR)</label>
                                             <input type="number" name="Amount" step="0.01" class="form-control js-installment-amount" value="@schedule.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
                                         </div>
-
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label">Amount (USD)</label>
-                                            <input type="number" name="AmountUSD" step="0.01" class="form-control" value="@(schedule.AmountUSD ?? 0m)" />
-                                        </div>
                                     </div>
 
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Surcharge Rate (%)</label>
-                                            <input type="number" name="SurchargeRate" step="0.01" class="form-control" value="@((schedule.SurchargeRate * 100).ToString("N2"))" />
+                                            <label class="form-label">Surcharge Rate</label>
+                                            <input type="number" name="SurchargeRate" step="0.0001" class="form-control" value="@schedule.SurchargeRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
                                         </div>
 
                                         <div class="col-md-6 mb-3">
@@ -450,6 +444,86 @@
         border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
+    }
+
+    .plan-balance-callout {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    .plan-balance-callout-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.9;
+        margin-bottom: 0.35rem;
+    }
+
+    .plan-balance-callout-pkr {
+        font-size: 1.85rem;
+        font-weight: 800;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+    }
+
+    .plan-balance-callout-currency {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-left: 0.35rem;
+        opacity: 0.85;
+    }
+
+    .plan-balance-callout-hint {
+        font-size: 0.8rem;
+        margin-top: 0.35rem;
+        opacity: 0.85;
+    }
+
+    .plan-balance-callout-sub {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        opacity: 0.8;
+        margin-bottom: 0.2rem;
+    }
+
+    .plan-balance-callout-usd {
+        font-size: 1.25rem;
+        font-weight: 800;
+    }
+
+    .plan-balance--positive {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(52, 211, 153, 0.12) 100%);
+        border-left: 5px solid #10b981;
+    }
+
+    .plan-balance--positive .plan-balance-callout-title,
+    .plan-balance--positive .plan-balance-callout-pkr {
+        color: #047857;
+    }
+
+    .plan-balance--negative {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(252, 165, 165, 0.1) 100%);
+        border-left: 5px solid #ef4444;
+    }
+
+    .plan-balance--negative .plan-balance-callout-title,
+    .plan-balance--negative .plan-balance-callout-pkr {
+        color: #b91c1c;
+    }
+
+    .plan-balance--zero {
+        background: linear-gradient(135deg, rgba(156, 106, 222, 0.14) 0%, rgba(167, 139, 250, 0.08) 100%);
+        border-left: 5px solid #9C6ADE;
+    }
+
+    .plan-balance--zero .plan-balance-callout-title,
+    .plan-balance--zero .plan-balance-callout-pkr {
+        color: #6b21a8;
     }
 
     /* Remove backdrop completely */

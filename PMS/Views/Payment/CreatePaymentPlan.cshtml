@@ -53,12 +53,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="Currency" class="form-label">Primary Currency *</label>
-                                <select id="Currency" class="form-select">
-                                    <option value="PKR" selected>PKR (Pakistani Rupee)</option>
-                                    <option value="USD">USD (United States Dollar)</option>
-                                </select>
-                                <small class="text-muted">Amounts auto-convert using the configured exchange rate.</small>
+                                <label class="form-label">Primary Currency</label>
+                                <input type="text" class="form-control" value="PKR (Pakistani Rupee)" readonly />
                             </div>
                         </div>
                     </div>
@@ -81,22 +77,7 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="TotalAmountUSD" class="form-label">Total Amount (USD)</label>
-                                <input type="number" id="TotalAmountUSD" step="0.01" class="form-control" placeholder="e.g., 10000" />
-                                <small class="text-muted">Auto-calculated from PKR when PKR is primary.</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="ExchangeRate" class="form-label">Exchange Rate (1 USD = PKR)</label>
-                                <input type="number" id="ExchangeRate" step="0.0001" class="form-control" value="@((decimal?)ViewBag.UsdToPkrRate ?? 1m)" readonly />
-                                <small class="text-muted">Managed via configuration key <code>Currency:USDToPKR</code>.</small>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="hidden" id="ExchangeRate" value="@((decimal?)ViewBag.UsdToPkrRate ?? 1m)" />
 
                     <!-- Payment Frequency hidden - selected in child section -->
                     <input type="hidden" asp-for="Frequency" id="Frequency" />
@@ -137,17 +118,18 @@
                                     <small class="text-muted">Token payment amount (Installment 0 - No surcharge applied)</small>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="tokenAmountUSD" class="form-label">Token Amount (USD)</label>
-                                    <input type="number" id="tokenAmountUSD" step="0.01" class="form-control" placeholder="Auto-calculated" readonly />
-                                </div>
-                            </div>
                             <div class="col-md-12">
                                 <div class="mb-3">
                                     <label for="tokenPaymentDescription" class="form-label">Token Payment Description *</label>
                                     <input type="text" id="tokenPaymentDescription" class="form-control" placeholder="e.g., Booking Token" required />
                                     <small class="text-muted">Used only for Installment 0 (token).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="tokenDueDate" class="form-label">Token Due Date *</label>
+                                    <input type="date" id="tokenDueDate" class="form-control" required />
+                                    <small class="text-muted">Due date for installment 0 (token). Independent of the first regular installment date.</small>
                                 </div>
                             </div>
                         </div>
@@ -166,15 +148,16 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="possessionAmountUSD" class="form-label">Possession Amount (USD)</label>
-                                    <input type="number" id="possessionAmountUSD" step="0.01" class="form-control" placeholder="Auto-calculated" readonly />
+                                    <label for="possessionPaymentDescription" class="form-label">Possession Account Head</label>
+                                    <input type="text" id="possessionPaymentDescription" class="form-control" placeholder="e.g., Possession Charges" />
+                                    <small class="text-muted">Required only when possession amount is greater than zero.</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="possessionPaymentDescription" class="form-label">Possession Account Head</label>
-                                    <input type="text" id="possessionPaymentDescription" class="form-control" placeholder="e.g., Possession Charges" />
-                                    <small class="text-muted">Required only when possession amount is greater than zero.</small>
+                                    <label for="possessionDueDate" class="form-label">Possession Due Date</label>
+                                    <input type="date" id="possessionDueDate" class="form-control" />
+                                    <small class="text-muted">Required when possession amount is greater than zero.</small>
                                 </div>
                             </div>
                         </div>
@@ -202,12 +185,6 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="installmentAmountUSD" class="form-label">Installment Amount (USD)</label>
-                                    <input type="number" id="installmentAmountUSD" step="0.01" class="form-control" placeholder="Auto-calculated" readonly />
-                                </div>
-                            </div>
                         </div>
 
                         <div class="row">
@@ -245,9 +222,9 @@
 
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="surchargeRate" class="form-label">Surcharge Rate (%) *</label>
-                                    <input type="number" id="surchargeRate" step="0.01" class="form-control" value="5" required />
-                                    <small class="text-muted">Daily surcharge rate percentage (e.g., 5 = 5% per day)</small>
+                                    <label for="surchargeRate" class="form-label">Surcharge Rate *</label>
+                                    <input type="number" id="surchargeRate" step="0.0001" class="form-control" value="0.05" required />
+                                    <small class="text-muted">Use fractional rate (e.g., 0.05 means 5% per day)</small>
                                 </div>
                             </div>
                         </div>
@@ -269,12 +246,12 @@
                             <p class="mb-1"><strong>Total Installments:</strong> <span id="previewTotalInstallments">0</span></p>
                             <p class="mb-1"><strong>Token:</strong> <span id="previewToken">Not included</span></p>
                             <p class="mb-1"><strong>Possession:</strong> <span id="previewPossession">Not included</span></p>
-                            <p class="mb-1"><strong>Amount per Installment:</strong> PKR <span id="previewAmount">0.00</span> / USD <span id="previewAmountUSD">0.00</span></p>
+                            <p class="mb-1"><strong>Amount per Installment:</strong> PKR <span id="previewAmount">0.00</span></p>
                             <p class="mb-1"><strong>Frequency:</strong> <span id="previewFrequency">-</span></p>
-                            <p class="mb-1"><strong>Total Installments Amount:</strong> PKR <span id="previewTotalInstallmentsAmount">0.00</span> / USD <span id="previewTotalInstallmentsAmountUSD">0.00</span></p>
-                            <p class="mb-1"><strong>Token Amount:</strong> PKR <span id="previewTokenAmount">0.00</span> / USD <span id="previewTokenAmountUSD">0.00</span></p>
-                            <p class="mb-1"><strong>Possession Amount:</strong> PKR <span id="previewPossessionAmount">0.00</span> / USD <span id="previewPossessionAmountUSD">0.00</span></p>
-                            <p class="mb-0"><strong>Grand Total (Token + Installments + Possession):</strong> PKR <span id="previewGrandTotal">0.00</span> / USD <span id="previewGrandTotalUSD">0.00</span> / Plan Total PKR <span id="previewPlanTotal">0.00</span> / Plan Total USD <span id="previewPlanTotalUSD">0.00</span></p>
+                            <p class="mb-1"><strong>Total Installments Amount:</strong> PKR <span id="previewTotalInstallmentsAmount">0.00</span></p>
+                            <p class="mb-1"><strong>Token Amount:</strong> PKR <span id="previewTokenAmount">0.00</span></p>
+                            <p class="mb-1"><strong>Possession Amount:</strong> PKR <span id="previewPossessionAmount">0.00</span></p>
+                            <p class="mb-0"><strong>Grand Total (Token + Installments + Possession):</strong> PKR <span id="previewGrandTotal">0.00</span> / Plan Total PKR <span id="previewPlanTotal">0.00</span></p>
                         </div>
                         <div id="amountValidationMessage" class="mt-2" style="display: none;">
                             <div class="alert alert-danger mb-0">
@@ -335,213 +312,50 @@
                 return rate && rate > 0 ? rate : 1;
             }
 
-            function updateCurrencyAccessibility() {
-                var currency = $('#Currency').val();
-                var isUsd = currency === 'USD';
-
-                $('#TotalAmount').prop('readonly', isUsd);
-                $('#TotalAmountUSD').prop('readonly', !isUsd);
-
-                $('#tokenAmount').prop('readonly', isUsd);
-                $('#tokenAmountUSD').prop('readonly', !isUsd);
-                $('#tokenAmount').prop('required', !isUsd && $('#includeToken').is(':checked'));
-                $('#tokenAmountUSD').prop('required', isUsd && $('#includeToken').is(':checked'));
-                $('#tokenPaymentDescription').prop('required', $('#includeToken').is(':checked'));
-                $('#possessionAmount').prop('readonly', isUsd);
-                $('#possessionAmountUSD').prop('readonly', !isUsd);
-
-                // Installment amount (PKR) is user-editable
-                $('#installmentAmount').prop('readonly', false);
-                $('#installmentAmountUSD').prop('readonly', true);
-                $('#installmentAmount').prop('required', true);
-                $('#installmentAmountUSD').prop('required', false);
+            function updatePossessionFieldRequirements() {
+                var amount = parseAmount('#possessionAmount');
+                var needsDetails = amount > 0;
+                $('#possessionPaymentDescription').prop('required', needsDetails);
+                $('#possessionDueDate').prop('required', needsDetails);
             }
 
-            function syncPlanAmounts(sourceCurrency) {
-                var rate = getExchangeRate();
-                if (sourceCurrency === 'USD') {
-                    var usdRaw = $('#TotalAmountUSD').val();
-                    if (usdRaw === '') {
-                        $('#TotalAmount').val('');
-                    } else {
-                        var usd = parseFloat(usdRaw);
-                        writeAmount('#TotalAmount', usd * rate);
-                    }
-                } else {
-                    var sspRaw = $('#TotalAmount').val();
-                    if (sspRaw === '') {
-                        $('#TotalAmountUSD').val('');
-                    } else {
-                        var ssp = parseFloat(sspRaw);
-                        writeAmount('#TotalAmountUSD', rate ? ssp / rate : 0);
-                    }
-                }
+            function toggleTokenSection() {
+                var includeToken = $('#includeToken').is(':checked');
+                $('#tokenAmountSection').toggle(includeToken);
+                $('#tokenAmount').prop('required', includeToken);
+                $('#tokenPaymentDescription').prop('required', includeToken);
+                $('#tokenDueDate').prop('required', includeToken);
             }
 
-            function syncTokenAmounts(sourceCurrency) {
-                var rate = getExchangeRate();
-                if (sourceCurrency === 'USD') {
-                    var usdRaw = $('#tokenAmountUSD').val();
-                    if (usdRaw === '') {
-                        $('#tokenAmount').val('');
-                    } else {
-                        var usd = parseFloat(usdRaw);
-                        writeAmount('#tokenAmount', usd * rate);
-                    }
-                } else {
-                    var sspRaw = $('#tokenAmount').val();
-                    if (sspRaw === '') {
-                        $('#tokenAmountUSD').val('');
-                    } else {
-                        var ssp = parseFloat(sspRaw);
-                        writeAmount('#tokenAmountUSD', rate ? ssp / rate : 0);
-                    }
-                }
-            }
-
-            function syncPossessionAmounts(sourceCurrency) {
-                var rate = getExchangeRate();
-                if (sourceCurrency === 'USD') {
-                    var usdRaw = $('#possessionAmountUSD').val();
-                    if (usdRaw === '') {
-                        $('#possessionAmount').val('');
-                    } else {
-                        var usd = parseFloat(usdRaw);
-                        writeAmount('#possessionAmount', usd * rate);
-                    }
-                } else {
-                    var sspRaw = $('#possessionAmount').val();
-                    if (sspRaw === '') {
-                        $('#possessionAmountUSD').val('');
-                    } else {
-                        var ssp = parseFloat(sspRaw);
-                        writeAmount('#possessionAmountUSD', rate ? ssp / rate : 0);
-                    }
-                }
-            }
-
-            function syncInstallmentAmounts(sourceCurrency) {
-                var rate = getExchangeRate();
-                if (sourceCurrency === 'USD') {
-                    var usdRaw = $('#installmentAmountUSD').val();
-                    if (usdRaw === '') {
-                        $('#installmentAmount').val('');
-                    } else {
-                        var usd = parseFloat(usdRaw);
-                        writeAmount('#installmentAmount', usd * rate);
-                    }
-                } else {
-                    var sspRaw = $('#installmentAmount').val();
-                    if (sspRaw === '') {
-                        $('#installmentAmountUSD').val('');
-                    } else {
-                        var ssp = parseFloat(sspRaw);
-                        writeAmount('#installmentAmountUSD', rate ? ssp / rate : 0);
-                    }
-                }
-            }
-
-            /** Auto-calculate suggested installment amount when user has not overridden it. */
             function recalculateInstallmentAmount(force) {
                 if (installmentAmountManual && !force) {
-                    syncInstallmentAmounts('PKR');
                     return;
                 }
-                var planTotalSSP = parseAmount('#TotalAmount');
+
+                var planTotalPkr = parseAmount('#TotalAmount');
                 var includeToken = $('#includeToken').is(':checked');
-                var tokenAmountSSP = includeToken ? parseAmount('#tokenAmount') : 0;
-                var possessionAmountSSP = parseAmount('#possessionAmount');
+                var tokenAmountPkr = includeToken ? parseAmount('#tokenAmount') : 0;
+                var possessionAmountPkr = parseAmount('#possessionAmount');
                 var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
-                var remainder = planTotalSSP - tokenAmountSSP - possessionAmountSSP;
-                var installmentPKR = (totalInstallments > 0 && remainder >= 0) ? remainder / totalInstallments : 0;
-                var rate = getExchangeRate();
-                writeAmount('#installmentAmount', installmentPKR);
-                writeAmount('#installmentAmountUSD', rate ? installmentPKR / rate : 0);
+                var remainder = planTotalPkr - tokenAmountPkr - possessionAmountPkr;
+                var installmentPkr = (totalInstallments > 0 && remainder >= 0) ? remainder / totalInstallments : 0;
+
+                writeAmount('#installmentAmount', installmentPkr);
             }
 
-            function updatePreview() {
-                recalculateInstallmentAmount(false);
-                var exchangeRate = getExchangeRate();
-                var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
-                var includeToken = $('#includeToken').is(':checked');
-                var tokenAmountSSP = includeToken ? parseAmount('#tokenAmount') : 0;
-                var tokenAmountUSD = exchangeRate ? tokenAmountSSP / exchangeRate : 0;
-                var possessionAmountSSP = parseAmount('#possessionAmount');
-                var possessionAmountUSD = exchangeRate ? possessionAmountSSP / exchangeRate : 0;
-                var installmentAmountSSP = parseAmount('#installmentAmount');
-                var installmentAmountUSD = exchangeRate ? installmentAmountSSP / exchangeRate : 0;
-                var frequency = $('#scheduleFrequency').val();
-                var planTotalSSP = parseAmount('#TotalAmount');
-                var planTotalUSD = parseAmount('#TotalAmountUSD');
-                if (planTotalUSD <= 0 && planTotalSSP > 0) {
-                    planTotalUSD = exchangeRate ? planTotalSSP / exchangeRate : 0;
-                }
-
-                var totalInstallmentsAmountSSP = totalInstallments * installmentAmountSSP;
-                var totalInstallmentsAmountUSD = exchangeRate ? totalInstallmentsAmountSSP / exchangeRate : 0;
-                var grandTotalSSP = totalInstallmentsAmountSSP + (includeToken ? tokenAmountSSP : 0) + possessionAmountSSP;
-                var grandTotalUSD = exchangeRate ? grandTotalSSP / exchangeRate : 0;
-
-                var includePossession = possessionAmountSSP > 0;
-                var totalCount = totalInstallments + (includeToken ? 1 : 0) + (includePossession ? 1 : 0);
-
-                $('#previewTotalInstallments').text(totalCount);
-                if (includeToken) {
-                    if (tokenAmountSSP > 0) {
-                        $('#previewToken').text('Included (Installment 0) - No surcharge');
-                    } else {
-                        $('#previewToken').text('Included (Installment 0) - Amount not set');
-                    }
-                } else {
-                    $('#previewToken').text('Not included');
-                }
-                if (includePossession) {
-                    $('#previewPossession').text('Included (Last Payment)');
-                } else {
-                    $('#previewPossession').text('Not included');
-                }
-
-                $('#previewAmount').text(formatAmount(installmentAmountSSP));
-                $('#previewAmountUSD').text(formatAmount(installmentAmountUSD));
-                $('#previewFrequency').text(frequency || '-');
-                $('#previewTotalInstallmentsAmount').text(formatAmount(totalInstallmentsAmountSSP));
-                $('#previewTotalInstallmentsAmountUSD').text(formatAmount(totalInstallmentsAmountUSD));
-                $('#previewTokenAmount').text(formatAmount(tokenAmountSSP));
-                $('#previewTokenAmountUSD').text(formatAmount(tokenAmountUSD));
-                $('#previewPossessionAmount').text(formatAmount(possessionAmountSSP));
-                $('#previewPossessionAmountUSD').text(formatAmount(possessionAmountUSD));
-                $('#previewGrandTotal').text(formatAmount(grandTotalSSP));
-                $('#previewGrandTotalUSD').text(formatAmount(grandTotalUSD));
-                $('#previewPlanTotal').text(formatAmount(planTotalSSP));
-                $('#previewPlanTotalUSD').text(formatAmount(planTotalUSD));
-
-                validateTotalAmount(planTotalSSP, grandTotalSSP, includeToken, tokenAmountSSP, totalInstallmentsAmountSSP, possessionAmountSSP);
-
-                // Duration (Months) is derived from Frequency and Total Installments (field is hidden)
-                var monthsPerInstallment = { 'Monthly': 1, 'Quarterly': 3, 'Half Yearly': 6, 'Yearly': 12 }[frequency] || 1;
-                $('#DurationMonths').val(frequency && totalInstallments > 0 ? totalInstallments * monthsPerInstallment : '');
-            }
-
-            function validateTotalAmount(planTotalSSP, grandTotalSSP, includeToken, tokenAmountSSP, totalInstallmentsAmountSSP, possessionAmountSSP) {
+            function validateTotalAmount(planTotalPkr, grandTotalPkr, includeToken, tokenAmountPkr, totalInstallmentsAmountPkr, possessionAmountPkr) {
                 var validationDiv = $('#amountValidationMessage');
                 var messageText = $('#validationMessageText');
-                var exchangeRate = getExchangeRate();
-                var totalInstallmentsAmountUSD = exchangeRate ? totalInstallmentsAmountSSP / exchangeRate : 0;
-                var tokenAmountUSD = exchangeRate ? tokenAmountSSP / exchangeRate : 0;
-                var possessionAmountUSD = exchangeRate ? possessionAmountSSP / exchangeRate : 0;
-                var grandTotalUSD = exchangeRate ? grandTotalSSP / exchangeRate : 0;
-                var planTotalUSD = exchangeRate ? planTotalSSP / exchangeRate : 0;
 
-                if (planTotalSSP > 0 && grandTotalSSP > planTotalSSP) {
-                    var excessSSP = grandTotalSSP - planTotalSSP;
-                    var excessUSD = exchangeRate ? excessSSP / exchangeRate : 0;
+                if (planTotalPkr > 0 && grandTotalPkr > planTotalPkr) {
+                    var excessPkr = grandTotalPkr - planTotalPkr;
                     messageText.html(
-                        'Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmountSSP) + ' / USD ' + formatAmount(totalInstallmentsAmountUSD) + ') + ' +
-                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountSSP) : '0.00') + ' / USD ' + (includeToken ? formatAmount(tokenAmountUSD) : '0.00') + ') + ' +
-                        'Possession Amount (PKR ' + formatAmount(possessionAmountSSP) + ' / USD ' + formatAmount(possessionAmountUSD) + ') = PKR ' +
-                        formatAmount(grandTotalSSP) + ' / USD ' + formatAmount(grandTotalUSD) +
-                        ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalSSP) + ' / USD ' + formatAmount(planTotalUSD) + '). Excess: PKR ' +
-                        formatAmount(excessSSP) + ' / USD ' + formatAmount(excessUSD) + '.'
+                        'Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmountPkr) + ') + ' +
+                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountPkr) : '0.00') + ') + ' +
+                        'Possession Amount (PKR ' + formatAmount(possessionAmountPkr) + ') = PKR ' +
+                        formatAmount(grandTotalPkr) +
+                        ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalPkr) + '). Excess: PKR ' +
+                        formatAmount(excessPkr) + '.'
                     );
                     validationDiv.show();
                     return false;
@@ -551,33 +365,44 @@
                 return true;
             }
 
-            function toggleTokenSection() {
-                if ($('#includeToken').is(':checked')) {
-                    $('#tokenAmountSection').show();
-                    $('#tokenAmount').prop('required', $('#Currency').val() === 'PKR');
-                    $('#tokenAmountUSD').prop('required', $('#Currency').val() === 'USD');
-                    $('#tokenPaymentDescription').prop('required', true);
-                } else {
-                    $('#tokenAmountSection').hide();
-                    $('#tokenAmount').prop('required', false);
-                    $('#tokenAmountUSD').prop('required', false);
-                    $('#tokenPaymentDescription').prop('required', false);
-                }
-            }
+            function updatePreview() {
+                recalculateInstallmentAmount(false);
 
-            $('#Currency').on('change', function() {
-                updateCurrencyAccessibility();
-                var currency = $(this).val();
-                syncPlanAmounts(currency);
-                syncTokenAmounts(currency);
-                syncPossessionAmounts(currency);
-                syncInstallmentAmounts('PKR');
-                updatePreview();
-            });
+                var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
+                var includeToken = $('#includeToken').is(':checked');
+                var tokenAmountPkr = includeToken ? parseAmount('#tokenAmount') : 0;
+                var possessionAmountPkr = parseAmount('#possessionAmount');
+                var installmentAmountPkr = parseAmount('#installmentAmount');
+                var frequency = $('#scheduleFrequency').val();
+                var planTotalPkr = parseAmount('#TotalAmount');
+
+                var totalInstallmentsAmountPkr = totalInstallments * installmentAmountPkr;
+                var grandTotalPkr = totalInstallmentsAmountPkr + (includeToken ? tokenAmountPkr : 0) + possessionAmountPkr;
+
+                var includePossession = possessionAmountPkr > 0;
+                var totalCount = totalInstallments + (includeToken ? 1 : 0) + (includePossession ? 1 : 0);
+
+                $('#previewTotalInstallments').text(totalCount);
+                $('#previewToken').text(includeToken
+                    ? (tokenAmountPkr > 0 ? 'Included (Installment 0) - No surcharge' : 'Included (Installment 0) - Amount not set')
+                    : 'Not included');
+                $('#previewPossession').text(includePossession ? 'Included (Last Payment)' : 'Not included');
+                $('#previewAmount').text(formatAmount(installmentAmountPkr));
+                $('#previewFrequency').text(frequency || '-');
+                $('#previewTotalInstallmentsAmount').text(formatAmount(totalInstallmentsAmountPkr));
+                $('#previewTokenAmount').text(formatAmount(tokenAmountPkr));
+                $('#previewPossessionAmount').text(formatAmount(possessionAmountPkr));
+                $('#previewGrandTotal').text(formatAmount(grandTotalPkr));
+                $('#previewPlanTotal').text(formatAmount(planTotalPkr));
+
+                validateTotalAmount(planTotalPkr, grandTotalPkr, includeToken, tokenAmountPkr, totalInstallmentsAmountPkr, possessionAmountPkr);
+
+                var monthsPerInstallment = { Monthly: 1, Quarterly: 3, 'Half Yearly': 6, Yearly: 12 }[frequency] || 1;
+                $('#DurationMonths').val(frequency && totalInstallments > 0 ? totalInstallments * monthsPerInstallment : '');
+            }
 
             $('#includeToken').on('change', function() {
                 toggleTokenSection();
-                syncTokenAmounts($('#Currency').val());
                 updatePreview();
             });
 
@@ -586,67 +411,23 @@
                 updatePreview();
             });
 
-            $('#TotalAmount').on('input', function() {
-                if ($('#Currency').val() === 'PKR') {
-                    syncPlanAmounts('PKR');
-                    updatePreview();
-                }
-            });
-
-            $('#TotalAmountUSD').on('input', function() {
-                if ($('#Currency').val() === 'USD') {
-                    syncPlanAmounts('USD');
-                    updatePreview();
-                }
-            });
-
-            $('#tokenAmount').on('input', function() {
-                if ($('#Currency').val() === 'PKR') {
-                    syncTokenAmounts('PKR');
-                    updatePreview();
-                }
-            });
-
-            $('#tokenAmountUSD').on('input', function() {
-                if ($('#Currency').val() === 'USD') {
-                    syncTokenAmounts('USD');
-                    updatePreview();
-                }
-            });
-
-            $('#possessionAmount').on('input', function() {
-                if ($('#Currency').val() === 'PKR') {
-                    syncPossessionAmounts('PKR');
-                    updatePreview();
-                }
-            });
-
-            $('#possessionAmountUSD').on('input', function() {
-                if ($('#Currency').val() === 'USD') {
-                    syncPossessionAmounts('USD');
-                    updatePreview();
-                }
+            $('#TotalAmount, #tokenAmount, #possessionAmount').on('input', function() {
+                updatePossessionFieldRequirements();
+                updatePreview();
             });
 
             $('#installmentAmount').on('input', function() {
                 installmentAmountManual = $(this).val() !== '';
-                syncInstallmentAmounts('PKR');
                 updatePreview();
             });
 
-            $('#totalInstallments, #scheduleFrequency, #paymentDescription, #DurationMonths, #tokenPaymentDescription, #possessionPaymentDescription').on('change input', updatePreview);
+            $('#totalInstallments, #paymentDescription, #DurationMonths, #tokenPaymentDescription, #possessionPaymentDescription').on('change input', updatePreview);
 
-            // Initialize defaults
-            updateCurrencyAccessibility();
             toggleTokenSection();
-            syncPlanAmounts($('#Currency').val());
-            syncTokenAmounts($('#Currency').val());
-            syncPossessionAmounts($('#Currency').val());
+            updatePossessionFieldRequirements();
             recalculateInstallmentAmount(true);
-            syncInstallmentAmounts('PKR');
             updatePreview();
 
-            // Form submission
             $('#paymentPlanForm').on('submit', function(e) {
                 e.preventDefault();
 
@@ -662,24 +443,15 @@
                     return false;
                 }
 
-                // Ensure amounts are synced before reading values
-                var currentCurrency = $('#Currency').val();
-                syncPlanAmounts(currentCurrency);
-                syncTokenAmounts(currentCurrency);
-                syncPossessionAmounts(currentCurrency);
-                syncInstallmentAmounts('PKR');
-
                 var includeToken = $('#includeToken').is(':checked');
-                var tokenAmountSSP = includeToken ? parseAmount('#tokenAmount') : null;
-                var tokenAmountUSD = includeToken ? parseAmount('#tokenAmountUSD') : null;
-                var possessionAmountSSP = parseAmount('#possessionAmount');
-                var possessionAmountUSD = parseAmount('#possessionAmountUSD');
+                var tokenAmountPkr = includeToken ? parseAmount('#tokenAmount') : null;
+                var possessionAmountPkr = parseAmount('#possessionAmount');
                 var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
-                var installmentAmountSSP = parseAmount('#installmentAmount');
-                var planTotalSSP = parseAmount('#TotalAmount');
+                var installmentAmountPkr = parseAmount('#installmentAmount');
+                var planTotalPkr = parseAmount('#TotalAmount');
                 var exchangeRate = getExchangeRate();
 
-                if (includeToken && (!tokenAmountSSP || tokenAmountSSP <= 0)) {
+                if (includeToken && (!tokenAmountPkr || tokenAmountPkr <= 0)) {
                     alert('Please enter Token Amount if Token is included.');
                     return false;
                 }
@@ -688,39 +460,47 @@
                     $('#tokenPaymentDescription').focus();
                     return false;
                 }
-                if (possessionAmountSSP > 0 && !$('#possessionPaymentDescription').val().trim()) {
+                if (possessionAmountPkr > 0 && !$('#possessionPaymentDescription').val().trim()) {
                     alert('Please enter Possession Account Head when Possession Amount is greater than zero.');
                     $('#possessionPaymentDescription').focus();
                     return false;
                 }
+                if (includeToken && !$('#tokenDueDate').val()) {
+                    alert('Please enter Token Due Date if Token is included.');
+                    $('#tokenDueDate').focus();
+                    return false;
+                }
+                if (possessionAmountPkr > 0 && !$('#possessionDueDate').val()) {
+                    alert('Please enter Possession Due Date when Possession Amount is greater than zero.');
+                    $('#possessionDueDate').focus();
+                    return false;
+                }
 
-                var totalInstallmentsAmount = totalInstallments * installmentAmountSSP;
-                var grandTotal = totalInstallmentsAmount + (includeToken ? tokenAmountSSP : 0) + possessionAmountSSP;
+                var totalInstallmentsAmount = totalInstallments * installmentAmountPkr;
+                var grandTotal = totalInstallmentsAmount + (includeToken ? tokenAmountPkr : 0) + possessionAmountPkr;
 
-                if (grandTotal > planTotalSSP) {
-                    var excess = grandTotal - planTotalSSP;
+                if (grandTotal > planTotalPkr) {
+                    var excess = grandTotal - planTotalPkr;
                     alert(
-                        'Validation Error: Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmount) + ' / USD ' + formatAmount(exchangeRate ? totalInstallmentsAmount / exchangeRate : 0) + ') + ' +
-                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountSSP) : '0.00') + ' / USD ' + (includeToken ? formatAmount(tokenAmountUSD || 0) : '0.00') + ') + ' +
-                        'Possession Amount (PKR ' + formatAmount(possessionAmountSSP) + ' / USD ' + formatAmount(possessionAmountUSD) + ') = PKR ' +
-                        formatAmount(grandTotal) + ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalSSP) + '). Excess: PKR ' + formatAmount(excess) + '.'
+                        'Validation Error: Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmount) + ') + ' +
+                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountPkr) : '0.00') + ') + ' +
+                        'Possession Amount (PKR ' + formatAmount(possessionAmountPkr) + ') = PKR ' +
+                        formatAmount(grandTotal) + ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalPkr) + '). Excess: PKR ' + formatAmount(excess) + '.'
                     );
                     return false;
                 }
 
-                var surchargeInput = parseFloat($('#surchargeRate').val()) || 0;
-                if (surchargeInput > 0 && surchargeInput < 1) {
-                    surchargeInput = surchargeInput * 100;
-                    $('#surchargeRate').val(surchargeInput.toFixed(2));
+                var surchargeInput = parseFloat($('#surchargeRate').val());
+                if (!isFinite(surchargeInput) || surchargeInput < 0) {
+                    surchargeInput = 0.05;
                 }
 
                 var planData = {
                     PlanName: $('#PlanName').val(),
                     ProjectID: $('#ProjectID').val() || null,
-                    TotalAmount: planTotalSSP,
-                    TotalAmountUSD: parseAmount('#TotalAmountUSD'),
+                    TotalAmount: planTotalPkr,
                     ExchangeRate: exchangeRate,
-                    Currency: currentCurrency,
+                    Currency: 'PKR',
                     DurationMonths: parseInt($('#DurationMonths').val(), 10),
                     Frequency: $('#scheduleFrequency').val(),
                     Description: $('#Description').val()
@@ -728,20 +508,19 @@
 
                 var scheduleData = {
                     IncludeToken: includeToken,
-                    TokenAmount: tokenAmountSSP,
-                    TokenAmountUSD: includeToken ? tokenAmountUSD : null,
+                    TokenAmount: tokenAmountPkr,
                     TokenPaymentDescription: includeToken ? $('#tokenPaymentDescription').val() : null,
-                    PossessionAmount: possessionAmountSSP,
-                    PossessionAmountUSD: possessionAmountUSD > 0 ? possessionAmountUSD : null,
-                    PossessionPaymentDescription: possessionAmountSSP > 0 ? $('#possessionPaymentDescription').val() : null,
+                    TokenDueDate: includeToken ? ($('#tokenDueDate').val() || null) : null,
+                    PossessionAmount: possessionAmountPkr,
+                    PossessionPaymentDescription: possessionAmountPkr > 0 ? $('#possessionPaymentDescription').val() : null,
+                    PossessionDueDate: possessionAmountPkr > 0 ? ($('#possessionDueDate').val() || null) : null,
                     TotalInstallments: totalInstallments,
-                    InstallmentAmount: installmentAmountSSP,
-                    InstallmentAmountUSD: parseAmount('#installmentAmountUSD'),
+                    InstallmentAmount: installmentAmountPkr,
                     Frequency: $('#scheduleFrequency').val(),
                     FirstInstallmentDueDate: $('#firstInstallmentDueDate').val(),
                     PaymentDescription: $('#paymentDescription').val(),
                     SurchargeApplied: $('#surchargeApplied').is(':checked'),
-                    SurchargeRate: surchargeInput / 100
+                    SurchargeRate: surchargeInput
                 };
 
                 var formData = {
@@ -757,7 +536,7 @@
                     contentType: 'application/json',
                     data: JSON.stringify(formData),
                     headers: {
-                        'RequestVerificationToken': token
+                        RequestVerificationToken: token
                     },
                     success: function(response) {
                         if (response.success) {

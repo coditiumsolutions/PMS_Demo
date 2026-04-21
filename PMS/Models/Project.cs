@@ -26,6 +26,10 @@ namespace PMS.Models
         [StringLength(1000)]
         public string? Sizes { get; set; }
 
+        /// <summary>Comma-separated list of sub-projects (e.g. Phase 1, Block A).</summary>
+        [StringLength(1000)]
+        public string? SubProjects { get; set; }
+
         /// <summary>Comma-separated list of property types (e.g. Plot, Apartment, House).</summary>
         [StringLength(500)]
         public string? PropertyTypes { get; set; }

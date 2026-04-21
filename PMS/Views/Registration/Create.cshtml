@@ -93,6 +93,13 @@
                         </select>
                         <span asp-validation-for="Size" class="text-danger"></span>
                     </div>
+                    <div class="mb-3">
+                        <label asp-for="SubProject" class="form-label">SubProject</label>
+                        <select asp-for="SubProject" class="form-select" id="subProjectSelect" disabled>
+                            <option value="">-- Select Project first --</option>
+                        </select>
+                        <span asp-validation-for="SubProject" class="text-danger"></span>
+                    </div>
                 </div>
             </div>
 
@@ -122,12 +129,15 @@
             this.value = this.value.replace(/[^0-9\+]/g, '');
         });
 
-        // Project / Size loader
+        // Project / Size / SubProject loader
         document.getElementById('projectSelect').addEventListener('change', function () {
             var projectId = this.value;
             var sizeSelect = document.getElementById('sizeSelect');
+            var subProjectSelect = document.getElementById('subProjectSelect');
             sizeSelect.innerHTML = '<option value="">-- Select Size --</option>';
+            subProjectSelect.innerHTML = '<option value="">-- Select SubProject --</option>';
             sizeSelect.disabled = !projectId;
+            subProjectSelect.disabled = !projectId;
             if (projectId) {
                 fetch('@Url.Action("GetProjectSizes", "Registration")?projectId=' + encodeURIComponent(projectId))
                     .then(function (r) { return r.json(); })
@@ -137,6 +147,17 @@
                             opt.value = s;
                             opt.textContent = s;
                             sizeSelect.appendChild(opt);
+                        });
+                    });
+
+                fetch('@Url.Action("GetProjectSubProjects", "Registration")?projectId=' + encodeURIComponent(projectId))
+                    .then(function (r) { return r.json(); })
+                    .then(function (arr) {
+                        arr.forEach(function (s) {
+                            var opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = s;
+                            subProjectSelect.appendChild(opt);
                         });
                     });
             }

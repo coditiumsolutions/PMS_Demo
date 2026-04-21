@@ -1,6 +1,8 @@
 @model Tuple<IEnumerable<PMS.Models.PaymentSchedule>, string>
+@using System.Globalization
 
 @{
+    var EnUs = CultureInfo.GetCultureInfo("en-US");
     var schedules = Model.Item1;
     var tableId = Model.Item2 + "Table";
 }
@@ -77,30 +79,30 @@
                                 <br>
                                 <small class="text-warning">
                                     <i class="fas fa-percentage me-1"></i>
-                                    Surcharge: @((schedule.SurchargeRate * 100).ToString("N1"))%
+                                    Surcharge: @schedule.SurchargeRate.ToString("0.####")
                                 </small>
                             }
                         </td>
                         <td>
-                            <strong style="color: var(--primary-green);">@schedule.Amount</strong>
+                            <strong style="color: var(--primary-green);">@schedule.Amount.ToString("N0", EnUs)</strong>
                             <br>
                             <small class="text-muted">PKR</small>
                         </td>
                         <td>
                             @if (totalPaid > 0)
                             {
-                                <strong style="color: var(--accent-gold);">@totalPaid</strong>
+                                <strong style="color: var(--accent-gold);">@totalPaid.ToString("N0", EnUs)</strong>
                                 <br>
                                 <small class="text-muted">PKR</small>
                                 @if (remaining > 0)
                                 {
                                     <br>
-                                    <small class="text-danger">Balance: @remaining</small>
+                                    <small class="text-danger">Balance: @remaining.ToString("N0", EnUs)</small>
                                 }
                             }
                             else
                             {
-                                <span class="text-muted">0.00</span>
+                                <span class="text-muted">@decimal.Zero.ToString("N0", EnUs)</span>
                             }
                         </td>
                         <td>
@@ -177,15 +179,15 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Amount</small>
-                                            <p><strong style="color: var(--primary-green);">@schedule.Amount) PKR</strong></p>
+                                            <p><strong style="color: var(--primary-green);">@schedule.Amount.ToString("N0", EnUs) PKR</strong></p>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Paid Amount</small>
-                                            <p><strong style="color: var(--accent-gold);">@totalPaid.ToString("N2") PKR</strong></p>
+                                            <p><strong style="color: var(--accent-gold);">@totalPaid.ToString("N2", EnUs) PKR</strong></p>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Balance</small>
-                                            <p><strong class="@(remaining > 0 ? "text-danger" : "text-success")">@remaining PKR</strong></p>
+                                            <p><strong class="@(remaining > 0 ? "text-danger" : "text-success")">@remaining.ToString("N2", EnUs) PKR</strong></p>
                                         </div>
                                     </div>
                                     
@@ -199,7 +201,7 @@
                                                 <div class="list-group-item">
                                                     <div class="d-flex justify-content-between">
                                                         <div>
-                                                            <strong>@payment.Amount.ToString("N2") PKR</strong>
+                                                            <strong>@payment.Amount.ToString("N2", EnUs) PKR</strong>
                                                             <br>
                                                             <small class="text-muted">@payment.PaymentDate.ToString("MMM dd, yyyy")</small>
                                                         </div>

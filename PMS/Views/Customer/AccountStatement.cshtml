@@ -254,13 +254,14 @@
     /* A4 Paper Size Styling */
     .a4-container {
         width: 210mm;
-        height: 297mm;
+        min-height: 297mm;
+        height: auto;
         margin: 0 auto;
         padding: 15mm;
         background: white;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        overflow: hidden;
+        overflow: visible;
     }
 
     .a4-header {
@@ -399,13 +400,14 @@
         
         .a4-container {
             width: 210mm;
-            height: 297mm;
+            min-height: 0;
+            height: auto;
             margin: 0;
             padding: 12mm;
             box-shadow: none;
-            page-break-after: avoid;
-            page-break-inside: avoid;
-            overflow: hidden;
+            page-break-after: auto;
+            page-break-inside: auto;
+            overflow: visible;
         }
         
         .no-print {
@@ -413,7 +415,7 @@
         }
         
         .a4-table {
-            page-break-inside: avoid;
+            page-break-inside: auto;
             font-size: 8px;
         }
         
@@ -424,7 +426,7 @@
         }
         
         .a4-section {
-            page-break-inside: avoid;
+            page-break-inside: auto;
             margin-bottom: 8px;
         }
         

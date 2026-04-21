@@ -1,7 +1,9 @@
 @model IEnumerable<PMS.Models.PaymentSchedule>
+@using System.Globalization
 
 @{
     ViewData["Title"] = "Payment Schedules (Installments)";
+    var EnUs = CultureInfo.GetCultureInfo("en-US");
     var today = DateTime.Now.Date;
     var totalDue = Model.Where(s => s.DueDate >= today).Sum(s => s.Amount);
     var overdue = Model.Where(s => s.DueDate < today && (s.Payments == null || s.Payments.Where(p => p.Status == "Completed").Sum(p => p.Amount) < s.Amount));
@@ -37,14 +39,14 @@
     </div>
     <div class="col-md-3">
         <div class="stats-card">
-            <div class="stats-number">@totalDue</div>
+            <div class="stats-number">@totalDue.ToString("N0", EnUs)</div>
             <div class="stats-label">Upcoming Due (PKR)</div>
             <i class="fas fa-clock fa-2x mt-2" style="color: var(--accent-gold);"></i>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stats-card">
-            <div class="stats-number">@overdueAmount</div>
+            <div class="stats-number">@overdueAmount.ToString("N0", EnUs)</div>
             <div class="stats-label">Overdue Amount (PKR)</div>
             <i class="fas fa-exclamation-circle fa-2x mt-2" style="color: #dc3545;"></i>
         </div>

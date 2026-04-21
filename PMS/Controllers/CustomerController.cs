@@ -662,6 +662,33 @@ namespace PMS.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> GetProjectSubProjects(string projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return Json(Array.Empty<string>());
+            }
+
+            var projectSubProjects = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectID == projectId)
+                .Select(p => p.SubProjects)
+                .FirstOrDefaultAsync();
+
+            var subProjects = string.IsNullOrWhiteSpace(projectSubProjects)
+                ? Array.Empty<string>()
+                : projectSubProjects
+                    .Split(',')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToArray();
+
+            return Json(subProjects);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> GetAvailablePropertiesByProject(string projectId, string registeredSize, int? dealerId)
         {
             var denied = await EnsurePermissionAsync("Read");
@@ -843,7 +870,10 @@ namespace PMS.Controllers
                     cnic = registration.CNIC,
                     phone = registration.Phone,
                     email = registration.Email,
-                    status = registration.Status
+                    status = registration.Status,
+                    projectID = registration.ProjectID,
+                    size = registration.Size,
+                    subProject = registration.SubProject
                 }
             });
         }
@@ -1964,5 +1994,6 @@ namespace PMS.Controllers
                 return Json(new { success = false, message = $"Error deleting attachment: {ex.Message}" });
             }
         }
+
     }
 }

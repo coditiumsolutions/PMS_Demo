@@ -52,9 +52,9 @@
                                 <span asp-validation-for="Location" class="text-danger"></span>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-2">
                                 <label class="form-label">Sizes</label>
-                                <div class="d-flex gap-2 flex-wrap align-items-center">
+                                <div class="d-flex gap-2 flex-wrap align-items-center mb-1">
                                     <input type="text" id="sizeInput" class="form-control" placeholder="e.g. 5 Marla" style="max-width: 200px;" />
                                     <button type="button" id="btnAddSize" class="btn btn-outline-primary btn-sm">
                                         <i class="fas fa-plus me-1"></i>Add
@@ -64,8 +64,24 @@
                                     </button>
                                 </div>
                                 <input type="hidden" asp-for="Sizes" id="sizesValue" />
-                                <div id="sizesList" class="mt-2 d-flex flex-wrap gap-1"></div>
-                                <small class="text-muted">Add sizes one by one; stored as comma-separated in database.</small>
+                                <div id="sizesList" class="mt-1 d-flex flex-wrap gap-1 d-none"></div>
+                                <small class="text-muted d-block mt-1">Add sizes one by one; stored as comma-separated in database.</small>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label">Sub Projects</label>
+                                <div class="d-flex gap-2 flex-wrap align-items-center mb-1">
+                                    <input type="text" id="subProjectInput" class="form-control" placeholder="e.g. Phase 1" style="max-width: 200px;" />
+                                    <button type="button" id="btnAddSubProject" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-plus me-1"></i>Add
+                                    </button>
+                                    <button type="button" id="btnAddMoreSubProject" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-plus-circle me-1"></i>Add more
+                                    </button>
+                                </div>
+                                <input type="hidden" asp-for="SubProjects" id="subProjectsValue" />
+                                <div id="subProjectsList" class="mt-1 d-flex flex-wrap gap-1 d-none"></div>
+                                <small class="text-muted d-block mt-1">Add sub projects one by one; stored as comma-separated in database.</small>
                             </div>
                         </div>
 
@@ -102,53 +118,76 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         (function () {
-            var sizeInput = document.getElementById('sizeInput');
-            var sizesValue = document.getElementById('sizesValue');
-            var sizesList = document.getElementById('sizesList');
-            var list = [];
+            function initChipInput(config) {
+                var input = document.getElementById(config.inputId);
+                var hidden = document.getElementById(config.hiddenId);
+                var listWrap = document.getElementById(config.listId);
+                var addBtn = document.getElementById(config.addButtonId);
+                var addMoreBtn = document.getElementById(config.addMoreButtonId);
+                var list = [];
 
-            function updateHidden() {
-                sizesValue.value = list.join(',');
-            }
+                function updateHidden() {
+                    hidden.value = list.join(',');
+                }
 
-            function renderList() {
-                sizesList.innerHTML = '';
-                list.forEach(function (item, idx) {
-                    var span = document.createElement('span');
-                    span.className = 'size-chip me-1 mb-1';
-                    span.innerHTML = item + ' <button type="button" class="btn-close btn-close-white btn-close-sm" data-idx="' + idx + '" aria-label="Remove"></button>';
-                    span.querySelector('button').addEventListener('click', function () {
-                        list.splice(parseInt(this.getAttribute('data-idx'), 10), 1);
+                function renderList() {
+                    listWrap.innerHTML = '';
+                    listWrap.classList.toggle('d-none', list.length === 0);
+                    list.forEach(function (item, idx) {
+                        var span = document.createElement('span');
+                        span.className = 'size-chip me-1 mb-1';
+                        span.innerHTML = item + ' <button type="button" class="btn-close btn-close-white btn-close-sm" data-idx="' + idx + '" aria-label="Remove"></button>';
+                        span.querySelector('button').addEventListener('click', function () {
+                            list.splice(parseInt(this.getAttribute('data-idx'), 10), 1);
+                            renderList();
+                            updateHidden();
+                        });
+                        listWrap.appendChild(span);
+                    });
+                }
+
+                function addCurrent() {
+                    var val = (input.value || '').trim();
+                    if (val && list.indexOf(val) === -1) {
+                        list.push(val);
                         renderList();
                         updateHidden();
-                    });
-                    sizesList.appendChild(span);
+                    }
+                    input.value = '';
+                }
+
+                addBtn.addEventListener('click', function () {
+                    addCurrent();
+                });
+
+                addMoreBtn.addEventListener('click', function () {
+                    addCurrent();
+                    input.focus();
+                });
+
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCurrent();
+                        input.focus();
+                    }
                 });
             }
 
-            function addCurrent() {
-                var val = (sizeInput.value || '').trim();
-                if (val && list.indexOf(val) === -1) {
-                    list.push(val);
-                    renderList();
-                    updateHidden();
-                }
-                sizeInput.value = '';
-            }
+            initChipInput({
+                inputId: 'sizeInput',
+                hiddenId: 'sizesValue',
+                listId: 'sizesList',
+                addButtonId: 'btnAddSize',
+                addMoreButtonId: 'btnAddMoreSize'
+            });
 
-            document.getElementById('btnAddSize').addEventListener('click', function () {
-                addCurrent();
-            });
-            document.getElementById('btnAddMoreSize').addEventListener('click', function () {
-                addCurrent();
-                sizeInput.focus();
-            });
-            sizeInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addCurrent();
-                    sizeInput.focus();
-                }
+            initChipInput({
+                inputId: 'subProjectInput',
+                hiddenId: 'subProjectsValue',
+                listId: 'subProjectsList',
+                addButtonId: 'btnAddSubProject',
+                addMoreButtonId: 'btnAddMoreSubProject'
             });
         })();
     </script>

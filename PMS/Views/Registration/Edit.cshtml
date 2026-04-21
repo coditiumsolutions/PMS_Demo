@@ -103,6 +103,12 @@
                             <option value="">-- Select Project first --</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label asp-for="SubProject" class="form-label">SubProject</label>
+                        <select asp-for="SubProject" class="form-select" id="subProjectSelect">
+                            <option value="">-- Select Project first --</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -133,10 +139,12 @@
                 this.value = this.value.replace(/[^0-9\+]/g, '');
             });
 
-            // Project / Size loader
+            // Project / Size / SubProject loader
             var projectSelect = document.getElementById('projectSelect');
             var sizeSelect = document.getElementById('sizeSelect');
+            var subProjectSelect = document.getElementById('subProjectSelect');
             var currentSize = '@(Model.Size ?? "")';
+            var currentSubProject = '@(Model.SubProject ?? "")';
 
             function loadSizes(projectId, selectValue) {
                 sizeSelect.innerHTML = '<option value="">-- Select Size --</option>';
@@ -156,12 +164,36 @@
                 }
             }
 
+            function loadSubProjects(projectId, selectValue) {
+                subProjectSelect.innerHTML = '<option value="">-- Select SubProject --</option>';
+                subProjectSelect.disabled = !projectId;
+                if (projectId) {
+                    fetch('@Url.Action("GetProjectSubProjects", "Registration")?projectId=' + encodeURIComponent(projectId))
+                        .then(function (r) { return r.json(); })
+                        .then(function (arr) {
+                            arr.forEach(function (s) {
+                                var opt = document.createElement('option');
+                                opt.value = s;
+                                opt.textContent = s;
+                                if (s === selectValue) opt.selected = true;
+                                subProjectSelect.appendChild(opt);
+                            });
+                        });
+                }
+            }
+
             var pid = projectSelect.value;
-            if (pid) loadSizes(pid, currentSize);
-            else sizeSelect.disabled = true;
+            if (pid) {
+                loadSizes(pid, currentSize);
+                loadSubProjects(pid, currentSubProject);
+            } else {
+                sizeSelect.disabled = true;
+                subProjectSelect.disabled = true;
+            }
 
             projectSelect.addEventListener('change', function () {
                 loadSizes(this.value, '');
+                loadSubProjects(this.value, '');
             });
 
             // CNIC: auto-insert hyphens, block letters

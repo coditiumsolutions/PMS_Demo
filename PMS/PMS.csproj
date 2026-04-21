@@ -36,14 +36,10 @@
     <Content Remove="Scripts\**" />
     <EmbeddedResource Remove="Scripts\**" />
     <None Remove="Scripts\**" />
-    <Compile Remove="obj\Release\net8.0\**" />
-    <Content Remove="obj\Release\net8.0\**" />
-    <EmbeddedResource Remove="obj\Release\net8.0\**" />
-    <None Remove="obj\Release\net8.0\**" />
-    <Compile Remove="obj\_deploy_tmp\**" />
-    <Content Remove="obj\_deploy_tmp\**" />
-    <EmbeddedResource Remove="obj\_deploy_tmp\**" />
-    <None Remove="obj\_deploy_tmp\**" />
+    <Compile Remove="obj\**" />
+    <Content Remove="obj\**" />
+    <EmbeddedResource Remove="obj\**" />
+    <None Remove="obj\**" />
   </ItemGroup>
 
 </Project>

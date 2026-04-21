@@ -71,9 +71,11 @@ EF Core: deleting a **plan** cascades to its **schedules**. Deleting a **schedul
 2. Auto-calculates if only one currency is provided (converts using exchange rate).
 3. Uses the user-entered **Installment Amount (PKR)** for each generated installment row (USD derived from exchange rate when missing).
 4. Validates: `TotalInstallments > 0`, token ≤ plan total, and **token + all installment amounts ≤ plan total** (strict exceed is rejected; sum may be below total).
-5. Creates the `PaymentPlan`, then `PaymentSchedule` rows (optional token as installment #0 without surcharge and with its own token description; regular rows use the regular payment description; optional possession is added as the **last** payment with manual amount + account head and is skipped when amount is `0`).
+5. Creates the `PaymentPlan`, then `PaymentSchedule` rows (optional token as installment #0 without surcharge and with its own token description; regular rows use the regular payment description; optional possession is added as the **last** payment with manual amount + account head and is skipped when amount is `0`). **Token** and **possession** each have their own due date on the create form; only **regular** installments use the first-installment date plus frequency stepping below.
 
 ### Due Date Calculation
+
+**Token (installment 0)** and **possession (last payment)** use the due dates entered on Create Payment Plan. **Regular installments** use the first installment due date plus frequency:
 
 | Frequency | Interval |
 |-----------|----------|

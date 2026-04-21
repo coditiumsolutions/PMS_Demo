@@ -75,6 +75,7 @@ CREATE TABLE Registration (
     Email NVARCHAR(150),
     ProjectID CHAR(10) NULL,          -- FK to Projects (optional)
     Size NVARCHAR(100) NULL,         -- from selected project's Sizes (CSV)
+    SubProject NVARCHAR(100) NULL,   -- from selected project's SubProjects (CSV)
     CreatedAt DATETIME DEFAULT GETDATE(),
     Status NVARCHAR(50) DEFAULT 'Pending',
     CONSTRAINT FK_Registration_Project FOREIGN KEY (ProjectID) REFERENCES Projects(ProjectID) ON DELETE SET NULL
