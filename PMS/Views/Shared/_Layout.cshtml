@@ -228,6 +228,50 @@
             color: var(--primary-light);
         }
 
+        .sidebar .submenu-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar .submenu-caret {
+            margin-left: auto;
+            margin-right: 0 !important;
+            width: auto !important;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .sidebar .submenu-toggle[aria-expanded="true"] .submenu-caret {
+            transform: rotate(180deg);
+        }
+
+        .sidebar .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 8px 0;
+            padding: 0 0 0 34px;
+        }
+
+        .sidebar .sidebar-submenu .nav-item {
+            padding: 0;
+        }
+
+        .sidebar .sidebar-submenu .nav-link {
+            padding: 7px 10px;
+            margin: 2px 0;
+            border-radius: 8px;
+            font-size: 12px;
+            transform: none !important;
+        }
+
+        .sidebar .sidebar-submenu h6 {
+            color: #ffffff !important;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            opacity: 0.95;
+        }
+
         .brand-section {
             padding: 25px 20px;
             text-align: center;
@@ -260,7 +304,8 @@
 
         .brand-subtitle {
             font-size: 11px;
-            color: var(--primary-light);
+            color: var(--sidebar-font-color);
+            opacity: 0.85;
             letter-spacing: 0.5px;
             text-transform: uppercase;
             font-weight: 500;
@@ -1204,41 +1249,122 @@
                             </a>
                         </li>
                         
+                        @{
+                            var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
+                            var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
+                            var isCustomersSectionActive = currentController == "Registration" || currentController == "Customer";
+                            var isOperationsSectionActive = currentController == "Transfer" || currentController == "TransferFee" || currentController == "NDC" || currentController == "Refund" || currentController == "Waiver" || currentController == "Rental";
+                            var isPropertySectionActive = currentController == "Property" || currentController == "Project";
+                            var isPaymentsSectionActive = currentController == "Payment" && (currentAction == "CustomerPayments" || currentAction == "PaymentPlans" || currentAction == "CreatePaymentPlan");
+                            var isSalesSectionActive = currentController == "SalesInquiry" || currentController == "Ticket";
+                        }
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Registration" ? "active" : "")" 
-                               asp-controller="Registration" asp-action="Index">
-                                <i class="fas fa-file-alt"></i>
-                                Registration
-                            </a>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Customer" ? "active" : "")" 
-                               asp-controller="Customer" asp-action="Index">
+                            <a class="nav-link submenu-toggle @(isCustomersSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#customersSubmenu"
+                               role="button"
+                               aria-expanded="@(isCustomersSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="customersSubmenu">
                                 <i class="fas fa-users"></i>
                                 Customers
+                                <i class="fas fa-chevron-down submenu-caret"></i>
                             </a>
+                            <ul class="collapse sidebar-submenu @(isCustomersSectionActive ? "show" : "")" id="customersSubmenu">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Registration" ? "active" : "")" 
+                                       asp-controller="Registration" asp-action="Index">
+                                        <i class="fas fa-file-alt me-2"></i>Registration
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Customer" ? "active" : "")" 
+                                       asp-controller="Customer" asp-action="Index">
+                                        <i class="fas fa-user-friends me-2"></i>Customers
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Transfer" ? "active" : "")" 
-                               asp-controller="Transfer" asp-action="Index">
-                                <i class="fas fa-exchange-alt"></i>
-                                Transfers
+                            <a class="nav-link submenu-toggle @(isOperationsSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#operationsSubmenu"
+                               role="button"
+                               aria-expanded="@(isOperationsSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="operationsSubmenu">
+                                <i class="fas fa-cogs"></i>
+                                Operations
+                                <i class="fas fa-chevron-down submenu-caret"></i>
                             </a>
+                            <ul class="collapse sidebar-submenu @(isOperationsSectionActive ? "show" : "")" id="operationsSubmenu">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Transfer" ? "active" : "")" 
+                                       asp-controller="Transfer" asp-action="Index">
+                                        <i class="fas fa-exchange-alt me-2"></i>Transfer
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "TransferFee" ? "active" : "")" 
+                                       asp-controller="TransferFee" asp-action="Index">
+                                        <i class="fas fa-tags me-2"></i>Transfer Fee
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "NDC" ? "active" : "")"
+                                       asp-controller="NDC" asp-action="Index">
+                                        <i class="fas fa-certificate me-2"></i>NDC
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Refund" ? "active" : "")"
+                                       asp-controller="Refund" asp-action="Index">
+                                        <i class="fas fa-undo-alt me-2"></i>Refund
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Waiver" ? "active" : "")"
+                                       asp-controller="Waiver" asp-action="Index">
+                                        <i class="fas fa-hand-holding-usd me-2"></i>Waiver
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Rental" ? "active" : "")"
+                                       asp-controller="Rental" asp-action="Index">
+                                        <i class="fas fa-key me-2"></i>Rental
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "NDC" ? "active" : "")"
-                               asp-controller="NDC" asp-action="Index">
-                                <i class="fas fa-certificate"></i>
-                                NDC
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Project" ? "active" : "")" 
-                               asp-controller="Project" asp-action="Index">
+                            <a class="nav-link submenu-toggle @(isPropertySectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#propertySubmenu"
+                               role="button"
+                               aria-expanded="@(isPropertySectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="propertySubmenu">
                                 <i class="fas fa-building"></i>
-                                Projects
+                                Property
+                                <i class="fas fa-chevron-down submenu-caret"></i>
                             </a>
+                            <ul class="collapse sidebar-submenu @(isPropertySectionActive ? "show" : "")" id="propertySubmenu">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Property" ? "active" : "")" 
+                                       asp-controller="Property" asp-action="Index">
+                                        <i class="fas fa-home me-2"></i>Properties
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Project" && currentAction == "FloorPlan" ? "active" : "")" 
+                                       asp-controller="Project" asp-action="FloorPlan">
+                                        <i class="fas fa-layer-group me-2"></i>Floor Plan
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Project" && currentAction != "FloorPlan" ? "active" : "")" 
+                                       asp-controller="Project" asp-action="Index">
+                                        <i class="fas fa-building me-2"></i>Projects
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         
                         <li class="nav-item">
@@ -1250,42 +1376,56 @@
                         </li>
                         
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Property" ? "active" : "")" 
-                               asp-controller="Property" asp-action="Index">
-                                <i class="fas fa-home"></i>
-                                Properties
+                            <a class="nav-link submenu-toggle @(isPaymentsSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#paymentsSubmenu"
+                               role="button"
+                               aria-expanded="@(isPaymentsSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="paymentsSubmenu">
+                                <i class="fas fa-money-check-alt"></i>
+                                Payments
+                                <i class="fas fa-chevron-down submenu-caret"></i>
                             </a>
+                            <ul class="collapse sidebar-submenu @(isPaymentsSectionActive ? "show" : "")" id="paymentsSubmenu">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Payment" && currentAction == "CustomerPayments" ? "active" : "")" 
+                                       asp-controller="Payment" asp-action="CustomerPayments">
+                                        <i class="fas fa-money-bill-wave me-2"></i>Customer Payments
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Payment" && (currentAction == "PaymentPlans" || currentAction == "CreatePaymentPlan") ? "active" : "")" 
+                                       asp-controller="Payment" asp-action="PaymentPlans">
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plans
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && (ViewContext.RouteData.Values["Action"]?.ToString() == "PaymentPlans" || ViewContext.RouteData.Values["Action"]?.ToString() == "CreatePaymentPlan") ? "active" : "")" 
-                               asp-controller="Payment" asp-action="PaymentPlans">
-                                <i class="fas fa-file-invoice-dollar"></i>
-                                Payment Plans
+                            <a class="nav-link submenu-toggle @(isSalesSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#salesSubmenu"
+                               role="button"
+                               aria-expanded="@(isSalesSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="salesSubmenu">
+                                <i class="fas fa-chart-line"></i>
+                                Sales
+                                <i class="fas fa-chevron-down submenu-caret"></i>
                             </a>
-                        </li>
-                        
-                       
-                        
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() == "CustomerPayments" ? "active" : "")" 
-                               asp-controller="Payment" asp-action="CustomerPayments">
-                                <i class="fas fa-money-bill-wave"></i>
-                                Customer Payments
-                            </a>
-                        </li>
-                        
-                        <!-- Sales & Leads Section -->
-                        <li class="nav-item mt-3">
-                            <h6 class="px-3 text-white">Sales & Leads</h6>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "SalesInquiry" ? "active" : "")" 
-                               asp-controller="SalesInquiry" asp-action="Index">
-                                <i class="fas fa-envelope-open-text"></i>
-                                Sales Inquiries
-                            </a>
+                            <ul class="collapse sidebar-submenu @(isSalesSectionActive ? "show" : "")" id="salesSubmenu">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "SalesInquiry" ? "active" : "")" 
+                                       asp-controller="SalesInquiry" asp-action="Index">
+                                        <i class="fas fa-envelope-open-text me-2"></i>Sales Inquiry
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Ticket" ? "active" : "")" 
+                                       asp-controller="Ticket" asp-action="Index">
+                                        <i class="fas fa-ticket-alt me-2"></i>Ticket Management Module
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         
                         <!-- Reports Section -->
@@ -1293,33 +1433,85 @@
                             <h6 class="px-3 text-white">Reports & Analytics</h6>
                         </li>
                         
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" ? "active" : "")" 
-                               href="#" 
-                               id="reportsDropdown" 
-                               role="button" 
-                               data-bs-toggle="dropdown" 
-                               aria-expanded="false">
+                        @{
+                            var isReportsSectionActive = ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports";
+                        }
+                        <li class="nav-item">
+                            <a class="nav-link submenu-toggle @(isReportsSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#reportsSubmenu"
+                               role="button"
+                               aria-expanded="@(isReportsSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="reportsSubmenu">
                                 <i class="fas fa-chart-bar"></i>
                                 Reports
+                                <i class="fas fa-chevron-down submenu-caret"></i>
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="reportsDropdown">
-                                <li>
-                                    <a class="dropdown-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "Defaulters" ? "active" : "")" 
-                                       asp-controller="Reports" asp-action="Defaulters">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>Defaulters Report
+                            <ul class="collapse sidebar-submenu @(isReportsSectionActive ? "show" : "")" id="reportsSubmenu">
+                                <li class="nav-item mt-1">
+                                    <h6 class="px-1 mb-1">Customer Reports</h6>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "total-active-members" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="total-active-members" asp-route-title="Total Active Members">
+                                        <i class="fas fa-users me-2"></i>Total Active Members
                                     </a>
                                 </li>
-                                <li>
-                                    <a class="dropdown-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "BlockedCustomers" ? "active" : "")" 
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "BlockedCustomers" ? "active" : "")" 
                                        asp-controller="Reports" asp-action="BlockedCustomers">
-                                        <i class="fas fa-user-lock me-2"></i>Blocked Customers
+                                        <i class="fas fa-user-slash me-2"></i>Cancelled
                                     </a>
                                 </li>
-                                <li>
-                                    <a class="dropdown-item @(ViewContext.RouteData.Values["Action"]?.ToString() == "PropertyReport" ? "active" : "")" 
-                                       asp-controller="Reports" asp-action="PropertyReport">
-                                        <i class="fas fa-building me-2"></i>Property Report
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "defaulter-x-installments" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="defaulter-x-installments" asp-route-title="Defaulter of X Installments">
+                                        <i class="fas fa-filter me-2"></i>Defaulter of X Installments
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "all-paid-customers" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="all-paid-customers" asp-route-title="All Paid Customers">
+                                        <i class="fas fa-check-circle me-2"></i>All Paid Customers
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "inst-due-amount" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="inst-due-amount" asp-route-title="Inst Due Amount">
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>Inst Due Amount
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Customer" && ViewContext.RouteData.Values["Action"]?.ToString() == "ByProject" ? "active" : "")" 
+                                       asp-controller="Customer" asp-action="ByProject">
+                                        <i class="fas fa-project-diagram me-2"></i>Project Wise Customers
+                                    </a>
+                                </li>
+                                <li class="nav-item mt-2">
+                                    <h6 class="px-1 mb-1">Transfer Reports</h6>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "total-transfers-report" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="total-transfers-report" asp-route-title="Total Transfers Report">
+                                        <i class="fas fa-exchange-alt me-2"></i>Total Transfers Report
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "daily-transfer-report" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="daily-transfer-report" asp-route-title="Daily Transfer Report">
+                                        <i class="fas fa-calendar-day me-2"></i>Daily Transfer Report
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "project-wise-transfer" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="project-wise-transfer" asp-route-title="Project Wise Transfer">
+                                        <i class="fas fa-sitemap me-2"></i>Project Wise Transfer
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "RequestedReport" && Context.Request.Query["id"] == "transfer-amount-received" ? "active" : "")" 
+                                       asp-controller="Reports" asp-action="RequestedReport" asp-route-id="transfer-amount-received" asp-route-title="Transfer Amount Received">
+                                        <i class="fas fa-money-check-alt me-2"></i>Transfer Amount Received
                                     </a>
                                 </li>
                             </ul>
@@ -1389,6 +1581,12 @@
                                     {
                                         case "Customer":
                                             icon = "fas fa-users";
+                                            break;
+                                        case "Transfer":
+                                            icon = "fas fa-exchange-alt";
+                                            break;
+                                        case "TransferFee":
+                                            icon = "fas fa-tags";
                                             break;
                                         case "AccountsManagement":
                                             icon = "fas fa-calculator";

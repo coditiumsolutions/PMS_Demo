@@ -5,6 +5,7 @@ namespace PMS.Models
     public class PropertyImportViewModel
     {
         public string ProjectID { get; set; } = string.Empty;
+        public string SubProject { get; set; } = string.Empty;
         public string PlotNo { get; set; } = string.Empty;
         public string Street { get; set; } = string.Empty;
         public string PlotType { get; set; } = string.Empty;

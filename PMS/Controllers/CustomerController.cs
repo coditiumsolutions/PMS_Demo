@@ -17,14 +17,19 @@ namespace PMS.Controllers
         private const string ModuleKey = "Customer";
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
+        private readonly ISurchargeService _surchargeService;
 
         private static readonly string[] _allowedKinFileExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
         private const long _maxKinFileSize = 8 * 1024 * 1024; // 8MB
 
-        public CustomerController(PMSDbContext context, IModulePermissionService modulePermission)
+        public CustomerController(
+            PMSDbContext context,
+            IModulePermissionService modulePermission,
+            ISurchargeService surchargeService)
         {
             _context = context;
             _modulePermission = modulePermission;
+            _surchargeService = surchargeService;
         }
 
         private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
@@ -61,6 +66,7 @@ namespace PMS.Controllers
             // Build query
             var query = _context.Customers
                 .Include(c => c.Registration)
+                .Include(c => c.Project)
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p.Project)
                 .Include(c => c.Allotments)
@@ -69,7 +75,9 @@ namespace PMS.Controllers
             // Apply project filter
             if (!string.IsNullOrEmpty(projectFilter) && projectFilter != "All")
             {
-                query = query.Where(c => c.PaymentPlan != null && c.PaymentPlan.ProjectID == projectFilter);
+                query = query.Where(c =>
+                    c.ProjectID == projectFilter ||
+                    (c.PaymentPlan != null && c.PaymentPlan.ProjectID == projectFilter));
             }
 
             // Apply status filter
@@ -149,12 +157,81 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
             }
 
+            List<Customer> customersMissingRequiredAttachments = new();
+            if (targetStatus == "Active")
+            {
+                var pendingCustomerIds = customersToUpdate
+                    .Where(c => !string.IsNullOrWhiteSpace(c.CustomerID))
+                    .Select(c => c.CustomerID!.Trim())
+                    .Distinct()
+                    .ToList();
+
+                var requiredAttachmentTypes = new[] { "customerpicture", "idcard" };
+                var availableRequiredAttachments = await _context.Attachments
+                    .AsNoTracking()
+                    .Where(a => a.RefType == "Customer"
+                                && a.RefID != null
+                                && a.AttachmentType != null)
+                    .Select(a => new
+                    {
+                        RefID = a.RefID!.Trim(),
+                        AttachmentType = a.AttachmentType!.Trim()
+                    })
+                    .ToListAsync();
+
+                // Normalize IDs/types to handle DB values with spaces/casing differences.
+                var attachmentTypeLookup = availableRequiredAttachments
+                    .Where(a => pendingCustomerIds.Contains(a.RefID))
+                    .Select(a => new
+                    {
+                        a.RefID,
+                        AttachmentType = a.AttachmentType.Replace(" ", string.Empty).ToLowerInvariant()
+                    })
+                    .Where(a => requiredAttachmentTypes.Contains(a.AttachmentType))
+                    .GroupBy(a => a.RefID)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(x => x.AttachmentType).ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+                customersMissingRequiredAttachments = customersToUpdate
+                    .Where(c =>
+                    {
+                        if (string.IsNullOrWhiteSpace(c.CustomerID))
+                        {
+                            return true;
+                        }
+
+                        var normalizedCustomerId = c.CustomerID.Trim();
+                        if (!attachmentTypeLookup.TryGetValue(normalizedCustomerId, out var attachedTypes))
+                        {
+                            return true;
+                        }
+
+                        return !(attachedTypes.Contains("customerpicture") && attachedTypes.Contains("idcard"));
+                    })
+                    .ToList();
+
+                if (customersMissingRequiredAttachments.Count == customersToUpdate.Count)
+                {
+                    var blockedIds = string.Join(", ", customersMissingRequiredAttachments
+                        .Select(c => c.CustomerID)
+                        .Where(id => !string.IsNullOrWhiteSpace(id)));
+
+                    TempData["ErrorMessage"] = $"Cannot activate pending customer(s) without both required attachments (Customer Picture and ID Card). Blocked: {blockedIds}";
+                    return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
+                }
+            }
+
+            var customersEligibleForUpdate = targetStatus == "Active"
+                ? customersToUpdate.Except(customersMissingRequiredAttachments).ToList()
+                : customersToUpdate;
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var actorName = User.Identity?.Name ?? userId ?? "Unknown User";
             var changedAt = DateTime.Now;
             var activityLogs = new List<ActivityLog>();
 
-            foreach (var customer in customersToUpdate)
+            foreach (var customer in customersEligibleForUpdate)
             {
                 var previousStatus = customer.Status ?? "Unknown";
                 customer.Status = targetStatus;
@@ -183,7 +260,18 @@ namespace PMS.Controllers
             _context.ActivityLogs.AddRange(activityLogs);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = $"{customersToUpdate.Count} customer(s) updated to '{targetStatus}' with comments logged.";
+            if (targetStatus == "Active" && customersMissingRequiredAttachments.Any())
+            {
+                var blockedIds = string.Join(", ", customersMissingRequiredAttachments
+                    .Select(c => c.CustomerID)
+                    .Where(id => !string.IsNullOrWhiteSpace(id)));
+
+                TempData["SuccessMessage"] = $"{customersEligibleForUpdate.Count} customer(s) activated. {customersMissingRequiredAttachments.Count} skipped due to missing Customer Picture/ID Card: {blockedIds}";
+            }
+            else
+            {
+                TempData["SuccessMessage"] = $"{customersEligibleForUpdate.Count} customer(s) updated to '{targetStatus}' with comments logged.";
+            }
             return RedirectToAction(nameof(Index), new { projectFilter, statusFilter = "Pending", searchTerm });
         }
 
@@ -195,7 +283,9 @@ namespace PMS.Controllers
             var projectSummary = await _context.Customers
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p.Project)
-                .Where(c => c.PaymentPlan != null && c.PaymentPlan.Project != null)
+                .Where(c => c.PaymentPlan != null
+                    && c.PaymentPlan.Project != null
+                    && !string.Equals(c.Status, "Pending"))
                 .GroupBy(c => new { 
                     ProjectName = c.PaymentPlan.Project.ProjectName,
                     ProjectID = c.PaymentPlan.Project.ProjectID
@@ -226,6 +316,7 @@ namespace PMS.Controllers
             var customers = await _context.Customers
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p.Project)
+                .Include(c => c.Project)
                 .Include(c => c.Allotments)
                 .ToListAsync();
 
@@ -298,12 +389,21 @@ namespace PMS.Controllers
                 .OrderByDescending(x => x.Count)
                 .ToList();
 
+            var customersWithoutPaymentPlanAllocated = customers.Count(c => string.IsNullOrWhiteSpace(c.PlanID));
+            var customersWithMissingAllocatedPaymentPlan = customers.Count(c =>
+                !string.IsNullOrWhiteSpace(c.PlanID) && c.PaymentPlan == null);
+            var customersWithoutProjectAllocated = customers.Count(c =>
+                c.Project == null && c.PaymentPlan?.Project == null);
+
             ViewBag.Summary = summary;
             ViewBag.AllottedPerProject = allottedPerProject;
             ViewBag.ByStatusPerProject = byStatusPerProject;
             ViewBag.NewCustomersPerMonth = newCustomersPerMonth;
             ViewBag.ByCity = byCity;
             ViewBag.BySize = bySize;
+            ViewBag.CustomersWithoutPaymentPlanAllocated = customersWithoutPaymentPlanAllocated;
+            ViewBag.CustomersWithMissingAllocatedPaymentPlan = customersWithMissingAllocatedPaymentPlan;
+            ViewBag.CustomersWithoutProjectAllocated = customersWithoutProjectAllocated;
 
             return View();
         }
@@ -785,7 +885,7 @@ namespace PMS.Controllers
             var customer = await _context.Customers
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(pp => pp.PaymentSchedules)
-                        .ThenInclude(ps => ps.Payments)
+                        .ThenInclude(ps => ps.Payments.Where(p => p.AuditStatus == "Approved"))
                 .Include(c => c.Allotments)
                     .ThenInclude(a => a.Property)
                 .FirstOrDefaultAsync(c => c.CustomerID == id);
@@ -794,6 +894,22 @@ namespace PMS.Controllers
             {
                 return NotFound();
             }
+
+            var schedules = customer.PaymentPlan?.PaymentSchedules ?? new List<PaymentSchedule>();
+            ViewBag.SurchargeBySchedule = _surchargeService.ComputeBySchedule(
+                schedules,
+                customer.CustomerID,
+                DateTime.Now.Date);
+
+            var otherPayments = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.CustomerID == customer.CustomerID
+                    && p.ScheduleID == null
+                    && p.Amount < 0
+                    && p.AuditStatus == "Approved")
+                .OrderBy(p => p.PaymentDate)
+                .ToListAsync();
+            ViewBag.OtherAccountHeadPayments = otherPayments;
 
             return View(customer);
         }
@@ -994,8 +1110,8 @@ namespace PMS.Controllers
                     }
                 }
 
-                // Redirect to Edit page so user can upload attachments
-                return RedirectToAction(nameof(Edit), new { id = customer.CustomerID });
+                // Redirect to Edit page and open attachments tab first time after create.
+                return RedirectToAction(nameof(Edit), new { id = customer.CustomerID, showAttachments = true });
             }
 
             // Reload data on validation error
@@ -1044,7 +1160,7 @@ namespace PMS.Controllers
             return View(customer);
         }
 
-        public async Task<IActionResult> Edit(string id)
+        public async Task<IActionResult> Edit(string id, bool showAttachments = false)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -1120,6 +1236,7 @@ namespace PMS.Controllers
                 : new List<string> { "Regular", "Transfer", "Balloting", "Special" };
 
             ViewBag.SelectedPropertyID = customer.Allotments?.FirstOrDefault()?.PropertyID;
+            ViewBag.InitialTab = showAttachments ? "attachments" : "personal";
             
             return View(customer);
         }
@@ -1818,8 +1935,9 @@ namespace PMS.Controllers
                     return Json(new { success = false, message = "Customer not found" });
                 }
 
-                // Check for existing CustomerPicture or IDCard (only one allowed)
-                if (attachmentType == "CustomerPicture" || attachmentType == "IDCard")
+                // Customer picture is single-file: replace previous upload.
+                // ID card supports multiple files (e.g., front/back), so do not replace.
+                if (attachmentType == "CustomerPicture")
                 {
                     var existing = await _context.Attachments
                         .FirstOrDefaultAsync(a => a.RefType == "Customer" && 

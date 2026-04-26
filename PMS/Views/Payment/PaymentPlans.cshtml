@@ -108,13 +108,12 @@
                                        class="btn btn-sm btn-outline-primary" title="View Schedules">
                                         <i class="fas fa-calendar-check"></i>
                                     </a>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-info" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#planModal@(plan.PlanID)"
-                                            title="View Details">
+                                    <a asp-action="PaymentPlanDetails"
+                                       asp-route-planId="@plan.PlanID"
+                                       class="btn btn-sm btn-outline-info"
+                                       title="View Details">
                                         <i class="fas fa-eye"></i>
-                                    </button>
+                                    </a>
                                     @if (ViewBag.CanDelete == true)
                                     {
                                         <button type="button"
@@ -220,96 +219,6 @@
                             <i class="fas fa-trash-alt me-1"></i>Delete plan
                         </button>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-@foreach (var plan in plansOrdered)
-{
-    var scheduleCount = plan.PaymentSchedules?.Count ?? 0;
-    var avgAmount = scheduleCount > 0 ? (plan.TotalAmount / scheduleCount) : 0m;
-    <div class="modal fade" id="planModal@(plan.PlanID)" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-gold) 100%);">
-                    <h5 class="modal-title text-white">
-                        <i class="fas fa-file-invoice-dollar me-2"></i>@plan.PlanName
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Plan ID</label>
-                            <p><code>@plan.PlanID</code></p>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Created Date</label>
-                            <p>@plan.CreatedAt.ToString("MMM dd, yyyy")</p>
-                        </div>
-                        <div class="col-12 mb-3">
-                            <label class="text-muted small">Plan Name</label>
-                            <p><strong>@plan.PlanName</strong></p>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Total Amount</label>
-                            <p><strong style="color: var(--primary-green);">@plan.TotalAmount.ToString("N0", EnUs) PKR</strong></p>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Primary Currency</label>
-                            <p>@plan.Currency</p>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Duration</label>
-                            <p>@plan.DurationMonths Months</p>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Frequency</label>
-                            <p>@plan.Frequency</p>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="text-muted small">Project</label>
-                            <p>@(plan.Project?.ProjectName ?? "N/A")</p>
-                        </div>
-                        @if (!string.IsNullOrEmpty(plan.Description))
-                        {
-                            <div class="col-12 mb-3">
-                                <label class="text-muted small">Description</label>
-                                <p>@plan.Description</p>
-                            </div>
-                        }
-                        <div class="col-12">
-                            <label class="text-muted small">Statistics</label>
-                            <div class="row">
-                                <div class="col-4 text-center">
-                                    <div class="p-3 bg-light rounded">
-                                        <h4 class="mb-1" style="color: var(--primary-green);">@(plan.Customers?.Count ?? 0)</h4>
-                                        <small class="text-muted">Customers</small>
-                                    </div>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <div class="p-3 bg-light rounded">
-                                        <h4 class="mb-1" style="color: var(--primary-green);">@(plan.PaymentSchedules?.Count ?? 0)</h4>
-                                        <small class="text-muted">Schedules</small>
-                                    </div>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <div class="p-3 bg-light rounded">
-                                        <h4 class="mb-1" style="color: var(--accent-gold);">@avgAmount.ToString("N0", EnUs)</h4>
-                                        <small class="text-muted">Avg Installment</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <a asp-action="PaymentSchedule" asp-route-planId="@plan.PlanID" class="btn btn-primary">
-                        <i class="fas fa-calendar-check me-2"></i>View Schedules
-                    </a>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

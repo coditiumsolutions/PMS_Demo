@@ -19,9 +19,9 @@ namespace PMS.Controllers
 
         private static readonly string[] ModuleKeys = new[]
         {
-            "Home", "Registration", "Customer", "Transfer", "NDC", "Project", "Dealer", "Property", "Payment",
+            "Home", "Registration", "Customer", "Transfer", "TransferFee", "NDC", "Project", "Dealer", "Property", "Payment",
             "Allotment", "Rental", "SalesInquiry", "Reports", "Account", "Settings", "ActivityLog",
-            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi"
+            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "Waiver"
         };
 
         private static readonly string[] PermissionOptions = new[] { "NoAccess", "Read", "Edit", "Admin" };

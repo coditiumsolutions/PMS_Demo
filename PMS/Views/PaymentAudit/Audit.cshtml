@@ -5,6 +5,7 @@
     var auditStatus = Model.AuditStatus ?? "Pending";
     var isPending   = auditStatus == "Pending";
     var projectName = Model.PaymentSchedule?.PaymentPlan?.Project?.ProjectName ?? "—";
+    var paymentAttachments = ViewBag.PaymentAttachments as List<PMS.Models.Attachment> ?? new List<PMS.Models.Attachment>();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -121,6 +122,33 @@
                         <div class="detail-field">
                             <label>Remarks</label>
                             <p>@(Model.Remarks ?? "—")</p>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="detail-field">
+                            <label>Proof Attachments</label>
+                            @if (paymentAttachments.Count == 0)
+                            {
+                                <p class="text-muted mb-0">No proof attachment uploaded.</p>
+                            }
+                            else
+                            {
+                                <ul class="mb-0 ps-3">
+                                    @foreach (var att in paymentAttachments)
+                                    {
+                                        <li class="mb-1">
+                                            <a href="@att.FilePath" target="_blank" rel="noopener">
+                                                @(string.IsNullOrWhiteSpace(att.FileName) ? "Attachment" : att.FileName)
+                                            </a>
+                                            <span class="text-muted">(@((att.FileSize ?? 0) / 1024) KB)</span>
+                                            @if (!string.IsNullOrWhiteSpace(att.Description))
+                                            {
+                                                <span class="text-muted"> - @att.Description</span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
                         </div>
                     </div>
                 </div>

@@ -76,7 +76,7 @@ namespace PMS.Controllers
                     propertyStatusDict = new Dictionary<string, int> { { "Unknown", 0 } };
                 }
 
-            // Get last 6 months payment data (handle missing Payments table)
+            // Get monthly payment data (latest available months from Payments table)
             Dictionary<string, decimal> monthlyPaymentsData = new Dictionary<string, decimal>();
             try
             {
@@ -103,17 +103,20 @@ namespace PMS.Controllers
                         // #endregion
                         var monthlyPayments = await _context.Payments
                             .AsNoTracking()
-                            .Where(p => p.PaymentDate >= sixMonthsAgo && p.Status == "Completed")
+                            .Where(p => p.Amount > 0)
                             .GroupBy(p => new { p.PaymentDate.Year, p.PaymentDate.Month })
                             .Select(g => new { 
                                 Year = g.Key.Year, 
                                 Month = g.Key.Month, 
                                 Total = g.Sum(p => (decimal?)p.Amount) ?? 0 
                             })
-                            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                            .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month)
+                            .Take(6)
                             .ToListAsync();
-                        
-                        monthlyPaymentsData = monthlyPayments.ToDictionary(
+
+                        monthlyPaymentsData = monthlyPayments
+                            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                            .ToDictionary(
                             x => new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), 
                             x => x.Total);
                     }
@@ -206,23 +209,25 @@ namespace PMS.Controllers
                 // PaymentSchedules table doesn't exist
             }
 
-            // Get customer registration trend (handle missing tables)
+            // Get customer registration trend from Customers table (latest available months)
             Dictionary<string, int> customerTrendDict = new Dictionary<string, int>();
             try
             {
                 var customerTrend = await _context.Customers
                     .AsNoTracking()
-                    .Where(c => c.CreatedAt >= sixMonthsAgo)
                     .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
                     .Select(g => new { 
                         Year = g.Key.Year, 
                         Month = g.Key.Month, 
                         Count = (int?)g.Count() ?? 0 
                     })
-                    .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                    .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month)
+                    .Take(6)
                     .ToListAsync();
-                
-                customerTrendDict = customerTrend.ToDictionary(
+
+                customerTrendDict = customerTrend
+                    .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                    .ToDictionary(
                     x => new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), 
                     x => x.Count);
             }
@@ -292,59 +297,37 @@ namespace PMS.Controllers
                 // Dealers table doesn't exist
             }
 
-            // Get TotalPayments and RecentPayments (handle missing Payments table)
+            // Get TotalPayments and RecentPayments
             decimal totalPayments = 0;
             List<Payment> recentPayments = new List<Payment>();
             try
             {
-                // Check if Payments table exists first using try-catch
-                int tableExists = 0;
-                try
-                {
-                    tableExists = await _context.Database
-                        .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
-                        .FirstOrDefaultAsync();
-                }
-                catch
-                {
-                    // INFORMATION_SCHEMA query failed, assume table doesn't exist
-                    tableExists = 0;
-                }
-                
-                if (tableExists > 0)
-                {
-                    try
-                    {
-                        // #region agent log
-                        try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:279", message = "Before accessing _context.Payments for TotalPayments", data = new { tableExists }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                        // #endregion
-                        if (await _context.Payments.AsNoTracking().AnyAsync())
-                        {
-                            totalPayments = await _context.Payments.AsNoTracking().SumAsync(p => p.Amount);
-                        }
-                        // Don't include related entities to avoid querying missing tables
-                        recentPayments = await _context.Payments
-                            .AsNoTracking()
-                            .OrderByDescending(p => p.PaymentDate)
-                            .Take(5)
-                            .ToListAsync();
-                    }
-                    catch (Exception ex3)
-                    {
-                        // #region agent log
-                        try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:290", message = "Exception in TotalPayments query", data = new { error = ex3.Message, type = ex3.GetType().Name }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                        // #endregion
-                        // Payments query failed
-                    }
-                }
+                // #region agent log
+                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:279", message = "Calculating TotalPayments from Payments table", data = new { }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
+                // #endregion
+                totalPayments = await _context.Payments
+                    .AsNoTracking()
+                    .Select(p => (decimal?)p.Amount)
+                    .SumAsync() ?? 0m;
+
+                // Don't include related entities to avoid querying missing tables
+                recentPayments = await _context.Payments
+                    .AsNoTracking()
+                    .OrderByDescending(p => p.PaymentDate)
+                    .Take(5)
+                    .ToListAsync();
             }
-            catch
+            catch (Exception ex3)
             {
-                // Payments table doesn't exist
+                // #region agent log
+                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:290", message = "Exception in TotalPayments query", data = new { error = ex3.Message, type = ex3.GetType().Name }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
+                // #endregion
+                // Payments query failed; keep default values.
             }
 
             // Get dashboard counts (handle missing tables)
             int totalCustomers = 0;
+            int pendingCustomers = 0;
             int totalProjects = 0;
             int totalProperties = 0;
             int availableProperties = 0;
@@ -354,6 +337,7 @@ namespace PMS.Controllers
             try
             {
                 totalCustomers = await _context.Customers.AsNoTracking().CountAsync();
+                pendingCustomers = await _context.Customers.AsNoTracking().CountAsync(c => c.Status == "Pending");
                 totalProjects = await _context.Projects.AsNoTracking().CountAsync();
                 totalProperties = await _context.Properties.AsNoTracking().CountAsync();
                 availableProperties = await _context.Properties.AsNoTracking().CountAsync(p => p.Status == "Available");
@@ -372,6 +356,7 @@ namespace PMS.Controllers
                 var dashboardData = new DashboardViewModel
                 {
                     TotalCustomers = totalCustomers,
+                    PendingCustomers = pendingCustomers,
                     TotalProjects = totalProjects,
                     TotalProperties = totalProperties,
                     AvailableProperties = availableProperties,
@@ -408,6 +393,7 @@ namespace PMS.Controllers
                 var dashboardData = new DashboardViewModel
                 {
                     TotalCustomers = 0,
+                    PendingCustomers = 0,
                     TotalProjects = 0,
                     TotalProperties = 0,
                     AvailableProperties = 0,

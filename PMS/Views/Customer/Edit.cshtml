@@ -522,12 +522,13 @@
                                                 <div class="col-md-8">
                                                     <div class="mb-3">
                                                         <label class="form-label">Upload ID Card</label>
-                                                        <input type="file" id="idCardFile" class="form-control" accept="image/*,.pdf" />
-                                                        <small class="text-muted">Image files (JPG, PNG, GIF, BMP) or PDF. Max size: 8MB</small>
+                                                        <input type="file" id="idCardFile" class="form-control" accept="image/*,.pdf" multiple />
+                                                        <small class="text-muted">Image files (JPG, PNG, GIF, BMP) or PDF. Max size: 8MB each. You can upload multiple files (e.g., front and back).</small>
                                                     </div>
                                                     <button type="button" class="btn text-white" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);" onclick="uploadAttachment('IDCard', 'idCardFile')">
                                                         <i class="fas fa-upload me-2"></i>Upload ID Card
                                                     </button>
+                                                    <div id="idCardFilesContainer" class="row mt-3"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -669,6 +670,8 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        var initialTab = '@(ViewBag.InitialTab ?? "personal")';
+
         // FullName: letters, spaces, dots, hyphens only
         document.getElementById('FullName').addEventListener('input', function () {
             this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
@@ -838,6 +841,20 @@
                 loadAttachments();
             });
 
+            // Open requested initial tab once (used by post-create redirect to Edit).
+            if (initialTab === 'attachments') {
+                var attachmentsTrigger = document.getElementById('attachments-tab');
+                if (attachmentsTrigger) {
+                    var attachmentTab = new bootstrap.Tab(attachmentsTrigger);
+                    attachmentTab.show();
+                    // Remove one-time query flag from URL so refresh keeps normal behavior.
+                    if (window.history && window.history.replaceState) {
+                        var cleanUrl = window.location.origin + window.location.pathname;
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    }
+                }
+            }
+
             // Load attachments on page load if tab is active
             if ($('#attachments-tab').hasClass('active')) {
                 loadAttachments();
@@ -877,7 +894,7 @@
 
             // Separate attachments by type
             var customerPicture = attachments.find(a => a.attachmentType === 'CustomerPicture');
-            var idCard = attachments.find(a => a.attachmentType === 'IDCard');
+            var idCards = attachments.filter(a => a.attachmentType === 'IDCard');
             var otherAttachments = attachments.filter(a => a.attachmentType === 'Other');
 
             // Display Customer Picture
@@ -889,18 +906,51 @@
                 $('#customerPicturePlaceholder').show();
             }
 
-            // Display ID Card
-            if (idCard) {
-                if (idCard.fileType && idCard.fileType.includes('pdf')) {
+            // Display ID Cards (multiple supported)
+            var idCardContainer = $('#idCardFilesContainer');
+            idCardContainer.empty();
+            var primaryIdCard = idCards.length > 0 ? idCards[0] : null;
+            if (primaryIdCard) {
+                if (primaryIdCard.fileType && primaryIdCard.fileType.includes('pdf')) {
                     $('#idCardImg').hide();
                     $('#idCardPlaceholder').html('<i class="fas fa-file-pdf fa-5x"></i><p class="mt-2">PDF Document</p>').show();
                 } else {
-                    $('#idCardImg').attr('src', idCard.filePath).show();
+                    $('#idCardImg').attr('src', primaryIdCard.filePath).show();
                     $('#idCardPlaceholder').hide();
                 }
+
+                idCards.forEach(function(idCard) {
+                    var isImage = idCard.fileType && idCard.fileType.startsWith('image/');
+                    var isPdf = idCard.fileType && idCard.fileType.includes('pdf');
+                    var idCardHtml = '<div class="col-md-6 mb-3">' +
+                        '<div class="card h-100">' +
+                        '<div class="card-body text-center">';
+
+                    if (isImage) {
+                        idCardHtml += '<img src="' + idCard.filePath + '" class="img-thumbnail mb-2" style="max-width: 100%; max-height: 180px;" />';
+                    } else if (isPdf) {
+                        idCardHtml += '<i class="fas fa-file-pdf fa-4x text-danger mb-2"></i>';
+                    } else {
+                        idCardHtml += '<i class="fas fa-file fa-4x text-muted mb-2"></i>';
+                    }
+
+                    idCardHtml += '<h6 class="card-title">' + (idCard.fileName || 'ID Card') + '</h6>' +
+                        '<p class="card-text small text-muted">' +
+                        (idCard.fileSize ? formatFileSize(idCard.fileSize) : '') +
+                        ' • ' + idCard.uploadedAt + '</p>' +
+                        '<div class="btn-group" role="group">' +
+                        '<a href="' + idCard.filePath + '" target="_blank" class="btn btn-sm btn-outline-primary">' +
+                        '<i class="fas fa-eye me-1"></i>View</a>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteAttachment(\'' + idCard.attachmentID + '\')">' +
+                        '<i class="fas fa-trash me-1"></i>Delete</button>' +
+                        '</div>' +
+                        '</div></div></div>';
+                    idCardContainer.append(idCardHtml);
+                });
             } else {
                 $('#idCardImg').hide();
                 $('#idCardPlaceholder').html('<i class="fas fa-id-card fa-5x"></i><p class="mt-2">No ID card uploaded</p>').show();
+                idCardContainer.append('<div class="col-12 text-center text-muted py-2"><p class="mb-0">No ID card files uploaded yet</p></div>');
             }
 
             // Display Other Attachments
@@ -946,49 +996,74 @@
         }
 
         // Upload attachment
-        function uploadAttachment(attachmentType, fileInputId, descriptionInputId) {
-            var fileInput = $('#' + fileInputId)[0];
-            var file = fileInput.files[0];
-
-            if (!file) {
-                alert('Please select a file to upload');
-                return;
-            }
-
+        function uploadSingleAttachment(file, attachmentType, description) {
             var formData = new FormData();
             formData.append('customerId', customerId);
             formData.append('file', file);
             formData.append('attachmentType', attachmentType);
-            
-            if (descriptionInputId) {
-                var description = $('#' + descriptionInputId).val();
-                formData.append('description', description);
-            }
+            formData.append('description', description || '');
 
-            $.ajax({
-                url: '@Url.Action("UploadAttachment", "Customer")',
-                method: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                        // Clear file input
-                        fileInput.value = '';
-                        if (descriptionInputId) {
-                            $('#' + descriptionInputId).val('');
-                        }
-                        // Reload attachments
-                        loadAttachments();
-                    } else {
-                        alert('Error: ' + response.message);
+            return new Promise(function(resolve, reject) {
+                $.ajax({
+                    url: '@Url.Action("UploadAttachment", "Customer")',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        resolve(response);
+                    },
+                    error: function(xhr) {
+                        reject(xhr);
                     }
-                },
-                error: function() {
-                    alert('An error occurred while uploading the file');
-                }
+                });
             });
+        }
+
+        function uploadAttachment(attachmentType, fileInputId, descriptionInputId) {
+            var fileInput = $('#' + fileInputId)[0];
+            var selectedFiles = Array.from(fileInput.files || []);
+            if (selectedFiles.length === 0) {
+                alert('Please select a file to upload');
+                return;
+            }
+            if (attachmentType !== 'IDCard' && selectedFiles.length > 1) {
+                alert('Please select only one file for this attachment type.');
+                return;
+            }
+            var description = descriptionInputId ? $('#' + descriptionInputId).val() : '';
+            var filesToUpload = attachmentType === 'IDCard' ? selectedFiles : [selectedFiles[0]];
+            var uploadRequests = filesToUpload.map(function(file) {
+                return uploadSingleAttachment(file, attachmentType, description);
+            });
+
+            Promise.all(uploadRequests)
+                .then(function(results) {
+                    var failed = results.filter(function(r) { return !r.success; });
+                    if (failed.length > 0) {
+                        var firstError = failed[0] && failed[0].message ? failed[0].message : 'Some files could not be uploaded.';
+                        alert('Error: ' + firstError);
+                        return;
+                    }
+
+                    if (attachmentType === 'IDCard' && filesToUpload.length > 1) {
+                        alert(filesToUpload.length + ' ID card files uploaded successfully.');
+                    } else {
+                        alert((results[0] && results[0].message) ? results[0].message : 'File uploaded successfully.');
+                    }
+
+                    fileInput.value = '';
+                    if (descriptionInputId) {
+                        $('#' + descriptionInputId).val('');
+                    }
+                    loadAttachments();
+                })
+                .catch(function(xhr) {
+                    var err = xhr && xhr.responseJSON && xhr.responseJSON.message
+                        ? xhr.responseJSON.message
+                        : 'An error occurred while uploading the file';
+                    alert('Error: ' + err);
+                });
         }
 
         // Delete attachment

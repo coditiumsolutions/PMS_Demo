@@ -41,6 +41,7 @@ namespace PMS.Data
         // Transfer & NDC
         public DbSet<Transfer> Transfers { get; set; }
         public DbSet<NDC> NDCs { get; set; }
+        public DbSet<TransferFee> TransferFees { get; set; }
 
         // Approvals & Workflow
         public DbSet<Approval> Approvals { get; set; }
@@ -150,6 +151,8 @@ namespace PMS.Data
                 entity.HasKey(e => e.PlanID);
                 entity.Property(e => e.PlanID).HasMaxLength(10);
                 entity.Property(e => e.ProjectID).HasMaxLength(10);
+                entity.Property(e => e.RegisteredSize).HasMaxLength(100);
+                entity.Property(e => e.SubProject).HasMaxLength(100);
                 entity.Property(e => e.PlanName).HasMaxLength(150);
                 entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Currency).HasMaxLength(10).IsRequired(false);
@@ -274,6 +277,7 @@ namespace PMS.Data
                 entity.HasKey(e => e.PropertyID);
                 entity.Property(e => e.PropertyID).HasMaxLength(10);
                 entity.Property(e => e.ProjectID).HasMaxLength(10);
+                entity.Property(e => e.SubProject).HasMaxLength(100).IsRequired(false);
                 entity.Property(e => e.PlotNo).HasMaxLength(50);
                 entity.Property(e => e.Street).HasMaxLength(50);
                 entity.Property(e => e.PlotType).HasMaxLength(50);
@@ -415,9 +419,16 @@ namespace PMS.Data
                 entity.HasKey(e => e.WaiverID);
                 entity.Property(e => e.WaiverID).HasMaxLength(10);
                 entity.Property(e => e.CustomerID).HasMaxLength(10);
-                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.Reason).HasMaxLength(255);
+                entity.Property(e => e.WaiverType).HasMaxLength(255);
+                entity.Property(e => e.Status).HasMaxLength(100).HasDefaultValue("Initiated");
+                entity.Property(e => e.AccountHead).HasMaxLength(255).HasDefaultValue("Waived Off");
+                entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.WaivedAmount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.WaivedPercentage).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Comments).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.ApprovedBy).HasMaxLength(10);
+                entity.Property(e => e.CreatedBy).HasMaxLength(10);
+                entity.Property(e => e.LastModifiedBy).HasMaxLength(10);
 
                 entity.HasOne(e => e.Customer)
                       .WithMany(c => c.Waivers)
@@ -428,6 +439,16 @@ namespace PMS.Data
                       .WithMany()
                       .HasForeignKey(e => e.ApprovedBy)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedBy)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(e => e.LastModifiedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.LastModifiedBy)
+                      .OnDelete(DeleteBehavior.NoAction);
             });
 
             // Configure Refund
@@ -469,6 +490,15 @@ namespace PMS.Data
                 entity.Property(e => e.TransferID).HasMaxLength(50);
                 entity.Property(e => e.CustomerID).HasMaxLength(10);
                 entity.Property(e => e.WorkFlowStatus).HasMaxLength(100);
+                entity.Property(e => e.BuyerGender).HasMaxLength(20);
+                entity.Property(e => e.BuyerNationality).HasMaxLength(100);
+                entity.Property(e => e.BuyerEmail).HasMaxLength(150);
+                entity.Property(e => e.BuyerPhone).HasMaxLength(50);
+                entity.Property(e => e.BuyerMobile).HasMaxLength(50);
+                entity.Property(e => e.BuyerMobile2).HasMaxLength(50);
+                entity.Property(e => e.BuyerMailingAddress).HasMaxLength(255);
+                entity.Property(e => e.BuyerPermanentAddress).HasMaxLength(255);
+                entity.Property(e => e.BuyerDOB).HasColumnType("date");
                 entity.Property(e => e.SellerBiometric).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.BuyerBiometric).HasColumnType("nvarchar(max)");
 
@@ -491,10 +521,32 @@ namespace PMS.Data
                 entity.Property(e => e.CreatedBy).HasMaxLength(100);
                 entity.Property(e => e.TotalDueAmount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.TotalDueInstallments).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.RemainingDues).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.AmountPerUnit).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.TransferFeeAmount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PropertySize).HasColumnType("decimal(18,2)");
 
                 entity.HasOne(e => e.Customer)
                       .WithMany(c => c.NDCs)
                       .HasForeignKey(e => e.CustomerID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure TransferFee
+            modelBuilder.Entity<TransferFee>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.ProjectID).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.SubProject).HasMaxLength(100);
+                entity.Property(e => e.TransferType).HasMaxLength(100);
+                entity.Property(e => e.TransferPriority).HasMaxLength(20);
+                entity.Property(e => e.AmountPerUnit).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CreatedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.ModifiedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.HasOne(e => e.Project)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProjectID)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 

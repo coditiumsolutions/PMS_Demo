@@ -99,7 +99,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="Amount" class="form-label">Amount (PKR) *</label>
-                                <input asp-for="Amount" type="number" step="0.01" class="form-control" placeholder="e.g., 100000" required />
+                                <input asp-for="Amount" type="number" step="1" min="1" class="form-control" placeholder="e.g., 100000" required />
                                 <span asp-validation-for="Amount" class="text-danger"></span>
                             </div>
                         </div>
@@ -143,7 +143,7 @@
                             var existingTotal = paymentPlan.PaymentSchedules?.Sum(ps => ps.Amount) ?? 0m;
                             var remaining = paymentPlan.TotalAmount - existingTotal;
                             <div class="mt-2">
-                                <strong>Remaining allowable total:</strong> @remaining.ToString("N2", EnUs) PKR
+                                <strong>Remaining allowable total:</strong> @remaining.ToString("N0", EnUs) PKR
                             </div>
                         }
                     </div>

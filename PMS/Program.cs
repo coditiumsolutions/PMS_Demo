@@ -16,6 +16,7 @@ builder.Services.AddDbContext<PMSDbContext>(options =>
 builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<PMS.Services.IModulePermissionService, PMS.Services.ModulePermissionService>();
 builder.Services.AddScoped<ISiteConfigService, SiteConfigService>();
+builder.Services.AddScoped<ISurchargeService, SurchargeService>();
 
 // Add session support
 builder.Services.AddSession(options =>

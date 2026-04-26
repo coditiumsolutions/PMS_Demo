@@ -41,15 +41,29 @@ namespace PMS.Controllers
             return null;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string projectFilter = "All")
         {
             var denied = await EnsurePermissionAsync("Read");
             if (denied != null) return denied;
-            var properties = await _context.Properties
+
+            var query = _context.Properties
                 .Include(p => p.Project)
                 .Include(p => p.Allotments)
                     .ThenInclude(a => a.Customer)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(projectFilter) && !string.Equals(projectFilter, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p => p.ProjectID == projectFilter);
+            }
+
+            var properties = await query.ToListAsync();
+            ViewBag.Projects = await _context.Projects
+                .AsNoTracking()
+                .OrderBy(p => p.ProjectName)
+                .Select(p => new { p.ProjectID, p.ProjectName })
                 .ToListAsync();
+            ViewBag.ProjectFilter = projectFilter;
             return View(properties);
         }
 
@@ -490,10 +504,22 @@ namespace PMS.Controllers
                 foreach (var property in properties)
                 {
                     property.ProjectID = projectId;
+                    var validationErrors = new List<string>();
+                    if (string.IsNullOrWhiteSpace(property.SubProject))
+                        validationErrors.Add("SubProject is required");
+                    if (string.IsNullOrWhiteSpace(property.Block))
+                        validationErrors.Add("Block is required");
+                    if (string.IsNullOrWhiteSpace(property.Size))
+                        validationErrors.Add("Size is required");
                     if (string.IsNullOrWhiteSpace(property.PlotNo))
+                        validationErrors.Add("Unit No is required");
+                    if (string.IsNullOrWhiteSpace(property.PlotType))
+                        validationErrors.Add("Category/Type is required");
+
+                    if (validationErrors.Count > 0)
                     {
                         property.IsValid = false;
-                        property.ErrorMessage = "PlotNo is required";
+                        property.ErrorMessage = string.Join(", ", validationErrors);
                     }
                 }
 
@@ -590,6 +616,7 @@ namespace PMS.Controllers
                     {
                         PropertyID = GenerateID(),
                         ProjectID = projectId!,
+                        SubProject = prop.SubProject,
                         PlotNo = prop.PlotNo,
                         Street = prop.Street,
                         PlotType = prop.PlotType,
@@ -646,25 +673,27 @@ namespace PMS.Controllers
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     var columns = ParseCsvLine(line);
-                    if (columns.Count >= startIndex + 6) // PlotNo to Size required in template; Floor and AdditionalInfo optional
+                    if (columns.Count >= startIndex + 6) // New format: SubProject, Block, Size, Unit No, Floor, Category/Type, PropertyType, Additional Info, Street
                     {
-                        var plotNo = columns[startIndex]?.Trim() ?? string.Empty;
-                        var street = columns.Count > startIndex + 1 ? columns[startIndex + 1]?.Trim() ?? string.Empty : string.Empty;
-                        var plotType = columns.Count > startIndex + 2 ? columns[startIndex + 2]?.Trim() ?? string.Empty : string.Empty;
-                        var block = columns.Count > startIndex + 3 ? columns[startIndex + 3]?.Trim() ?? string.Empty : string.Empty;
-                        var propertyType = columns.Count > startIndex + 4 ? columns[startIndex + 4]?.Trim() ?? string.Empty : string.Empty;
-                        var size = columns.Count > startIndex + 5 ? columns[startIndex + 5]?.Trim() ?? string.Empty : string.Empty;
-                        var floor = columns.Count > startIndex + 6 ? columns[startIndex + 6]?.Trim() ?? string.Empty : string.Empty;
+                        var subProject = columns[startIndex]?.Trim() ?? string.Empty;
+                        var block = columns.Count > startIndex + 1 ? columns[startIndex + 1]?.Trim() ?? string.Empty : string.Empty;
+                        var size = columns.Count > startIndex + 2 ? columns[startIndex + 2]?.Trim() ?? string.Empty : string.Empty;
+                        var plotNo = columns.Count > startIndex + 3 ? columns[startIndex + 3]?.Trim() ?? string.Empty : string.Empty;
+                        var floor = columns.Count > startIndex + 4 ? columns[startIndex + 4]?.Trim() ?? string.Empty : string.Empty;
+                        var plotType = columns.Count > startIndex + 5 ? columns[startIndex + 5]?.Trim() ?? string.Empty : string.Empty;
+                        var propertyType = columns.Count > startIndex + 6 ? columns[startIndex + 6]?.Trim() ?? string.Empty : string.Empty;
                         var additionalInfo = columns.Count > startIndex + 7 ? columns[startIndex + 7]?.Trim() ?? string.Empty : string.Empty;
+                        var street = columns.Count > startIndex + 8 ? columns[startIndex + 8]?.Trim() ?? string.Empty : string.Empty;
 
-                        if (string.IsNullOrWhiteSpace(plotNo) &&
-                            string.IsNullOrWhiteSpace(street) &&
-                            string.IsNullOrWhiteSpace(plotType) &&
+                        if (string.IsNullOrWhiteSpace(subProject) &&
                             string.IsNullOrWhiteSpace(block) &&
-                            string.IsNullOrWhiteSpace(propertyType) &&
                             string.IsNullOrWhiteSpace(size) &&
+                            string.IsNullOrWhiteSpace(plotNo) &&
                             string.IsNullOrWhiteSpace(floor) &&
-                            string.IsNullOrWhiteSpace(additionalInfo))
+                            string.IsNullOrWhiteSpace(plotType) &&
+                            string.IsNullOrWhiteSpace(propertyType) &&
+                            string.IsNullOrWhiteSpace(additionalInfo) &&
+                            string.IsNullOrWhiteSpace(street))
                         {
                             rowNumber++;
                             continue;
@@ -673,14 +702,15 @@ namespace PMS.Controllers
                         properties.Add(new PropertyImportViewModel
                         {
                             RowNumber = rowNumber,
+                            SubProject = subProject,
                             PlotNo = plotNo,
-                            Street = street,
-                            PlotType = plotType,
                             Block = block,
-                            PropertyType = propertyType,
                             Size = size,
+                            PropertyType = propertyType,
                             Floor = floor,
-                            AdditionalInfo = additionalInfo
+                            AdditionalInfo = additionalInfo,
+                            Street = street,
+                            PlotType = plotType
                         });
                     }
                     rowNumber++;
@@ -739,23 +769,25 @@ namespace PMS.Controllers
                     int rowNumber = 2;
                     foreach (var row in rows)
                     {
-                        var plotNo = GetCellValue(worksheet, row.RowNumber(), startColumn) ?? string.Empty;
-                        var street = GetCellValue(worksheet, row.RowNumber(), startColumn + 1) ?? string.Empty;
-                        var plotType = GetCellValue(worksheet, row.RowNumber(), startColumn + 2) ?? string.Empty;
-                        var block = GetCellValue(worksheet, row.RowNumber(), startColumn + 3) ?? string.Empty;
-                        var propertyType = GetCellValue(worksheet, row.RowNumber(), startColumn + 4) ?? string.Empty;
-                        var size = GetCellValue(worksheet, row.RowNumber(), startColumn + 5) ?? string.Empty;
-                        var floor = GetCellValue(worksheet, row.RowNumber(), startColumn + 6) ?? string.Empty;
+                        var subProject = GetCellValue(worksheet, row.RowNumber(), startColumn) ?? string.Empty;
+                        var block = GetCellValue(worksheet, row.RowNumber(), startColumn + 1) ?? string.Empty;
+                        var size = GetCellValue(worksheet, row.RowNumber(), startColumn + 2) ?? string.Empty;
+                        var plotNo = GetCellValue(worksheet, row.RowNumber(), startColumn + 3) ?? string.Empty;
+                        var floor = GetCellValue(worksheet, row.RowNumber(), startColumn + 4) ?? string.Empty;
+                        var plotType = GetCellValue(worksheet, row.RowNumber(), startColumn + 5) ?? string.Empty;
+                        var propertyType = GetCellValue(worksheet, row.RowNumber(), startColumn + 6) ?? string.Empty;
                         var additionalInfo = GetCellValue(worksheet, row.RowNumber(), startColumn + 7) ?? string.Empty;
+                        var street = GetCellValue(worksheet, row.RowNumber(), startColumn + 8) ?? string.Empty;
 
-                        if (string.IsNullOrWhiteSpace(plotNo) &&
-                            string.IsNullOrWhiteSpace(street) &&
-                            string.IsNullOrWhiteSpace(plotType) &&
+                        if (string.IsNullOrWhiteSpace(subProject) &&
                             string.IsNullOrWhiteSpace(block) &&
-                            string.IsNullOrWhiteSpace(propertyType) &&
                             string.IsNullOrWhiteSpace(size) &&
+                            string.IsNullOrWhiteSpace(plotNo) &&
                             string.IsNullOrWhiteSpace(floor) &&
-                            string.IsNullOrWhiteSpace(additionalInfo))
+                            string.IsNullOrWhiteSpace(plotType) &&
+                            string.IsNullOrWhiteSpace(propertyType) &&
+                            string.IsNullOrWhiteSpace(additionalInfo) &&
+                            string.IsNullOrWhiteSpace(street))
                         {
                             rowNumber++;
                             continue;
@@ -764,14 +796,15 @@ namespace PMS.Controllers
                         properties.Add(new PropertyImportViewModel
                         {
                             RowNumber = rowNumber,
+                            SubProject = subProject,
                             PlotNo = plotNo,
-                            Street = street,
-                            PlotType = plotType,
                             Block = block,
-                            PropertyType = propertyType,
                             Size = size,
+                            PropertyType = propertyType,
                             Floor = floor,
-                            AdditionalInfo = additionalInfo
+                            AdditionalInfo = additionalInfo,
+                            Street = street,
+                            PlotType = plotType
                         });
                         rowNumber++;
                     }

@@ -5,6 +5,7 @@ namespace PMS.Models
     public class DashboardViewModel
     {
         public int TotalCustomers { get; set; }
+        public int PendingCustomers { get; set; }
         public int TotalProjects { get; set; }
         public int TotalProperties { get; set; }
         public int AvailableProperties { get; set; }

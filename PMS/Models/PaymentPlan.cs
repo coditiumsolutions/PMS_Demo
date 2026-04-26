@@ -13,6 +13,12 @@ namespace PMS.Models
         [StringLength(10)]
         public string? ProjectID { get; set; }
 
+        [StringLength(100)]
+        public string? RegisteredSize { get; set; }
+
+        [StringLength(100)]
+        public string? SubProject { get; set; }
+
         [StringLength(150)]
         public string? PlanName { get; set; }
 

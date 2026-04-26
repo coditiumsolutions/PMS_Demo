@@ -57,13 +57,29 @@
                                 <input type="text" class="form-control" value="PKR (Pakistani Rupee)" readonly />
                             </div>
                         </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Size *</label>
+                                <select id="RegisteredSize" class="form-select" required>
+                                    <option value="">Select Size</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Subproject *</label>
+                                <select id="SubProject" class="form-select" required>
+                                    <option value="">Select Subproject</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label asp-for="TotalAmount" class="form-label">Total Amount (PKR) *</label>
-                                <input asp-for="TotalAmount" id="TotalAmount" type="number" step="0.01" class="form-control" placeholder="e.g., 5000000" required />
+                                <input asp-for="TotalAmount" id="TotalAmount" type="number" step="1" min="1" max="1000000000" class="form-control" placeholder="e.g., 5000000" required />
                                 <span asp-validation-for="TotalAmount" class="text-danger"></span>
                             </div>
                         </div>
@@ -114,7 +130,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="tokenAmount" class="form-label">Token Amount (PKR) *</label>
-                                    <input type="number" id="tokenAmount" step="0.01" class="form-control" placeholder="e.g., 50000" required />
+                                    <input type="number" id="tokenAmount" step="1" min="1" max="1000000000" class="form-control" placeholder="e.g., 50000" required />
                                     <small class="text-muted">Token payment amount (Installment 0 - No surcharge applied)</small>
                                 </div>
                             </div>
@@ -142,7 +158,7 @@
                             <label for="possessionAmount" class="form-label fw-bold">
                                 <i class="fas fa-key me-2"></i>Possession Amount (PKR)
                             </label>
-                            <input type="number" id="possessionAmount" step="0.01" class="form-control" value="0" placeholder="e.g., 200000" />
+                            <input type="number" id="possessionAmount" step="1" min="0" max="1000000000" class="form-control" value="0" placeholder="e.g., 200000" />
                             <small class="text-muted">If greater than 0, Possession is saved as the last payment.</small>
                         </div>
                         <div class="row">
@@ -180,7 +196,7 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="installmentAmount" class="form-label">Installment Amount (PKR) *</label>
-                                    <input type="number" id="installmentAmount" step="0.01" class="form-control" placeholder="Enter amount per installment" required />
+                                    <input type="number" id="installmentAmount" step="1" min="1" max="1000000000" class="form-control" placeholder="Enter amount per installment" required />
                                     <small class="text-muted">Manual input allowed. Child total may be less than parent total, but cannot exceed it.</small>
                                 </div>
                             </div>
@@ -224,7 +240,7 @@
                                 <div class="mb-3">
                                     <label for="surchargeRate" class="form-label">Surcharge Rate *</label>
                                     <input type="number" id="surchargeRate" step="0.0001" class="form-control" value="0.05" required />
-                                    <small class="text-muted">Use fractional rate (e.g., 0.05 means 5% per day)</small>
+                                    <small class="text-muted">Use fractional rate (e.g., 0.05 means 5% per day). This applies only to regular installments; Token and Possession surcharge are always 0.</small>
                                 </div>
                             </div>
                         </div>
@@ -246,12 +262,12 @@
                             <p class="mb-1"><strong>Total Installments:</strong> <span id="previewTotalInstallments">0</span></p>
                             <p class="mb-1"><strong>Token:</strong> <span id="previewToken">Not included</span></p>
                             <p class="mb-1"><strong>Possession:</strong> <span id="previewPossession">Not included</span></p>
-                            <p class="mb-1"><strong>Amount per Installment:</strong> PKR <span id="previewAmount">0.00</span></p>
+                            <p class="mb-1"><strong>Amount per Installment:</strong> PKR <span id="previewAmount">0</span></p>
                             <p class="mb-1"><strong>Frequency:</strong> <span id="previewFrequency">-</span></p>
-                            <p class="mb-1"><strong>Total Installments Amount:</strong> PKR <span id="previewTotalInstallmentsAmount">0.00</span></p>
-                            <p class="mb-1"><strong>Token Amount:</strong> PKR <span id="previewTokenAmount">0.00</span></p>
-                            <p class="mb-1"><strong>Possession Amount:</strong> PKR <span id="previewPossessionAmount">0.00</span></p>
-                            <p class="mb-0"><strong>Grand Total (Token + Installments + Possession):</strong> PKR <span id="previewGrandTotal">0.00</span> / Plan Total PKR <span id="previewPlanTotal">0.00</span></p>
+                            <p class="mb-1"><strong>Total Installments Amount:</strong> PKR <span id="previewTotalInstallmentsAmount">0</span></p>
+                            <p class="mb-1"><strong>Token Amount:</strong> PKR <span id="previewTokenAmount">0</span></p>
+                            <p class="mb-1"><strong>Possession Amount:</strong> PKR <span id="previewPossessionAmount">0</span></p>
+                            <p class="mb-0"><strong>Grand Total (Token + Installments + Possession):</strong> PKR <span id="previewGrandTotal">0</span> / Plan Total PKR <span id="previewPlanTotal">0</span></p>
                         </div>
                         <div id="amountValidationMessage" class="mt-2" style="display: none;">
                             <div class="alert alert-danger mb-0">
@@ -284,12 +300,13 @@
     
     <script>
         $(document).ready(function() {
-            const numberFormat = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+            const maxAmountPkr = 1000000000;
+            const numberFormat = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
             let installmentAmountManual = false;
 
             function formatAmount(value) {
                 if (!isFinite(value)) {
-                    return '0.00';
+                    return '0';
                 }
                 return value.toLocaleString('en-US', numberFormat);
             }
@@ -303,13 +320,77 @@
                 if (!isFinite(value)) {
                     $(selector).val('');
                 } else {
-                    $(selector).val(value.toFixed(2));
+                    var whole = Math.round(value);
+                    if (whole < 0) {
+                        whole = 0;
+                    }
+                    if (whole > maxAmountPkr) {
+                        whole = maxAmountPkr;
+                    }
+                    $(selector).val(whole);
                 }
+            }
+
+            function sanitizeWholeAmountField(selector, allowZero) {
+                var raw = String($(selector).val() || '').trim();
+                if (raw === '') {
+                    return;
+                }
+
+                var amount = parseFloat(raw);
+                if (!isFinite(amount)) {
+                    $(selector).val('');
+                    return;
+                }
+
+                amount = Math.round(amount);
+                if (amount < 0 || (!allowZero && amount === 0)) {
+                    amount = allowZero ? 0 : 1;
+                }
+                if (amount > maxAmountPkr) {
+                    amount = maxAmountPkr;
+                }
+
+                $(selector).val(amount);
+            }
+
+            function hasDecimal(value) {
+                return Math.floor(value) !== value;
             }
 
             function getExchangeRate() {
                 var rate = parseFloat($('#ExchangeRate').val());
                 return rate && rate > 0 ? rate : 1;
+            }
+
+            function fillDropdown(selector, values, placeholder) {
+                const $dd = $(selector);
+                $dd.empty();
+                $dd.append($('<option/>').val('').text(placeholder));
+                (values || []).forEach(function(item) {
+                    $dd.append($('<option/>').val(item).text(item));
+                });
+            }
+
+            async function loadProjectMeta(projectId) {
+                fillDropdown('#RegisteredSize', [], 'Select Size');
+                fillDropdown('#SubProject', [], 'Select Subproject');
+
+                if (!projectId) {
+                    return;
+                }
+
+                try {
+                    const [sizes, subprojects] = await Promise.all([
+                        $.getJSON('@Url.Action("GetProjectSizes", "Payment")', { projectId: projectId }),
+                        $.getJSON('@Url.Action("GetProjectSubProjects", "Payment")', { projectId: projectId })
+                    ]);
+
+                    fillDropdown('#RegisteredSize', sizes, 'Select Size');
+                    fillDropdown('#SubProject', subprojects, 'Select Subproject');
+                } catch (e) {
+                    console.error('Failed loading project size/subproject values.', e);
+                }
             }
 
             function updatePossessionFieldRequirements() {
@@ -338,7 +419,7 @@
                 var possessionAmountPkr = parseAmount('#possessionAmount');
                 var totalInstallments = parseInt($('#totalInstallments').val(), 10) || 0;
                 var remainder = planTotalPkr - tokenAmountPkr - possessionAmountPkr;
-                var installmentPkr = (totalInstallments > 0 && remainder >= 0) ? remainder / totalInstallments : 0;
+                var installmentPkr = (totalInstallments > 0 && remainder >= 0) ? Math.round(remainder / totalInstallments) : 0;
 
                 writeAmount('#installmentAmount', installmentPkr);
             }
@@ -351,7 +432,7 @@
                     var excessPkr = grandTotalPkr - planTotalPkr;
                     messageText.html(
                         'Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmountPkr) + ') + ' +
-                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountPkr) : '0.00') + ') + ' +
+                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountPkr) : '0') + ') + ' +
                         'Possession Amount (PKR ' + formatAmount(possessionAmountPkr) + ') = PKR ' +
                         formatAmount(grandTotalPkr) +
                         ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalPkr) + '). Excess: PKR ' +
@@ -410,13 +491,31 @@
                 $('#Frequency').val($(this).val());
                 updatePreview();
             });
+            $('#ProjectID').on('change', function() {
+                const projectId = $(this).val();
+                loadProjectMeta(projectId);
+            });
 
-            $('#TotalAmount, #tokenAmount, #possessionAmount').on('input', function() {
+            $('#TotalAmount').on('input blur change', function() {
+                sanitizeWholeAmountField('#TotalAmount', false);
                 updatePossessionFieldRequirements();
                 updatePreview();
             });
 
-            $('#installmentAmount').on('input', function() {
+            $('#tokenAmount').on('input blur change', function() {
+                sanitizeWholeAmountField('#tokenAmount', false);
+                updatePossessionFieldRequirements();
+                updatePreview();
+            });
+
+            $('#possessionAmount').on('input blur change', function() {
+                sanitizeWholeAmountField('#possessionAmount', true);
+                updatePossessionFieldRequirements();
+                updatePreview();
+            });
+
+            $('#installmentAmount').on('input blur change', function() {
+                sanitizeWholeAmountField('#installmentAmount', false);
                 installmentAmountManual = $(this).val() !== '';
                 updatePreview();
             });
@@ -427,6 +526,7 @@
             updatePossessionFieldRequirements();
             recalculateInstallmentAmount(true);
             updatePreview();
+            loadProjectMeta($('#ProjectID').val());
 
             $('#paymentPlanForm').on('submit', function(e) {
                 e.preventDefault();
@@ -442,6 +542,16 @@
                     $('#ProjectID').focus().addClass('is-invalid');
                     return false;
                 }
+                if (!$('#RegisteredSize').val()) {
+                    alert('Please select a Size.');
+                    $('#RegisteredSize').focus().addClass('is-invalid');
+                    return false;
+                }
+                if (!$('#SubProject').val()) {
+                    alert('Please select a Subproject.');
+                    $('#SubProject').focus().addClass('is-invalid');
+                    return false;
+                }
 
                 var includeToken = $('#includeToken').is(':checked');
                 var tokenAmountPkr = includeToken ? parseAmount('#tokenAmount') : null;
@@ -450,6 +560,16 @@
                 var installmentAmountPkr = parseAmount('#installmentAmount');
                 var planTotalPkr = parseAmount('#TotalAmount');
                 var exchangeRate = getExchangeRate();
+
+                if (planTotalPkr > maxAmountPkr || tokenAmountPkr > maxAmountPkr || possessionAmountPkr > maxAmountPkr || installmentAmountPkr > maxAmountPkr) {
+                    alert('Amount cannot exceed PKR 1,000,000,000 (100 crores).');
+                    return false;
+                }
+
+                if (hasDecimal(planTotalPkr) || (includeToken && hasDecimal(tokenAmountPkr)) || hasDecimal(possessionAmountPkr) || hasDecimal(installmentAmountPkr)) {
+                    alert('Only whole amounts are allowed. Decimal values are not permitted.');
+                    return false;
+                }
 
                 if (includeToken && (!tokenAmountPkr || tokenAmountPkr <= 0)) {
                     alert('Please enter Token Amount if Token is included.');
@@ -483,7 +603,7 @@
                     var excess = grandTotal - planTotalPkr;
                     alert(
                         'Validation Error: Total Installments Amount (PKR ' + formatAmount(totalInstallmentsAmount) + ') + ' +
-                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountPkr) : '0.00') + ') + ' +
+                        'Token Amount (PKR ' + (includeToken ? formatAmount(tokenAmountPkr) : '0') + ') + ' +
                         'Possession Amount (PKR ' + formatAmount(possessionAmountPkr) + ') = PKR ' +
                         formatAmount(grandTotal) + ' exceeds Parent Total Amount (PKR ' + formatAmount(planTotalPkr) + '). Excess: PKR ' + formatAmount(excess) + '.'
                     );
@@ -498,6 +618,8 @@
                 var planData = {
                     PlanName: $('#PlanName').val(),
                     ProjectID: $('#ProjectID').val() || null,
+                    RegisteredSize: $('#RegisteredSize').val() || null,
+                    SubProject: $('#SubProject').val() || null,
                     TotalAmount: planTotalPkr,
                     ExchangeRate: exchangeRate,
                     Currency: 'PKR',

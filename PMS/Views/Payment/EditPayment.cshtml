@@ -46,7 +46,7 @@
                     </div>
                     <div class="col-md-4">
                         <small class="text-muted">Max amount for this installment</small>
-                        <p class="fw-bold mb-0" style="color: #9C6ADE;">PKR @maxAmount.ToString("N2")</p>
+                        <p class="fw-bold mb-0" style="color: #9C6ADE;">PKR @maxAmount.ToString("N0")</p>
                     </div>
                 </div>
             </div>
@@ -67,27 +67,26 @@
                     </div>
                 }
 
-                <form asp-action="EditPayment" method="post" id="editPaymentForm">
+                <form asp-action="EditPayment" method="post" id="editPaymentForm" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="paymentId" value="@Model.PaymentID" />
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="paymentDate" class="form-label fw-semibold">
-                                <i class="fas fa-calendar me-1" style="color: #9C6ADE;"></i>Payment Date *
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-calendar-check me-1" style="color: #9C6ADE;"></i>Entry Date
                             </label>
-                            <input type="datetime-local" name="paymentDate" id="paymentDate" class="form-control" required
-                                   value="@Model.PaymentDate.ToString("yyyy-MM-ddTHH:mm")" />
+                            <input type="text" class="form-control" value="@Model.PaymentDate.ToString("MMM dd, yyyy hh:mm tt")" readonly />
                         </div>
 
                         <div class="col-md-6">
                             <label for="amount" class="form-label fw-semibold">
                                 <i class="fas fa-coins me-1" style="color: #9C6ADE;"></i>Amount (PKR) *
                             </label>
-                            <input type="number" name="amount" id="amount" step="0.01" min="0.01" class="form-control"
-                                   value="@Model.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
-                                   max="@maxAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
-                            <small class="text-muted">Must not exceed PKR @maxAmount.ToString("N2") for this installment.</small>
+                            <input type="number" name="amount" id="amount" step="1" min="1" class="form-control"
+                                   value="@Math.Round(Model.Amount, 0, MidpointRounding.AwayFromZero).ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                   max="@Math.Round(maxAmount, 0, MidpointRounding.AwayFromZero).ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
+                            <small class="text-muted">Must not exceed PKR @maxAmount.ToString("N0") for this installment.</small>
                             <div id="amountValidationError" class="invalid-feedback d-block" style="display: none !important;"></div>
                         </div>
 
@@ -107,10 +106,38 @@
 
                         <div class="col-md-6">
                             <label for="referenceNo" class="form-label fw-semibold">
-                                <i class="fas fa-hashtag me-1" style="color: #9C6ADE;"></i>Reference Number
+                                <i class="fas fa-hashtag me-1" style="color: #9C6ADE;"></i>Reference Number *
                             </label>
                             <input type="text" name="referenceNo" id="referenceNo" class="form-control"
-                                   value="@Model.ReferenceNo" placeholder="Transaction/Receipt/Cheque Number" />
+                                   value="@Model.ReferenceNo" placeholder="Transaction/Receipt/Cheque Number" required />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label fw-semibold">
+                                <i class="fas fa-university me-1" style="color: #9C6ADE;"></i>Bank Name *
+                            </label>
+                            <select name="bankName" id="bankName" class="form-select" required>
+                                <option value="">Select Bank</option>
+                                @foreach (var bank in (ViewBag.BankNames as IEnumerable<string> ?? Array.Empty<string>()))
+                                {
+                                    if (string.Equals(bank, Model.BankName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="@bank" selected>@bank</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@bank">@bank</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="depositDate" class="form-label fw-semibold">
+                                <i class="fas fa-calendar-day me-1" style="color: #9C6ADE;"></i>Deposit Date *
+                            </label>
+                            <input type="date" name="depositDate" id="depositDate" class="form-control"
+                                   value="@((Model.DepositDate ?? DateTime.Today).ToString("yyyy-MM-dd"))" required />
                         </div>
 
                         <div class="col-md-6">
@@ -136,6 +163,20 @@
                             </label>
                             <textarea name="remarks" id="remarks" class="form-control" rows="3">@Model.Remarks</textarea>
                         </div>
+
+                        <div class="col-12">
+                            <label for="proofAttachment" class="form-label fw-semibold">
+                                <i class="fas fa-paperclip me-1" style="color: #9C6ADE;"></i>Add Payment Proof (Optional)
+                            </label>
+                            <input type="file" name="proofAttachment" id="proofAttachment" class="form-control" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                            <small class="text-muted d-block mt-1">Allowed: JPG, PNG, GIF, BMP, PDF (max 8MB)</small>
+                        </div>
+                        <div class="col-12">
+                            <label for="proofDescription" class="form-label fw-semibold">
+                                <i class="fas fa-file-alt me-1" style="color: #9C6ADE;"></i>Proof Title / Notes (Optional)
+                            </label>
+                            <input type="text" name="proofDescription" id="proofDescription" class="form-control" maxlength="500" placeholder="e.g. Corrected receipt after edit" />
+                        </div>
                     </div>
 
                     <hr class="my-4">
@@ -157,16 +198,20 @@
 @section Scripts {
     <script>
         (function () {
-            var maxAmount = @maxAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            var maxAmount = @Math.Round(maxAmount, 0, MidpointRounding.AwayFromZero).ToString(System.Globalization.CultureInfo.InvariantCulture);
             var form = document.getElementById('editPaymentForm');
             var amountInput = document.getElementById('amount');
             var amountError = document.getElementById('amountValidationError');
 
             function validateAmount() {
+                var raw = amountInput.value;
+                if (raw && raw.indexOf('.') >= 0) {
+                    amountInput.value = Math.round(parseFloat(raw) || 0);
+                }
                 var val = parseFloat(amountInput.value) || 0;
                 if (maxAmount > 0 && val > maxAmount) {
                     amountError.style.display = 'block';
-                    amountError.textContent = 'Amount must not exceed PKR ' + maxAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 }) + '.';
+                    amountError.textContent = 'Amount must not exceed PKR ' + maxAmount.toLocaleString('en-PK', { maximumFractionDigits: 0 }) + '.';
                     amountInput.classList.add('is-invalid');
                     return false;
                 }

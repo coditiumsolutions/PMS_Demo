@@ -68,8 +68,9 @@
             <div class="a4-info-row"><span class="a4-info-label">Father's Name:</span><span class="a4-info-value">@(Model.BuyerFatherName ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">CNIC:</span><span class="a4-info-value">@(Model.BuyerCNIC ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">Passport No:</span><span class="a4-info-value">@(Model.BuyerPassportNo ?? "—")</span></div>
-            <div class="a4-info-row"><span class="a4-info-label">Contact:</span><span class="a4-info-value">@(Model.BuyerContact ?? "—")</span></div>
-            <div class="a4-info-row"><span class="a4-info-label">Address:</span><span class="a4-info-value">@(Model.BuyerAddress ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Phone:</span><span class="a4-info-value">@(Model.BuyerPhone ?? Model.BuyerContact ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Mobile:</span><span class="a4-info-value">@(Model.BuyerMobile ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Address:</span><span class="a4-info-value">@(Model.BuyerMailingAddress ?? Model.BuyerAddress ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">City / Country:</span><span class="a4-info-value">@(Model.BuyerCity ?? "—") @(Model.BuyerCountry != null ? ", " + Model.BuyerCountry : "")</span></div>
         </div>
     </div>

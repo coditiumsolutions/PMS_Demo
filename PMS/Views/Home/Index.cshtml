@@ -53,6 +53,9 @@
         <div class="stats-card">
             <div class="stats-number">@Model.TotalCustomers</div>
             <div class="stats-label">Total Customers</div>
+            <div class="mt-1" style="font-size: 11px; color: var(--warning); font-weight: 600;">
+                Pending Customers: @Model.PendingCustomers
+            </div>
             <i class="fas fa-users fa-2x text-primary mt-2" style="color: var(--primary-light) !important;"></i>
         </div>
     </div>
@@ -431,6 +434,7 @@
             primary: '#9C6ADE',
             primaryLight: '#C9B3FF',
             accent: '#E879F9',
+            accentGold: '#f59e0b',
             success: '#10b981',
             warning: '#f59e0b',
             danger: '#ef4444',

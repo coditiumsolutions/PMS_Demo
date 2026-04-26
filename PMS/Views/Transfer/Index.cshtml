@@ -6,13 +6,33 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0"></h2>
-    @if (ViewBag.CanCreate == true)
-    {
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>New Transfer
-    </a>
-    }
+    <div class="d-flex gap-2">
+        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
+            <i class="fas fa-tags me-2"></i>Transfer Fee Module
+        </a>
+        @if (ViewBag.CanCreate == true)
+        {
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Transfer
+        </a>
+        }
+    </div>
 </div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
 <form method="get" asp-action="Index" class="mb-4">
     <div class="card">
@@ -70,6 +90,8 @@
                 <tbody>
                     @foreach (var t in Model)
                     {
+                        var isInitiated = string.Equals(t.WorkFlowStatus?.Trim(), "Created", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(t.WorkFlowStatus?.Trim(), "Initiated", StringComparison.OrdinalIgnoreCase);
                         <tr>
                             <td><span class="badge bg-secondary">@t.TransferID</span></td>
                             <td><code>@t.CustomerID</code></td>
@@ -116,6 +138,15 @@
                                         <a asp-action="Edit" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-primary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                    }
+                                    @if (ViewBag.CanDelete == true && isInitiated)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@t.TransferID" method="post" class="d-inline" onsubmit="return confirm('Delete this transfer?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
                                     }
                                 </div>
                             </td>

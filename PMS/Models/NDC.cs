@@ -48,6 +48,19 @@ namespace PMS.Models
         /// <summary>1 if TotalDueAmount == TotalDueInstallments (all dues cleared), else 0.</summary>
         public bool AllPaymentClear { get; set; }
 
+        /// <summary>Remaining dues at creation time: max(TotalDueAmount - TotalDueInstallments, 0).</summary>
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? RemainingDues { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? AmountPerUnit { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? TransferFeeAmount { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? PropertySize { get; set; }
+
         // Navigation properties
         [ForeignKey("CustomerID")]
         public virtual Customer? Customer { get; set; }

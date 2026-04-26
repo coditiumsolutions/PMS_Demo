@@ -5,6 +5,7 @@ namespace PMS.Models
     {
         public Project? Project { get; set; }
         public string? SelectedProjectID { get; set; }
+        public string? SelectedSubProject { get; set; }
         public List<FloorGroupViewModel> Floors { get; set; } = new();
 
         public int TotalUnits => Floors.Sum(f => f.Properties.Count);

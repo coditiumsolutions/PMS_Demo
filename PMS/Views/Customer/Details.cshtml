@@ -559,7 +559,13 @@
                             <tbody>
                                 @foreach (var log in activityLogs)
                                 {
-                                    <tr>
+                                    <tr class="activity-log-row js-activity-log-row"
+                                        data-created-at="@log.CreatedAt.ToString("MMM dd, yyyy HH:mm")"
+                                        data-user="@(log.User?.FullName ?? log.UserID ?? "—")"
+                                        data-action="@(log.Action ?? "—")"
+                                        data-ref-type="@(log.RefType ?? "—")"
+                                        data-ref-id="@(log.RefID ?? "—")"
+                                        data-details="@(log.Details ?? "")">
                                         <td class="text-muted small">@log.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
                                         <td>@(log.User?.FullName ?? log.UserID ?? "—")</td>
                                         <td>
@@ -707,6 +713,50 @@
     </div>
 </div>
 
+<div class="modal fade" id="activityLogDetailsModal" tabindex="-1" aria-labelledby="activityLogDetailsModalLabel" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activityLogDetailsModalLabel">
+                    <i class="fas fa-file-alt me-2"></i>Log Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Date</label>
+                        <div class="form-control bg-light" id="logModalDate">—</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">User</label>
+                        <div class="form-control bg-light" id="logModalUser">—</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Action</label>
+                        <div class="form-control bg-light" id="logModalAction">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small mb-1">Ref Type</label>
+                        <div class="form-control bg-light" id="logModalRefType">—</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small mb-1">Ref ID</label>
+                        <div class="form-control bg-light" id="logModalRefId">—</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small mb-1">Details</label>
+                        <pre class="form-control bg-light" id="logModalDetails" style="height: 220px; white-space: pre-wrap;">—</pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     /* Tab Styling */
     .customer-tabs {
@@ -794,6 +844,14 @@
         border-bottom: 2px solid #e8dcff;
     }
 
+    .activity-log-row {
+        cursor: pointer;
+    }
+
+    .activity-log-row:hover {
+        background-color: rgba(111, 66, 193, 0.08);
+    }
+
     /* Responsive Tabs */
     @@media (max-width: 768px) {
         .customer-tabs .nav-link {
@@ -810,6 +868,33 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
+            var activityLogModalEl = document.getElementById('activityLogDetailsModal');
+            var activityLogModal = activityLogModalEl
+                ? new bootstrap.Modal(activityLogModalEl, { backdrop: false })
+                : null;
+
+            function formatLogDetails(details) {
+                if (!details) return '—';
+                try {
+                    var parsed = JSON.parse(details);
+                    return JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    return details;
+                }
+            }
+
+            $('#activity').on('click', '.js-activity-log-row', function() {
+                if (!activityLogModal) return;
+                var $row = $(this);
+                $('#logModalDate').text($row.data('created-at') || '—');
+                $('#logModalUser').text($row.data('user') || '—');
+                $('#logModalAction').text($row.data('action') || '—');
+                $('#logModalRefType').text($row.data('ref-type') || '—');
+                $('#logModalRefId').text($row.data('ref-id') || '—');
+                $('#logModalDetails').text(formatLogDetails($row.data('details')));
+                activityLogModal.show();
+            });
+
             // Load properties when tab is shown
             $('#allotments-tab').on('shown.bs.tab', function() {
                 loadProperties();

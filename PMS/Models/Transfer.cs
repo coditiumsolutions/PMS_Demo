@@ -56,12 +56,42 @@ namespace PMS.Models
         [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Passport Number must be alphanumeric.")]
         public string? BuyerPassportNo { get; set; }
 
+        public DateTime? BuyerDOB { get; set; }
+
+        [StringLength(20)]
+        public string? BuyerGender { get; set; }
+
+        [StringLength(100)]
+        public string? BuyerNationality { get; set; }
+
+        [StringLength(150)]
+        [EmailAddress(ErrorMessage = "Email Address format is invalid.")]
+        public string? BuyerEmail { get; set; }
+
+        [StringLength(50)]
+        [RegularExpression(@"^[0-9\+]+$", ErrorMessage = "Phone must contain digits and '+' only.")]
+        public string? BuyerPhone { get; set; }
+
+        [StringLength(50)]
+        [RegularExpression(@"^[0-9]+$", ErrorMessage = "Mobile must contain digits only.")]
+        public string? BuyerMobile { get; set; }
+
+        [StringLength(50)]
+        [RegularExpression(@"^[0-9]+$", ErrorMessage = "Mobile 2 must contain digits only.")]
+        public string? BuyerMobile2 { get; set; }
+
         [StringLength(200)]
         [RegularExpression(@"^[0-9\+]+$", ErrorMessage = "Contact must contain digits and '+' only.")]
         public string? BuyerContact { get; set; }
 
         [StringLength(200)]
         public string? BuyerAddress { get; set; }
+
+        [StringLength(255)]
+        public string? BuyerMailingAddress { get; set; }
+
+        [StringLength(255)]
+        public string? BuyerPermanentAddress { get; set; }
 
         [StringLength(200)]
         public string? BuyerCity { get; set; }

@@ -6,9 +6,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex gap-2 align-items-center">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTicketModal">
-            <i class="fas fa-plus me-2"></i>New Ticket
-        </button>
+        @if (ViewBag.CanCreate == true)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>New Ticket
+            </a>
+        }
     </div>
 </div>
 
@@ -146,8 +149,14 @@
                                 <td>
                                     <div class="btn-group" role="group">
                                         <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailsModal@(t.TicketID)" title="View"><i class="fas fa-eye"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#updateModal@(t.TicketID)" title="Update"><i class="fas fa-edit"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTicket('@t.TicketID')" title="Delete"><i class="fas fa-trash"></i></button>
+                                        @if (ViewBag.CanEdit == true)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@t.TicketID" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-edit"></i></a>
+                                        }
+                                        @if (ViewBag.CanDelete == true)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTicket('@t.TicketID')" title="Delete"><i class="fas fa-trash"></i></button>
+                                        }
                                     </div>
                                 </td>
                                 <td><code>#@t.TicketID</code></td>
@@ -182,49 +191,6 @@
                 <p class="text-muted">Create a new ticket to record a customer query or complaint.</p>
             </div>
         }
-    </div>
-</div>
-
-<!-- New Ticket Modal -->
-<div class="modal fade" id="newTicketModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
-                <h5 class="modal-title text-white"><i class="fas fa-plus-circle me-2"></i>New Ticket</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form asp-action="Create" method="post">
-                @Html.AntiForgeryToken()
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Customer ID</label>
-                            <input type="text" name="customerID" class="form-control" placeholder="Optional" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" class="form-control" placeholder="Customer email" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Contact (Phone)</label>
-                            <input type="text" name="contact" class="form-control" placeholder="Phone number" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Title <span class="text-danger">*</span></label>
-                            <input type="text" name="title" class="form-control" placeholder="Brief title of query/complaint" required />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Description</label>
-                            <textarea name="description" class="form-control" rows="4" placeholder="Details of the query or complaint"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Create Ticket</button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 
@@ -270,59 +236,6 @@
         </div>
     </div>
 
-    <!-- Update Modal -->
-    <div class="modal fade" id="updateModal@(t.TicketID)" tabindex="-1">
-        <div class="modal-dialog modal-xl modal-dialog-centered ticket-update-modal">
-            <div class="modal-content">
-                <div class="modal-header" style="background: var(--primary);">
-                    <h6 class="modal-title text-white"><i class="fas fa-edit me-2"></i>Update Ticket #@t.TicketID</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form asp-action="UpdateStatus" method="post" class="mb-3">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="ticketId" value="@t.TicketID" />
-                        <label class="form-label fw-semibold">Status</label>
-                        <select name="status" class="form-select mb-2">
-                            <option value="Pending" selected="@(t.Status == "Pending")">Pending</option>
-                            <option value="Assigned" selected="@(t.Status == "Assigned")">Assigned</option>
-                            <option value="Ongoing" selected="@(t.Status == "Ongoing")">Ongoing</option>
-                            <option value="Resolved" selected="@(t.Status == "Resolved")">Resolved</option>
-                            <option value="Discarded" selected="@(t.Status == "Discarded")">Discarded</option>
-                            <option value="Duplicate" selected="@(t.Status == "Duplicate")">Duplicate</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-1"></i>Update Status</button>
-                    </form>
-                    <hr />
-                    <form asp-action="AddCROComments" method="post" class="mb-3">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="ticketId" value="@t.TicketID" />
-                        <label class="form-label fw-semibold">Add CRO Comments</label>
-                        <textarea name="croComments" class="form-control" rows="3" placeholder="Internal notes / follow-up"></textarea>
-                        <button type="submit" class="btn btn-outline-primary w-100 mt-2"><i class="fas fa-comment-medical me-1"></i>Add Comments</button>
-                    </form>
-                    <hr />
-                    <form asp-action="AssignTo" method="post">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="ticketId" value="@t.TicketID" />
-                        <label class="form-label fw-semibold">Assign To</label>
-                        <select name="assignedTo" class="form-select mb-2">
-                            <option value="">-- Unassigned --</option>
-                            @{
-                                var usersList = ViewBag.Users as IEnumerable<string> ?? Enumerable.Empty<string>();
-                                foreach (var name in usersList)
-                                {
-                                    if (name == t.AssignedTo) { <option value="@name" selected>@name</option> }
-                                    else { <option value="@name">@name</option> }
-                                }
-                            }
-                        </select>
-                        <button type="submit" class="btn btn-outline-secondary w-100"><i class="fas fa-user-tie me-1"></i>Assign</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 }
 
 <form id="deleteForm" asp-action="Delete" method="post" style="display: none;">
@@ -344,25 +257,6 @@
     body.modal-open::before { display: none !important; background: transparent !important; }
     .modal { background: transparent !important; }
     .modal.show { background: transparent !important; }
-    /* Ticket Update modal: proper width and responsive */
-    .ticket-update-modal {
-        max-width: 90vw;
-        width: 420px; /* 40% smaller than 700px */
-        min-width: min(320px, 95vw);
-    }
-    @@media (min-width: 576px) {
-        .ticket-update-modal { width: 360px; } /* 40% smaller than 600px */
-    }
-    @@media (min-width: 992px) {
-        .ticket-update-modal { width: 480px; max-width: 90vw; } /* 40% smaller than 800px */
-    }
-    @@media (min-width: 1200px) {
-        .ticket-update-modal { width: 684px; max-width: 95vw; } /* 40% smaller than 1140px */
-    }
-    .ticket-update-modal .modal-body {
-        min-width: 0;
-        padding: 1.25rem 1.5rem;
-    }
 </style>
 
 @section Scripts {

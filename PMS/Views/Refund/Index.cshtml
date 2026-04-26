@@ -1,6 +1,9 @@
 @model IEnumerable<PMS.Models.Refund>
 @{
     ViewData["Title"] = "Refunds";
+    var initiatedStatus = (string?)ViewBag.InitiatedStatus ?? "Initiated";
+    var approvedStatus = (string?)ViewBag.ApprovedStatus ?? "Approved";
+    var declinedStatus = (string?)ViewBag.DeclinedStatus ?? "Declined";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -31,30 +34,30 @@
 <!-- Summary Cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-4">
-        <a href="@Url.Action("Index", new { workflowFilter = "Initiated" })" class="text-decoration-none">
+        <a href="@Url.Action("Index", new { workflowFilter = initiatedStatus })" class="text-decoration-none">
             <div class="card border-0 h-100" style="background:#fff3cd;">
                 <div class="card-body text-center py-3">
-                    <div class="small text-muted text-uppercase fw-semibold">Initiated</div>
+                    <div class="small text-muted text-uppercase fw-semibold">@initiatedStatus</div>
                     <div class="fs-3 fw-bold text-warning">@(ViewBag.InitiatedCount ?? 0)</div>
                 </div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-4">
-        <a href="@Url.Action("Index", new { workflowFilter = "Approved" })" class="text-decoration-none">
+        <a href="@Url.Action("Index", new { workflowFilter = approvedStatus })" class="text-decoration-none">
             <div class="card border-0 h-100" style="background:#d4edda;">
                 <div class="card-body text-center py-3">
-                    <div class="small text-muted text-uppercase fw-semibold">Approved</div>
+                    <div class="small text-muted text-uppercase fw-semibold">@approvedStatus</div>
                     <div class="fs-3 fw-bold text-success">@(ViewBag.ApprovedCount ?? 0)</div>
                 </div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-4">
-        <a href="@Url.Action("Index", new { workflowFilter = "Declined" })" class="text-decoration-none">
+        <a href="@Url.Action("Index", new { workflowFilter = declinedStatus })" class="text-decoration-none">
             <div class="card border-0 h-100" style="background:#f8d7da;">
                 <div class="card-body text-center py-3">
-                    <div class="small text-muted text-uppercase fw-semibold">Declined</div>
+                    <div class="small text-muted text-uppercase fw-semibold">@declinedStatus</div>
                     <div class="fs-3 fw-bold text-danger">@(ViewBag.DeclinedCount ?? 0)</div>
                 </div>
             </div>
@@ -112,8 +115,13 @@
                 <tbody>
                     @foreach (var r in Model)
                     {
-                        var wf = r.WorkflowStatus ?? "Initiated";
-                        var badge = wf == "Approved" ? "bg-success" : wf == "Declined" ? "bg-danger" : "bg-warning text-dark";
+                        var wf = r.WorkflowStatus ?? initiatedStatus;
+                        var isApproved = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase);
+                        var badge = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
+                            ? "bg-success"
+                            : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase)
+                                ? "bg-danger"
+                                : "bg-warning text-dark";
                         <tr>
                             <td><code>@r.RefundID</code></td>
                             <td>
@@ -130,6 +138,21 @@
                                 <a asp-action="Details" asp-route-id="@r.RefundID" class="btn btn-sm btn-outline-info" title="Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                @if (ViewBag.CanEdit == true && !isApproved)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@r.RefundID" class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                }
+                                @if (ViewBag.CanDelete == true)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@r.RefundID" method="post" class="d-inline" onsubmit="return confirm('Delete this refund?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }

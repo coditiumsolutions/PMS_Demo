@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Transfer Details";
     var isApproved = Model.WorkFlowStatus == "Approved";
+    var isInitiated = string.Equals(Model.WorkFlowStatus?.Trim(), "Created", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Model.WorkFlowStatus?.Trim(), "Initiated", StringComparison.OrdinalIgnoreCase);
 }
 <div style="display:none;">@Html.AntiForgeryToken()</div>
 
@@ -19,6 +21,15 @@
             <a asp-action="Edit" asp-route-id="@Model.TransferID" class="btn btn-primary me-2">
                 <i class="fas fa-edit me-2"></i>Edit
             </a>
+        }
+        @if (ViewBag.CanDelete == true && isInitiated)
+        {
+            <form asp-action="Delete" asp-route-id="@Model.TransferID" method="post" class="d-inline me-2" onsubmit="return confirm('Delete this transfer?');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fas fa-trash me-2"></i>Delete
+                </button>
+            </form>
         }
         @if (isApproved)
         {
@@ -113,12 +124,19 @@
             </div>
             <div class="tab-pane fade" id="buyer" role="tabpanel">
                 <div class="row">
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Buyer Name</label><p>@(Model.BuyerName ?? "—")</p></div></div>
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Father Name</label><p>@(Model.BuyerFatherName ?? "—")</p></div></div>
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>CNIC</label><p>@(Model.BuyerCNIC ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Full Name</label><p>@(Model.BuyerName ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Father's Name</label><p>@(Model.BuyerFatherName ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>National ID (CNIC)</label><p>@(Model.BuyerCNIC ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Passport Number</label><p>@(Model.BuyerPassportNo ?? "—")</p></div></div>
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Contact</label><p>@(Model.BuyerContact ?? "—")</p></div></div>
-                    <div class="col-12 mb-2"><div class="detail-field"><label>Address</label><p>@(Model.BuyerAddress ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Date of Birth</label><p>@(Model.BuyerDOB?.ToString("MMM dd, yyyy") ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Gender</label><p>@(Model.BuyerGender ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Nationality</label><p>@(Model.BuyerNationality ?? "—")</p></div></div>
+                    <div class="col-12 mb-2"><div class="detail-field"><label>Email Address</label><p>@(Model.BuyerEmail ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Phone (landline / primary contact)</label><p>@(Model.BuyerPhone ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Mobile</label><p>@(Model.BuyerMobile ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Mobile 2</label><p>@(Model.BuyerMobile2 ?? "—")</p></div></div>
+                    <div class="col-12 mb-2"><div class="detail-field"><label>Mailing Address</label><p>@(Model.BuyerMailingAddress ?? "—")</p></div></div>
+                    <div class="col-12 mb-2"><div class="detail-field"><label>Permanent Address</label><p>@(Model.BuyerPermanentAddress ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>City</label><p>@(Model.BuyerCity ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Country</label><p>@(Model.BuyerCountry ?? "—")</p></div></div>
                 </div>
@@ -139,41 +157,77 @@
                 <div class="mb-2"><div class="detail-field"><label>Transfer Comments</label><p>@(Model.TransferComments ?? "—")</p></div></div>
             </div>
             <div class="tab-pane fade" id="attachments" role="tabpanel">
-                <p class="text-muted small mb-3">Upload documents for Seller or Buyer. Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file.</p>
+                <p class="text-muted small mb-3">Upload documents. Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file. Multiple files are allowed in all categories.</p>
                 <div class="row">
                     <div class="col-md-6 mb-4">
                         <div class="card h-100" style="border-color: rgb(104, 167, 226);">
                             <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
-                                <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Seller Attachments</h6>
+                                <h6 class="mb-0"><i class="fas fa-file-signature me-2"></i>Power of Attorney</h6>
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
                                     <label class="form-label">Upload file</label>
-                                    <input type="file" id="sellerFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
-                                    <input type="text" id="sellerDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
-                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadSellerBtn">
+                                    <input type="file" id="powerOfAttorneyFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="powerOfAttorneyDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadPowerOfAttorneyBtn">
                                         <i class="fas fa-upload me-1"></i>Upload
                                     </button>
                                 </div>
-                                <div id="sellerAttachmentsList" class="transfer-att-list"></div>
+                                <div id="powerOfAttorneyAttachmentsList" class="transfer-att-list"></div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6 mb-4">
                         <div class="card h-100" style="border-color: rgb(104, 167, 226);">
                             <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
-                                <h6 class="mb-0"><i class="fas fa-user-plus me-2"></i>Buyer Attachments</h6>
+                                <h6 class="mb-0"><i class="fas fa-receipt me-2"></i>Payment Receipts</h6>
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
                                     <label class="form-label">Upload file</label>
-                                    <input type="file" id="buyerFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
-                                    <input type="text" id="buyerDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
-                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBuyerBtn">
+                                    <input type="file" id="paymentReceiptsFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="paymentReceiptsDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadPaymentReceiptsBtn">
                                         <i class="fas fa-upload me-1"></i>Upload
                                     </button>
                                 </div>
-                                <div id="buyerAttachmentsList" class="transfer-att-list"></div>
+                                <div id="paymentReceiptsAttachmentsList" class="transfer-att-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                            <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <h6 class="mb-0"><i class="fas fa-file-contract me-2"></i>Booking Form</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload file</label>
+                                    <input type="file" id="bookingFormFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="bookingFormDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBookingFormBtn">
+                                        <i class="fas fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                                <div id="bookingFormAttachmentsList" class="transfer-att-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                            <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <h6 class="mb-0"><i class="fas fa-folder-open me-2"></i>Other Attachments</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload file</label>
+                                    <input type="file" id="otherAttachmentsFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="otherAttachmentsTitle" class="form-control form-control-sm mt-1" placeholder="Title (required)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadOtherAttachmentsBtn">
+                                        <i class="fas fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                                <div id="otherAttachmentsList" class="transfer-att-list"></div>
                             </div>
                         </div>
                     </div>
@@ -225,8 +279,10 @@
             data: { transferId: transferId },
             success: function(res) {
                 if (res.success && res.attachments) {
-                    renderList('sellerAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Seller'; }));
-                    renderList('buyerAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Buyer'; }));
+                    renderList('powerOfAttorneyAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'PowerOfAttorney'; }));
+                    renderList('paymentReceiptsAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'PaymentReceipts'; }));
+                    renderList('bookingFormAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BookingForm'; }));
+                    renderList('otherAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Other'; }));
                 }
             }
         });
@@ -260,19 +316,26 @@
         });
     }
 
-    function upload(type, fileInputId, descId, btnId) {
+    function upload(type, fileInputId, descId, btnId, requireTitle) {
         var fileInput = document.getElementById(fileInputId);
         var descInput = document.getElementById(descId);
         var btn = document.getElementById(btnId);
-        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
             alert('Please select a file.');
+            return;
+        }
+        var descriptionValue = (descInput ? descInput.value : '') || '';
+        if (requireTitle && !descriptionValue.trim()) {
+            alert('Please enter title for Other Attachments.');
             return;
         }
         var fd = new FormData();
         fd.append('transferId', transferId);
-        fd.append('file', fileInput.files[0]);
+        for (var i = 0; i < fileInput.files.length; i++) {
+            fd.append('file', fileInput.files[i]);
+        }
         fd.append('attachmentType', type);
-        fd.append('description', descInput ? descInput.value : '');
+        fd.append('description', descriptionValue);
         fd.append('__RequestVerificationToken', getToken());
         $(btn).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Uploading...');
         $.ajax({
@@ -299,8 +362,10 @@
     $('#attachments-tab').on('shown.bs.tab', function() { loadAttachments(); });
     if ($('#attachments-tab').hasClass('active')) loadAttachments();
 
-    $('#uploadSellerBtn').on('click', function() { upload('Seller', 'sellerFile', 'sellerDescription', 'uploadSellerBtn'); });
-    $('#uploadBuyerBtn').on('click', function() { upload('Buyer', 'buyerFile', 'buyerDescription', 'uploadBuyerBtn'); });
+    $('#uploadPowerOfAttorneyBtn').on('click', function() { upload('PowerOfAttorney', 'powerOfAttorneyFile', 'powerOfAttorneyDescription', 'uploadPowerOfAttorneyBtn', false); });
+    $('#uploadPaymentReceiptsBtn').on('click', function() { upload('PaymentReceipts', 'paymentReceiptsFile', 'paymentReceiptsDescription', 'uploadPaymentReceiptsBtn', false); });
+    $('#uploadBookingFormBtn').on('click', function() { upload('BookingForm', 'bookingFormFile', 'bookingFormDescription', 'uploadBookingFormBtn', false); });
+    $('#uploadOtherAttachmentsBtn').on('click', function() { upload('Other', 'otherAttachmentsFile', 'otherAttachmentsTitle', 'uploadOtherAttachmentsBtn', true); });
 })();
 </script>
 }

@@ -5,11 +5,34 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0"><i class="fas fa-file-certificate me-2"></i>NDC</h2>
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>New NDC
-    </a>
+    <!-- <h2 class="mb-0"><i class="fas fa-file-certificate me-2"></i>NDC</h2> -->
+    <div class="d-flex gap-2">
+        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
+            <i class="fas fa-tags me-2"></i>Transfer Fee Module
+        </a>
+        @if (ViewBag.CanCreate == true)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>New NDC
+            </a>
+        }
+    </div>
 </div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
 <form method="get" asp-action="Index" class="mb-4">
     <div class="card">
@@ -63,6 +86,10 @@
                             <th>Type / Title</th>
                             <th>Total Due</th>
                             <th>Total Paid</th>
+                            <th>Remaining Dues</th>
+                            <th>Amount/Unit</th>
+                            <th>Property Size</th>
+                            <th>Transfer Fee</th>
                             <th>All Clear</th>
                             <th>Expiry</th>
                             <th>Workflow</th>
@@ -72,6 +99,7 @@
                     <tbody>
                         @foreach (var n in Model)
                         {
+                            var isApproved = string.Equals(n.WorkFlowStatus?.Trim(), "Approved", StringComparison.OrdinalIgnoreCase);
                             <tr>
                                 <td>
                                     <a asp-action="Print" asp-route-id="@n.NDCID" target="_blank" class="btn btn-sm btn-outline-secondary" title="Print">
@@ -80,6 +108,21 @@
                                     <a asp-action="Details" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-primary" title="Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    @if (ViewBag.CanEdit == true && !isApproved)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    }
+                                    @if (ViewBag.CanDelete == true)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@n.NDCID" method="post" class="d-inline" onsubmit="return confirm('Delete this NDC record?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </td>
                                 <td><span class="badge bg-secondary">@n.NDCID</span></td>
                                 <td><code>@n.CustomerID</code></td>
@@ -106,6 +149,10 @@
                                 </td>
                                 <td>@(n.TotalDueAmount?.ToString("N0") ?? "—")</td>
                                 <td>@(n.TotalDueInstallments?.ToString("N0") ?? "—")</td>
+                                <td>@(n.RemainingDues?.ToString("N0") ?? "—")</td>
+                                <td>@(n.AmountPerUnit?.ToString("N2") ?? "—")</td>
+                                <td>@(n.PropertySize?.ToString("N2") ?? "—")</td>
+                                <td>@(n.TransferFeeAmount?.ToString("N0") ?? "—")</td>
                                 <td>
                                     @if (n.AllPaymentClear)
                                     { <span class="badge bg-success">Yes</span> }

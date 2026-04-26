@@ -18,11 +18,16 @@ namespace PMS.Models
 
         public DateTime PaymentDate { get; set; } = DateTime.Now;
 
+        public DateTime? DepositDate { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
 
         [StringLength(50)]
         public string? Method { get; set; }
+
+        [StringLength(100)]
+        public string? BankName { get; set; }
 
         [StringLength(100)]
         public string? ReferenceNo { get; set; }
@@ -32,6 +37,9 @@ namespace PMS.Models
 
         [StringLength(255)]
         public string? Remarks { get; set; }
+
+        [StringLength(255)]
+        public string? AccountHead { get; set; }
 
         // Audit fields — managed by PaymentAudit module only
         [StringLength(50)]

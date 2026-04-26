@@ -6,6 +6,9 @@
     var newCustomersPerMonth = ViewBag.NewCustomersPerMonth as IList<PMS.Models.NewCustomersPerMonthItem> ?? new List<PMS.Models.NewCustomersPerMonthItem>();
     var byCity = ViewBag.ByCity as IList<PMS.Models.CustomersByCityItem> ?? new List<PMS.Models.CustomersByCityItem>();
     var bySize = ViewBag.BySize as IList<PMS.Models.CustomersBySizeItem> ?? new List<PMS.Models.CustomersBySizeItem>();
+    var customersWithoutPaymentPlanAllocated = (int?)ViewBag.CustomersWithoutPaymentPlanAllocated ?? 0;
+    var customersWithMissingAllocatedPaymentPlan = (int?)ViewBag.CustomersWithMissingAllocatedPaymentPlan ?? 0;
+    var customersWithoutProjectAllocated = (int?)ViewBag.CustomersWithoutProjectAllocated ?? 0;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -52,6 +55,33 @@
         </div>
     </div>
 }
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-danger h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Without Payment Plan Allocated</h6>
+                <h3 class="mb-0 text-danger">@customersWithoutPaymentPlanAllocated</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-warning h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Allocated Plan Not Found</h6>
+                <h3 class="mb-0 text-warning">@customersWithMissingAllocatedPaymentPlan</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-info h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Without Project Allocated</h6>
+                <h3 class="mb-0 text-info">@customersWithoutProjectAllocated</h3>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row g-4">
     <!-- 1. Allotted Vs Not Allotted per Project -->

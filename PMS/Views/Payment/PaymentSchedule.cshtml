@@ -190,13 +190,12 @@
                                         </button>
                                         @if (ViewBag.CanEdit == true)
                                         {
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-primary" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#editModal@(schedule.ScheduleID)"
-                                                title="Edit">
+                                        <a asp-action="EditPaymentSchedule"
+                                           asp-route-scheduleId="@schedule.ScheduleID"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Edit">
                                             <i class="fas fa-edit"></i>
-                                        </button>
+                                        </a>
                                         }
                                         @if (ViewBag.CanDelete == true)
                                         {
@@ -286,7 +285,7 @@
                                                 {
                                                     <tr>
                                                         <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
-                                                        <td><strong>@payment.Amount.ToString("N2", EnUs) PKR</strong></td>
+                                                        <td><strong>@payment.Amount.ToString("N0", EnUs) PKR</strong></td>
                                                         <td>@payment.Method</td>
                                                         <td><small>@payment.ReferenceNo</small></td>
                                                     </tr>
@@ -315,9 +314,7 @@
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header" style="background: var(--primary);">
-                                <h6 class="modal-title text-white" id="editModalLabel@(schedule.ScheduleID)">
-                                    <i class="fas fa-edit me-2"></i>Edit Installment #@(schedule.InstallmentNo?.ToString() ?? "N/A")
-                                </h6>
+                            
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <form asp-action="EditPaymentSchedule" method="post" class="edit-schedule-form"
@@ -357,7 +354,7 @@
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Amount (PKR)</label>
-                                            <input type="number" name="Amount" step="0.01" class="form-control js-installment-amount" value="@schedule.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
+                                            <input type="number" name="Amount" step="1" min="1" class="form-control js-installment-amount" value="@Math.Round(schedule.Amount, 0, MidpointRounding.AwayFromZero).ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
                                         </div>
                                     </div>
 
@@ -393,7 +390,7 @@
                                         </div>
                                         <div class="mb-2">
                                             <label class="form-label small">New plan total (PKR)</label>
-                                            <input type="number" name="newPlanTotalPkr" step="0.01" min="0" class="form-control form-control-sm input-new-plan-total" placeholder="Defaults to sum of all installments" />
+                                            <input type="number" name="newPlanTotalPkr" step="1" min="0" class="form-control form-control-sm input-new-plan-total" placeholder="Defaults to sum of all installments" />
                                         </div>
                                         <div class="mb-0">
                                             <label class="form-label small">Reason for plan total change <span class="text-danger">*</span></label>
@@ -644,7 +641,7 @@
                 var reasonInput = form.querySelector('.input-change-reason');
 
                 function fmt(n) {
-                    return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    return Math.round(Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
                 }
 
                 function syncPlanAdjustPanel() {
@@ -660,7 +657,7 @@
                             '. ' + customers + ' customer(s) are on this plan. Check the box below and enter a reason to raise the plan total, or reduce this amount.';
                         var cur = parseFloat(newTotalInput && newTotalInput.value);
                         if (!newTotalInput || !newTotalInput.value || isNaN(cur) || cur < projected - 0.000001)
-                            if (newTotalInput) newTotalInput.value = projected.toFixed(2);
+                            if (newTotalInput) newTotalInput.value = Math.round(projected).toString();
                     } else {
                         panel.classList.add('d-none');
                         if (chk) chk.checked = false;

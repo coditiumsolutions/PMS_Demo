@@ -88,6 +88,12 @@ namespace PMS.Controllers
 
             if (payment == null) return NotFound();
 
+            ViewBag.PaymentAttachments = await _context.Attachments
+                .AsNoTracking()
+                .Where(a => a.RefType == "Payment" && a.RefID == id)
+                .OrderByDescending(a => a.UploadedAt)
+                .ToListAsync();
+
             return View(payment);
         }
 

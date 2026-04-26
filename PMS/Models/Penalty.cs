@@ -17,8 +17,10 @@ namespace PMS.Models
         public decimal Amount { get; set; }
 
         [StringLength(255)]
+        [Column("PenaltyReason")]
         public string? Reason { get; set; }
 
+        [Column("PenaltyDate")]
         public DateTime AppliedOn { get; set; } = DateTime.Now;
 
         // Navigation properties

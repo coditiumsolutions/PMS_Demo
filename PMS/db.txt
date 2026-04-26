@@ -84,6 +84,8 @@ CREATE TABLE Registration (
 CREATE TABLE PaymentPlan (
     PlanID CHAR(10) PRIMARY KEY,
     ProjectID CHAR(10) NULL, -- may be assigned later
+    RegisteredSize NVARCHAR(100) NULL, -- selected from Projects.Sizes of chosen project
+    SubProject NVARCHAR(100) NULL, -- selected from Projects.SubProjects of chosen project
     PlanName NVARCHAR(150),
     TotalAmount DECIMAL(18,2),
     TotalAmountUSD DECIMAL(18,2),
@@ -172,6 +174,7 @@ CREATE TABLE Projects (
     Type NVARCHAR(50),
     Location NVARCHAR(150),
     Sizes NVARCHAR(1000) NULL,   -- comma-separated (e.g. 5 Marla, 7 Marla, 10 Marla)
+    SubProjects NVARCHAR(1000) NULL, -- comma-separated subprojects (e.g. Phase 1, Block A)
     Description NVARCHAR(MAX),
     CreatedAt DATETIME DEFAULT GETDATE()
 );
@@ -179,6 +182,7 @@ CREATE TABLE Projects (
 CREATE TABLE Property (
     PropertyID CHAR(10) PRIMARY KEY,
     ProjectID CHAR(10) FOREIGN KEY REFERENCES Projects(ProjectID),
+    SubProject NVARCHAR(100) NULL,
    
     PlotNo NVARCHAR(50),
     Street NVARCHAR(50),
@@ -303,6 +307,7 @@ CREATE TABLE Payments (
     Method NVARCHAR(50),
     ReferenceNo NVARCHAR(100),
     [Status] NVARCHAR(250),
+    AccountHead NVARCHAR(255) NULL, -- used for non-installment ledger lines (e.g., Waived Off)
     Remarks NVARCHAR(255),
     CreatedBy CHAR(10) NULL FOREIGN KEY REFERENCES Users(UserID),
     CreatedAt DATETIME DEFAULT GETDATE(),
@@ -332,12 +337,23 @@ CREATE TABLE Penalties (
 
 CREATE TABLE Waiver (
     WaiverID CHAR(10) PRIMARY KEY,
+    WaiverType NVARCHAR(255) DEFAULT 'Surcharge Waiver',
     CustomerID CHAR(10) FOREIGN KEY REFERENCES Customers(CustomerID),
-    Amount DECIMAL(18,2),
-    Reason NVARCHAR(255),
-    ApprovedBy CHAR(10) FOREIGN KEY REFERENCES Users(UserID),
-    CreatedAt DATETIME DEFAULT GETDATE()
+    [Status] NVARCHAR(100) DEFAULT 'Initiated',
+    AccountHead NVARCHAR(255) DEFAULT 'Waived Off', -- AccountHead of negative Payment entry created in Payments
+    TotalAmount DECIMAL(18,2),
+    WaivedAmount DECIMAL(18,2),
+    WaivedPercentage DECIMAL(18,2) NULL,
+    Comments NVARCHAR(MAX) NULL,
+    ApprovedBy CHAR(10) NULL FOREIGN KEY REFERENCES Users(UserID),
+    CreatedBy CHAR(10) NULL FOREIGN KEY REFERENCES Users(UserID),
+    LastModifiedBy CHAR(10) NULL FOREIGN KEY REFERENCES Users(UserID),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    ApprovedAt DATETIME NULL
 );
+-- Workflow is configuration-driven from Configuration.ConfigKey='WaiverWorkFlow'
+-- Example config value: Initialted,Approved,Declined (or Initiated,Approved,Declined)
+-- On approval, a negative Payment entry is created with AccountHead='Waived Off' (or waiver account head).
 
 CREATE TABLE Refund (
     RefundID CHAR(10) PRIMARY KEY,
@@ -355,6 +371,10 @@ CREATE TABLE Refund (
     ApprovedAt DATETIME NULL,
     Notes NVARCHAR(500) NULL
 );
+-- Workflow is configuration-driven from Configuration.ConfigKey='refundworkflow' (e.g. Initiated,Approved,Declined).
+-- On refund approval:
+-- 1) Payments.Status for the customer is set to 'Refunded'
+-- 2) Customers.Status is set to 'Refunded'
 -- Config: INSERT INTO Configuration (ConfigKey, ConfigValue) VALUES ('refundworkflow','Initiated,Approved,Declined')
 
 -- ===========================================================
@@ -376,10 +396,19 @@ CREATE TABLE Transfer (
     BuyerFatherName NVARCHAR(200),
     BuyerCNIC NVARCHAR(200),              -- Format: XXXXX-XXXXXXX-X
     BuyerPassportNo NVARCHAR(200) NULL,   -- Alphanumeric; required if no CNIC
-    BuyerContact NVARCHAR(200),           -- Digits and + only
-    BuyerAddress NVARCHAR(200),
-     BuyerCity NVARCHAR(200),
-      BuyerCountry NVARCHAR(200),
+    BuyerDOB DATE NULL,                   -- Default UI value: 1990-01-01; must be >= 16 years old
+    BuyerGender NVARCHAR(20) NULL,        -- Male/Female/Other
+    BuyerNationality NVARCHAR(100) NULL,
+    BuyerEmail NVARCHAR(150) NULL,
+    BuyerPhone NVARCHAR(50),              -- Landline / primary contact (required)
+    BuyerMobile NVARCHAR(50),             -- Mobile (required)
+    BuyerMobile2 NVARCHAR(50) NULL,       -- Optional; must differ from Phone and Mobile
+    BuyerContact NVARCHAR(200),           -- Legacy alias of BuyerPhone
+    BuyerMailingAddress NVARCHAR(255),    -- Required
+    BuyerPermanentAddress NVARCHAR(255) NULL,
+    BuyerAddress NVARCHAR(200),           -- Legacy alias of BuyerMailingAddress
+    BuyerCity NVARCHAR(200),
+    BuyerCountry NVARCHAR(200),
       BuyerAttachments JSON,
       SellerAttachments JSON,
       SellerBiometric NVARCHAR(MAX) NULL,
@@ -410,7 +439,24 @@ CREATE TABLE NDC (
     NDCExpiryDate DATE NULL,
     TotalDueAmount DECIMAL(18,2) NULL,
     TotalDueInstallments DECIMAL(18,2) NULL,
-    AllPaymentClear BIT NOT NULL DEFAULT 0
+    RemainingDues DECIMAL(18,2) NULL,
+    AllPaymentClear BIT NOT NULL DEFAULT 0,
+    AmountPerUnit DECIMAL(18,2) NULL,
+    TransferFeeAmount DECIMAL(18,2) NULL,
+    PropertySize DECIMAL(18,2) NULL
+);
+
+CREATE TABLE TransferFee (
+    Id CHAR(10) PRIMARY KEY,
+    ProjectID CHAR(10) NOT NULL FOREIGN KEY REFERENCES Projects(ProjectID),
+    SubProject NVARCHAR(100) NULL,
+    TransferType NVARCHAR(100) NULL,
+    TransferPriority NVARCHAR(20) NULL, -- Normal / Urgent
+    AmountPerUnit DECIMAL(18,2) NOT NULL, -- per sq ft or sq yd
+    CreatedOn DATETIME NOT NULL DEFAULT GETDATE(),
+    CreatedBy CHAR(10) NULL,
+    ModifiedBy CHAR(10) NULL,
+    Details NVARCHAR(MAX) NULL
 );
 
 CREATE TABLE Approvals (

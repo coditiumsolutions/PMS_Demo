@@ -5,6 +5,7 @@ Home | Dashboard, workspace, and AI assistant entry points.
 Registration | Sales registration and inquiry-to-registration workflow.
 Customer | Customer (file) master data, blocking, allotment letters, account statements, reports.
 Transfer | Ownership transfer workflow (seller/buyer, attachments, biometric, approval).
+TransferFee | Transfer fee setup by project, subproject, type, and priority.
 NDC | No Objection Certificate (NDC) issuance and workflow.
 Project | Projects and floor plans.
 Dealer | Dealer master and management.

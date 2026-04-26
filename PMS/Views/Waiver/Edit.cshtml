@@ -1,0 +1,215 @@
+@model PMS.Models.Waiver
+@{
+    ViewData["Title"] = "Edit Waiver";
+    var workflowStatuses = ViewBag.WorkflowStatuses as List<string> ?? new List<string>();
+    var currentWorkflowIndex = ViewBag.CurrentWorkflowIndex != null ? (int)ViewBag.CurrentWorkflowIndex : -1;
+    var hasPreviousStep = ViewBag.HasPreviousStep == true;
+    var hasNextStep = ViewBag.HasNextStep == true;
+    var previousStepLabel = ViewBag.PreviousStepLabel as string;
+    var nextStepLabel = ViewBag.NextStepLabel as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Waiver <code>@Model.WaiverID</code></h2>
+    <a asp-action="Details" asp-route-id="@Model.WaiverID" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header fw-semibold"><i class="fas fa-route me-2"></i>Workflow Status</div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            @for (var i = 0; i < workflowStatuses.Count; i++)
+            {
+                var step = workflowStatuses[i];
+                var isCurrent = i == currentWorkflowIndex;
+                <span class="badge @(isCurrent ? "bg-primary" : "bg-secondary")">@(i + 1). @step</span>
+                @if (i < workflowStatuses.Count - 1)
+                {
+                    <i class="fas fa-arrow-right text-muted"></i>
+                }
+            }
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="direction" value="backward" />
+                <button type="submit" class="btn btn-outline-secondary" @(hasPreviousStep ? null : "disabled")>
+                    <i class="fas fa-arrow-left me-1"></i>Move Back @(string.IsNullOrWhiteSpace(previousStepLabel) ? "" : $"to {previousStepLabel}")
+                </button>
+            </form>
+            <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="direction" value="forward" />
+                <button type="submit" class="btn btn-primary" @(hasNextStep ? null : "disabled")>
+                    <i class="fas fa-arrow-right me-1"></i>Move Forward @(string.IsNullOrWhiteSpace(nextStepLabel) ? "" : $"to {nextStepLabel}")
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.WaiverID" method="post">
+    @Html.AntiForgeryToken()
+    <div class="card mb-4">
+        <div class="card-header fw-semibold">Waiver Details</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Waiver Type</label>
+                    <input value="@Model.WaiverType" class="form-control" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="AccountHead" class="form-label fw-semibold">Account Head</label>
+                    <input asp-for="AccountHead" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Total Surcharge (PKR)</label>
+                    <input value="@Model.TotalAmount.ToString("N2")" class="form-control" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="WaivedPercentage" class="form-label fw-semibold">Waived Percentage (%)</label>
+                    <input asp-for="WaivedPercentage" class="form-control" type="number" min="0" max="100" step="0.01" />
+                    <span asp-validation-for="WaivedPercentage" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="WaivedAmount" class="form-label fw-semibold">Waived Amount (PKR)</label>
+                    <input asp-for="WaivedAmount" class="form-control" type="number" min="0" step="0.01" />
+                    <span asp-validation-for="WaivedAmount" class="text-danger small"></span>
+                </div>
+                <div class="col-md-12">
+                    <label asp-for="Comments" class="form-label fw-semibold">Comments</label>
+                    <textarea asp-for="Comments" class="form-control" rows="3" maxlength="2000"></textarea>
+                    <span asp-validation-for="Comments" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header fw-semibold"><i class="fas fa-paperclip me-2"></i>Attachments</div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file. Multiple files allowed.</p>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">File</label>
+                    <input type="file" id="waiverAttachmentFile" class="form-control" />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Description</label>
+                    <input type="text" id="waiverAttachmentDescription" class="form-control" placeholder="Description (optional)" />
+                </div>
+                <div class="col-md-2">
+                    <button type="button" id="uploadWaiverAttachmentBtn" class="btn btn-primary w-100">
+                        <i class="fas fa-upload me-1"></i>Upload
+                    </button>
+                </div>
+            </div>
+            <hr />
+            <div id="waiverAttachmentsList" class="small text-muted">Loading attachments...</div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Changes</button>
+        <a asp-action="Details" asp-route-id="@Model.WaiverID" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        const waiverId = '@Model.WaiverID';
+
+        function loadAttachments() {
+            $.get('@Url.Action("GetAttachments")', { waiverId: waiverId }, function (res) {
+                if (!res || !res.success) {
+                    $('#waiverAttachmentsList').html('<div class="text-danger">Unable to load attachments.</div>');
+                    return;
+                }
+
+                if (!res.attachments || res.attachments.length === 0) {
+                    $('#waiverAttachmentsList').html('<div class="text-muted">No attachments uploaded.</div>');
+                    return;
+                }
+
+                const html = res.attachments.map(function (a) {
+                    const fileSizeKb = a.fileSize ? (a.fileSize / 1024).toFixed(1) : '0';
+                    return `<div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+                        <div>
+                            <a href="${a.filePath}" target="_blank">${a.fileName}</a>
+                            <div class="text-muted">${a.description || '-'} | ${fileSizeKb} KB | ${a.uploadedAt}</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteWaiverAttachment('${a.attachmentID}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>`;
+                }).join('');
+                $('#waiverAttachmentsList').html(html);
+            }).fail(function () {
+                $('#waiverAttachmentsList').html('<div class="text-danger">Unable to load attachments.</div>');
+            });
+        }
+
+        $('#uploadWaiverAttachmentBtn').on('click', function () {
+            const files = $('#waiverAttachmentFile')[0].files;
+            if (!files || files.length === 0) {
+                alert('Please choose a file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('waiverId', waiverId);
+            formData.append('file', files[0]);
+            formData.append('description', $('#waiverAttachmentDescription').val() || '');
+
+            $.ajax({
+                url: '@Url.Action("UploadAttachment")',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false
+            }).done(function (res) {
+                if (!res || !res.success) {
+                    alert(res && res.message ? res.message : 'Upload failed.');
+                    return;
+                }
+                $('#waiverAttachmentFile').val('');
+                $('#waiverAttachmentDescription').val('');
+                loadAttachments();
+            }).fail(function () {
+                alert('Upload failed.');
+            });
+        });
+
+        window.deleteWaiverAttachment = function (attachmentId) {
+            if (!confirm('Delete this attachment?')) return;
+            $.post('@Url.Action("DeleteAttachment")', { attachmentId: attachmentId }, function (res) {
+                if (!res || !res.success) {
+                    alert(res && res.message ? res.message : 'Delete failed.');
+                    return;
+                }
+                loadAttachments();
+            }).fail(function () {
+                alert('Delete failed.');
+            });
+        };
+
+        loadAttachments();
+    })();
+</script>
+}

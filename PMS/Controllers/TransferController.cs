@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
 using PMS.Services;
+using System.Linq;
 
 namespace PMS.Controllers
 {
@@ -99,8 +100,14 @@ namespace PMS.Controllers
             if (denied != null) return denied;
             ViewBag.WorkflowStatuses = new[] { WorkflowCreated };
             SetCitiesAndCountriesViewBag();
+            SetNationalitiesViewBag();
             SetPaymentMethodsViewBag();
-            var model = new Transfer { WorkFlowStatus = WorkflowCreated, CreatedAt = DateTime.Now };
+            var model = new Transfer
+            {
+                WorkFlowStatus = WorkflowCreated,
+                CreatedAt = DateTime.Now,
+                BuyerDOB = new DateTime(1990, 1, 1)
+            };
             if (!string.IsNullOrWhiteSpace(customerId))
             {
                 var customer = await _context.Customers.FindAsync(customerId);
@@ -129,6 +136,14 @@ namespace PMS.Controllers
                 : new List<string>();
         }
 
+        private void SetNationalitiesViewBag()
+        {
+            var nationalitiesConfig = _context.Configurations.FirstOrDefault(c => c.ConfigKey == "nationalities");
+            ViewBag.Nationalities = nationalitiesConfig?.ConfigValue != null
+                ? nationalitiesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList()
+                : new List<string> { "Pakistani", "American", "British", "Canadian", "Chinese", "Indian", "Other" };
+        }
+
         private void SetPaymentMethodsViewBag()
         {
             var config = _context.Configurations.FirstOrDefault(c => c.ConfigKey == "paymentmethods" || c.ConfigKey == "PaymentMethods");
@@ -146,6 +161,11 @@ namespace PMS.Controllers
             model.TransferID = await GenerateTransferIdAsync();
             model.WorkFlowStatus ??= WorkflowCreated;
             model.CreatedAt = DateTime.Now;
+
+            if (!model.BuyerDOB.HasValue)
+            {
+                model.BuyerDOB = new DateTime(1990, 1, 1);
+            }
 
             if (await _context.Customers.AllAsync(c => c.CustomerID != model.CustomerID))
             {
@@ -165,22 +185,7 @@ namespace PMS.Controllers
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(model.BuyerName))
-                ModelState.AddModelError("BuyerName", "Buyer Name is required.");
-            if (string.IsNullOrWhiteSpace(model.BuyerFatherName))
-                ModelState.AddModelError("BuyerFatherName", "Buyer Father Name is required.");
-            if (string.IsNullOrWhiteSpace(model.BuyerCNIC))
-                ModelState.AddModelError("BuyerCNIC", "Buyer CNIC is required.");
-            else if (!System.Text.RegularExpressions.Regex.IsMatch(model.BuyerCNIC.Trim(), @"^\d{5}-\d{7}-\d$"))
-                ModelState.AddModelError("BuyerCNIC", "Buyer CNIC must be in format XXXXX-XXXXXXX-X (5 digits, hyphen, 7 digits, hyphen, 1 digit).");
-            if (string.IsNullOrWhiteSpace(model.BuyerContact))
-                ModelState.AddModelError("BuyerContact", "Buyer Contact is required.");
-            if (string.IsNullOrWhiteSpace(model.BuyerAddress))
-                ModelState.AddModelError("BuyerAddress", "Buyer Address is required.");
-            if (string.IsNullOrWhiteSpace(model.BuyerCity))
-                ModelState.AddModelError("BuyerCity", "Buyer City is required.");
-            if (string.IsNullOrWhiteSpace(model.BuyerCountry))
-                ModelState.AddModelError("BuyerCountry", "Buyer Country is required.");
+            ValidateBuyerInformation(model);
 
             if (model.TransferFeeDue == null)
                 ModelState.AddModelError("TransferFeeDue", "Transfer Fee Due is required.");
@@ -203,13 +208,16 @@ namespace PMS.Controllers
 
             if (ModelState.IsValid)
             {
+                model.BuyerContact = model.BuyerPhone;
+                model.BuyerAddress = model.BuyerMailingAddress;
                 _context.Transfers.Add(model);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Details), new { id = model.TransferID });
+                return RedirectToAction(nameof(Edit), new { id = model.TransferID, showAttachments = true });
             }
 
             ViewBag.WorkflowStatuses = new[] { WorkflowCreated };
             SetCitiesAndCountriesViewBag();
+            SetNationalitiesViewBag();
             SetPaymentMethodsViewBag();
             return View(model);
         }
@@ -326,7 +334,7 @@ namespace PMS.Controllers
             return View(transfer);
         }
 
-        public async Task<IActionResult> Edit(string id)
+        public async Task<IActionResult> Edit(string id, bool showAttachments = false)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -346,7 +354,10 @@ namespace PMS.Controllers
             }
 
             ViewBag.WorkflowStatuses = new[] { WorkflowCreated, WorkflowAtAccounts, WorkflowAtTransferApproval, WorkflowApproved };
+            SetCitiesAndCountriesViewBag();
+            SetNationalitiesViewBag();
             SetPaymentMethodsViewBag();
+            ViewBag.OpenAttachmentsTab = showAttachments;
             return View(transfer);
         }
 
@@ -372,6 +383,13 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
+            if (!model.BuyerDOB.HasValue)
+            {
+                model.BuyerDOB = new DateTime(1990, 1, 1);
+            }
+
+            ValidateBuyerInformation(model);
+
             if (string.Equals(model.WorkFlowStatus, WorkflowApproved, StringComparison.OrdinalIgnoreCase))
             {
                 var due = model.TransferFeeDue ?? 0;
@@ -380,9 +398,20 @@ namespace PMS.Controllers
                 {
                     ModelState.AddModelError("", "When Workflow Status is Approved, Transfer Fee Due must equal Transfer Fee Paid.");
                     ViewBag.WorkflowStatuses = new[] { WorkflowCreated, WorkflowAtAccounts, WorkflowAtTransferApproval, WorkflowApproved };
+                    SetCitiesAndCountriesViewBag();
+                    SetNationalitiesViewBag();
                     SetPaymentMethodsViewBag();
                     return View(model);
                 }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.WorkflowStatuses = new[] { WorkflowCreated, WorkflowAtAccounts, WorkflowAtTransferApproval, WorkflowApproved };
+                SetCitiesAndCountriesViewBag();
+                SetNationalitiesViewBag();
+                SetPaymentMethodsViewBag();
+                return View(model);
             }
 
             existing.WorkFlowStatus = model.WorkFlowStatus;
@@ -394,8 +423,18 @@ namespace PMS.Controllers
             existing.BuyerName = model.BuyerName;
             existing.BuyerFatherName = model.BuyerFatherName;
             existing.BuyerCNIC = model.BuyerCNIC;
-            existing.BuyerContact = model.BuyerContact;
-            existing.BuyerAddress = model.BuyerAddress;
+            existing.BuyerPassportNo = model.BuyerPassportNo;
+            existing.BuyerDOB = model.BuyerDOB;
+            existing.BuyerGender = model.BuyerGender;
+            existing.BuyerNationality = model.BuyerNationality;
+            existing.BuyerEmail = model.BuyerEmail;
+            existing.BuyerPhone = model.BuyerPhone;
+            existing.BuyerMobile = model.BuyerMobile;
+            existing.BuyerMobile2 = model.BuyerMobile2;
+            existing.BuyerContact = model.BuyerPhone;
+            existing.BuyerAddress = model.BuyerMailingAddress;
+            existing.BuyerMailingAddress = model.BuyerMailingAddress;
+            existing.BuyerPermanentAddress = model.BuyerPermanentAddress;
             existing.BuyerCity = model.BuyerCity;
             existing.BuyerCountry = model.BuyerCountry;
             existing.BuyerAttachments = model.BuyerAttachments;
@@ -420,9 +459,16 @@ namespace PMS.Controllers
                     customer.FullName = model.BuyerName ?? customer.FullName;
                     customer.FatherName = model.BuyerFatherName ?? customer.FatherName;
                     customer.CNIC = model.BuyerCNIC ?? customer.CNIC;
-                    customer.Phone = model.BuyerContact ?? customer.Phone;
-                    customer.MailingAddress = model.BuyerAddress ?? customer.MailingAddress;
-                    customer.PermanentAddress = model.BuyerAddress ?? customer.PermanentAddress;
+                    customer.PassportNo = model.BuyerPassportNo ?? customer.PassportNo;
+                    customer.DOB = model.BuyerDOB ?? customer.DOB;
+                    customer.Gender = model.BuyerGender ?? customer.Gender;
+                    customer.Nationality = model.BuyerNationality ?? customer.Nationality;
+                    customer.Email = model.BuyerEmail ?? customer.Email;
+                    customer.Phone = model.BuyerPhone ?? customer.Phone;
+                    customer.MobileNo = model.BuyerMobile ?? customer.MobileNo;
+                    customer.MobileNo2 = model.BuyerMobile2 ?? customer.MobileNo2;
+                    customer.MailingAddress = model.BuyerMailingAddress ?? customer.MailingAddress;
+                    customer.PermanentAddress = model.BuyerPermanentAddress ?? customer.PermanentAddress;
                     customer.City = model.BuyerCity ?? customer.City;
                     customer.Country = model.BuyerCountry ?? customer.Country;
                 }
@@ -430,6 +476,133 @@ namespace PMS.Controllers
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
+
+            id = NormalizeId(id);
+            if (string.IsNullOrEmpty(id))
+            {
+                TempData["ErrorMessage"] = "Transfer ID is required.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var transfer = await _context.Transfers.FirstOrDefaultAsync(t => t.TransferID == id);
+            if (transfer == null)
+            {
+                TempData["ErrorMessage"] = "Transfer not found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (!IsInitiatedStatus(transfer.WorkFlowStatus))
+            {
+                TempData["ErrorMessage"] = "Only initiated transfers can be deleted.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            _context.Transfers.Remove(transfer);
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                _context.ActivityLogs.Add(new ActivityLog
+                {
+                    UserID = userId,
+                    Action = $"Delete Transfer {transfer.TransferID}",
+                    RefType = "Transfer",
+                    RefID = transfer.TransferID,
+                    CreatedAt = DateTime.Now
+                });
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = $"Transfer {transfer.TransferID} deleted successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        private void ValidateBuyerInformation(Transfer model)
+        {
+            var cnic = (model.BuyerCNIC ?? string.Empty).Trim();
+            var passport = (model.BuyerPassportNo ?? string.Empty).Trim();
+            var phone = (model.BuyerPhone ?? string.Empty).Trim();
+            var mobile = (model.BuyerMobile ?? string.Empty).Trim();
+            var mobile2 = (model.BuyerMobile2 ?? string.Empty).Trim();
+
+            model.BuyerCNIC = string.IsNullOrWhiteSpace(cnic) ? null : cnic;
+            model.BuyerPassportNo = string.IsNullOrWhiteSpace(passport) ? null : passport;
+            model.BuyerPhone = string.IsNullOrWhiteSpace(phone) ? null : phone;
+            model.BuyerMobile = string.IsNullOrWhiteSpace(mobile) ? null : mobile;
+            model.BuyerMobile2 = string.IsNullOrWhiteSpace(mobile2) ? null : mobile2;
+
+            if (string.IsNullOrWhiteSpace(model.BuyerName))
+                ModelState.AddModelError(nameof(model.BuyerName), "Full Name is required.");
+
+            if (!string.IsNullOrWhiteSpace(model.BuyerFatherName) && !System.Text.RegularExpressions.Regex.IsMatch(model.BuyerFatherName.Trim(), @"^[a-zA-Z\s\.\-]+$"))
+                ModelState.AddModelError(nameof(model.BuyerFatherName), "Father's Name must contain letters only.");
+
+            var cnicValid = !string.IsNullOrWhiteSpace(cnic) && System.Text.RegularExpressions.Regex.IsMatch(cnic, @"^\d{5}-\d{7}-\d$");
+            if (!string.IsNullOrWhiteSpace(cnic) && !cnicValid)
+                ModelState.AddModelError(nameof(model.BuyerCNIC), "National ID (CNIC) must be in format XXXXX-XXXXXXX-X.");
+
+            if (!string.IsNullOrWhiteSpace(passport) && passport.Length < 5)
+                ModelState.AddModelError(nameof(model.BuyerPassportNo), "Passport Number must be at least 5 characters if no CNIC.");
+
+            if (string.IsNullOrWhiteSpace(cnic) && string.IsNullOrWhiteSpace(passport))
+                ModelState.AddModelError(nameof(model.BuyerCNIC), "Either CNIC or Passport Number is required.");
+
+            if (model.BuyerDOB.HasValue && model.BuyerDOB.Value.Date > DateTime.Today.AddYears(-16))
+                ModelState.AddModelError(nameof(model.BuyerDOB), "Buyer must be at least 16 years old.");
+
+            if (string.IsNullOrWhiteSpace(model.BuyerPhone))
+                ModelState.AddModelError(nameof(model.BuyerPhone), "Phone (landline / primary contact) is required.");
+            else if (!System.Text.RegularExpressions.Regex.IsMatch(model.BuyerPhone, @"^[0-9\+]+$"))
+                ModelState.AddModelError(nameof(model.BuyerPhone), "Phone must contain digits and '+' only.");
+
+            if (string.IsNullOrWhiteSpace(model.BuyerMobile))
+                ModelState.AddModelError(nameof(model.BuyerMobile), "Mobile is required.");
+            else if (!System.Text.RegularExpressions.Regex.IsMatch(model.BuyerMobile, @"^[0-9]+$"))
+                ModelState.AddModelError(nameof(model.BuyerMobile), "Mobile must contain digits only.");
+
+            if (!string.IsNullOrWhiteSpace(model.BuyerMobile2) && !System.Text.RegularExpressions.Regex.IsMatch(model.BuyerMobile2, @"^[0-9]+$"))
+                ModelState.AddModelError(nameof(model.BuyerMobile2), "Mobile 2 must contain digits only.");
+
+            var phoneNorm = NormalizePhoneDigits(model.BuyerPhone);
+            var mobileNorm = NormalizePhoneDigits(model.BuyerMobile);
+            var mobile2Norm = NormalizePhoneDigits(model.BuyerMobile2);
+
+            if (!string.IsNullOrEmpty(phoneNorm) && !string.IsNullOrEmpty(mobileNorm) && string.Equals(phoneNorm, mobileNorm, StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(model.BuyerMobile), "Mobile must differ from Phone.");
+            if (!string.IsNullOrEmpty(mobile2Norm) && !string.IsNullOrEmpty(phoneNorm) && string.Equals(mobile2Norm, phoneNorm, StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(model.BuyerMobile2), "Mobile 2 must differ from Phone.");
+            if (!string.IsNullOrEmpty(mobile2Norm) && !string.IsNullOrEmpty(mobileNorm) && string.Equals(mobile2Norm, mobileNorm, StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(model.BuyerMobile2), "Mobile 2 must differ from Mobile.");
+
+            if (string.IsNullOrWhiteSpace(model.BuyerCity))
+                ModelState.AddModelError(nameof(model.BuyerCity), "City is required.");
+
+            if (string.IsNullOrWhiteSpace(model.BuyerCountry))
+                ModelState.AddModelError(nameof(model.BuyerCountry), "Country is required.");
+
+            if (string.IsNullOrWhiteSpace(model.BuyerMailingAddress))
+                ModelState.AddModelError(nameof(model.BuyerMailingAddress), "Mailing Address is required.");
+        }
+
+        private static string NormalizePhoneDigits(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            return new string(value.Where(char.IsDigit).ToArray());
+        }
+
+        private static bool IsInitiatedStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return false;
+            return string.Equals(status.Trim(), WorkflowCreated, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status.Trim(), "Initiated", StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<string> GenerateTransferIdAsync()
@@ -453,10 +626,20 @@ namespace PMS.Controllers
 
         // ========== Attachment management (file upload like Customer module) ==========
         private static readonly string[] AllowedAttachmentExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
+        private static readonly string[] AllowedTransferAttachmentTypes =
+        {
+            "PowerOfAttorney",
+            "PaymentReceipts",
+            "BookingForm",
+            "Other",
+            // Backward compatibility for existing records
+            "Seller",
+            "Buyer"
+        };
         private const long MaxAttachmentSize = 8 * 1024 * 1024; // 8MB
 
         [HttpPost]
-        public async Task<IActionResult> UploadAttachment(string transferId, IFormFile file, string attachmentType, string description = "")
+        public async Task<IActionResult> UploadAttachment(string transferId, List<IFormFile> file, string attachmentType, string description = "")
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -465,16 +648,12 @@ namespace PMS.Controllers
                 var normalizedTransferId = NormalizeId(transferId);
                 if (string.IsNullOrEmpty(normalizedTransferId))
                     return Json(new { success = false, message = "Transfer ID is required." });
-                if (file == null || file.Length == 0)
+                if (file == null || file.Count == 0)
                     return Json(new { success = false, message = "Please select a file to upload." });
-                if (string.IsNullOrEmpty(attachmentType) || (attachmentType != "Seller" && attachmentType != "Buyer"))
-                    return Json(new { success = false, message = "Attachment type must be Seller or Buyer." });
-
-                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-                if (!AllowedAttachmentExtensions.Contains(ext))
-                    return Json(new { success = false, message = "Only image files (JPG, PNG, GIF, BMP) and PDF are allowed." });
-                if (file.Length > MaxAttachmentSize)
-                    return Json(new { success = false, message = "File size exceeds 8MB limit." });
+                if (string.IsNullOrWhiteSpace(attachmentType) || !AllowedTransferAttachmentTypes.Contains(attachmentType))
+                    return Json(new { success = false, message = "Invalid attachment type." });
+                if (string.Equals(attachmentType, "Other", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(description))
+                    return Json(new { success = false, message = "Title is required for Other Attachments." });
 
                 var transfer = await _context.Transfers.FindAsync(normalizedTransferId);
                 if (transfer == null)
@@ -489,40 +668,54 @@ namespace PMS.Controllers
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
 
-                var uniqueFileName = $"{Guid.NewGuid()}{ext}";
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                var relativePath = $"/uploads/transfers/{safeId}/{uniqueFileName}";
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                    await file.CopyToAsync(stream);
-
-                var attachmentId = Guid.NewGuid().ToString("N")[..10].ToUpper();
                 var uploadedByRaw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var uploadedBy = string.IsNullOrEmpty(uploadedByRaw) ? null
                     : (uploadedByRaw.Length <= 10 ? uploadedByRaw : uploadedByRaw.Substring(0, 10));
+                var uploadedAttachments = new List<Attachment>();
 
-                var attachment = new Attachment
+                foreach (var oneFile in file.Where(f => f != null && f.Length > 0))
                 {
-                    AttachmentID = attachmentId,
-                    RefType = "Transfer",
-                    RefID = normalizedTransferId,
-                    AttachmentType = attachmentType,
-                    FileName = file.FileName,
-                    FilePath = relativePath,
-                    FileSize = file.Length,
-                    FileType = file.ContentType,
-                    Description = description,
-                    UploadedBy = uploadedBy,
-                    UploadedAt = DateTime.Now
-                };
-                _context.Attachments.Add(attachment);
+                    var ext = Path.GetExtension(oneFile.FileName).ToLowerInvariant();
+                    if (!AllowedAttachmentExtensions.Contains(ext))
+                        return Json(new { success = false, message = "Only image files (JPG, PNG, GIF, BMP) and PDF are allowed." });
+                    if (oneFile.Length > MaxAttachmentSize)
+                        return Json(new { success = false, message = "File size exceeds 8MB limit." });
+
+                    var uniqueFileName = $"{Guid.NewGuid()}{ext}";
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    var relativePath = $"/uploads/transfers/{safeId}/{uniqueFileName}";
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                        await oneFile.CopyToAsync(stream);
+
+                    var attachment = new Attachment
+                    {
+                        AttachmentID = Guid.NewGuid().ToString("N")[..10].ToUpper(),
+                        RefType = "Transfer",
+                        RefID = normalizedTransferId,
+                        AttachmentType = attachmentType,
+                        FileName = oneFile.FileName,
+                        FilePath = relativePath,
+                        FileSize = oneFile.Length,
+                        FileType = oneFile.ContentType,
+                        Description = description,
+                        UploadedBy = uploadedBy,
+                        UploadedAt = DateTime.Now
+                    };
+                    uploadedAttachments.Add(attachment);
+                }
+
+                if (uploadedAttachments.Count == 0)
+                    return Json(new { success = false, message = "Please select a valid file to upload." });
+
+                _context.Attachments.AddRange(uploadedAttachments);
                 await _context.SaveChangesAsync();
 
                 return Json(new
                 {
                     success = true,
                     message = "File uploaded successfully",
-                    attachment = new
+                    attachments = uploadedAttachments.Select(attachment => new
                     {
                         attachmentID = attachment.AttachmentID,
                         fileName = attachment.FileName,
@@ -532,7 +725,7 @@ namespace PMS.Controllers
                         attachmentType = attachment.AttachmentType,
                         description = attachment.Description,
                         uploadedAt = attachment.UploadedAt.ToString("MMM dd, yyyy hh:mm tt")
-                    }
+                    })
                 });
             }
             catch (Exception ex)

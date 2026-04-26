@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Globalization;
 using System.Linq;
 using System.Text.Json;
+using System.IO;
 
 namespace PMS.Controllers
 {
@@ -15,6 +16,8 @@ namespace PMS.Controllers
     public class PaymentController : Controller
     {
         private const string ModuleKey = "Payment";
+        private static readonly string[] AllowedPaymentAttachmentExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
+        private const long MaxPaymentAttachmentSize = 8 * 1024 * 1024; // 8MB
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
 
@@ -62,6 +65,33 @@ namespace PMS.Controllers
                 .Include(pp => pp.PaymentSchedules)
                 .ToListAsync();
             return View(paymentPlans);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> PaymentPlanDetails(string planId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+
+            if (string.IsNullOrWhiteSpace(planId))
+            {
+                TempData["Error"] = "Plan ID is required.";
+                return RedirectToAction(nameof(PaymentPlans));
+            }
+
+            var paymentPlan = await _context.PaymentPlans
+                .Include(pp => pp.Project)
+                .Include(pp => pp.Customers)
+                .Include(pp => pp.PaymentSchedules)
+                .FirstOrDefaultAsync(pp => pp.PlanID == planId);
+
+            if (paymentPlan == null)
+            {
+                TempData["Error"] = "Payment plan not found.";
+                return RedirectToAction(nameof(PaymentPlans));
+            }
+
+            return View(paymentPlan);
         }
 
         /// <summary>JSON for delete confirmation: customers, schedules, and whether payments block deletion.</summary>
@@ -244,7 +274,7 @@ namespace PMS.Controllers
         }
 
         // Customer Payments - All payments received from customers  
-        public async Task<IActionResult> CustomerPayments(string customerId = null)
+        public async Task<IActionResult> CustomerPayments(string customerId = null, string auditFilter = "")
         {
             var denied = await EnsurePermissionAsync("Read");
             if (denied != null) return denied;
@@ -267,12 +297,30 @@ namespace PMS.Controllers
             }
 
             // Otherwise, show all customer payments
-            var payments = await _context.Payments
+            var query = _context.Payments
                 .Include(p => p.Customer)
                 .Include(p => p.PaymentSchedule)
                     .ThenInclude(ps => ps.PaymentPlan)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(auditFilter))
+            {
+                if (string.Equals(auditFilter, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(p => p.AuditStatus == null || p.AuditStatus == "Pending");
+                }
+                else
+                {
+                    query = query.Where(p => p.AuditStatus == auditFilter);
+                }
+            }
+
+            var payments = await query
                 .OrderByDescending(p => p.PaymentDate)
                 .ToListAsync();
+
+            ViewBag.AuditFilter = auditFilter;
+            ViewBag.PendingAuditCount = await _context.Payments.CountAsync(p => p.AuditStatus == null || p.AuditStatus == "Pending");
             
             return View(payments);
         }
@@ -479,6 +527,7 @@ namespace PMS.Controllers
             }
 
             ViewBag.PaymentStatuses = new List<string> { "Pending", "Paid", "Partially Paid" };
+            ViewBag.BankNames = await GetBankNamesAsync();
 
             return View();
         }
@@ -490,9 +539,15 @@ namespace PMS.Controllers
             return RedirectToAction(nameof(RecordPayment), new { scheduleId, customerId });
         }
 
+        [HttpGet]
+        public IActionResult RecordPayments(string scheduleId = null, string customerId = null)
+        {
+            return RedirectToAction(nameof(RecordPayment), new { scheduleId, customerId });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RecordPayment(string customerId, string scheduleId, decimal amount, string method, string referenceNo, string remarks, string status = "Paid")
+        public async Task<IActionResult> RecordPayment(string customerId, string scheduleId, decimal amount, string method, string referenceNo, string bankName, DateTime? depositDate, string remarks, string status = "Paid", bool addExtraPayment = false, decimal extraAmount = 0m, IFormFile? proofAttachment = null, string? proofDescription = null)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -506,6 +561,29 @@ namespace PMS.Controllers
             {
                 TempData["Error"] = "Amount must be greater than zero.";
                 return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+
+            if (string.IsNullOrWhiteSpace(referenceNo))
+            {
+                TempData["Error"] = "Reference Number is required.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+
+            if (string.IsNullOrWhiteSpace(bankName))
+            {
+                TempData["Error"] = "Bank Name is required.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+
+            if (addExtraPayment && extraAmount <= 0)
+            {
+                TempData["Error"] = "Extra amount must be greater than zero when Add Extra Payment is enabled.";
+                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+            }
+
+            if (!addExtraPayment)
+            {
+                extraAmount = 0m;
             }
 
             var customer = await _context.Customers
@@ -541,19 +619,13 @@ namespace PMS.Controllers
             var totalDue = Math.Max(0m, schedule.Amount - paidSoFar);
             if (amount > totalDue)
             {
-                TempData["Error"] = $"Amount Received (PKR {amount:N2}) must not exceed Total Due for this installment (PKR {totalDue:N2}). You can record multiple partial payments.";
+                TempData["Error"] = $"Amount Received (PKR {amount:N0}) must not exceed Total Due for this installment (PKR {totalDue:N0}). You can record multiple partial payments.";
                 return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
             }
 
-            var isFullPayment = (amount >= totalDue);
-            if (isFullPayment && string.Equals(status, "Partially Paid", StringComparison.OrdinalIgnoreCase))
+            if (await HasCrossCustomerDuplicateReferenceAsync(customerId.Trim(), bankName, referenceNo))
             {
-                TempData["Error"] = "When paying the full amount (Total Due = Total Paid), status cannot be Partially Paid. Use Paid.";
-                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
-            }
-            if (!isFullPayment && string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase))
-            {
-                TempData["Error"] = "When paying a partial amount (Total Due ≠ Total Paid), status cannot be Paid. Use Partially Paid.";
+                TempData["Error"] = $"Reference Number '{referenceNo.Trim()}' is already used with bank '{bankName.Trim()}' for another customer.";
                 return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
             }
 
@@ -563,15 +635,50 @@ namespace PMS.Controllers
                 CustomerID = customerId.Trim(),
                 ScheduleID = scheduleId,
                 PaymentDate = DateTime.Now,
+                DepositDate = (depositDate ?? DateTime.Today).Date,
                 Amount = amount,
                 Method = method,
-                ReferenceNo = referenceNo,
+                ReferenceNo = referenceNo.Trim(),
+                BankName = bankName.Trim(),
                 Status = status,
                 Remarks = remarks
             };
 
+            Payment? extraPayment = null;
             _context.Payments.Add(payment);
+            if (extraAmount > 0m)
+            {
+                extraPayment = new Payment
+                {
+                    PaymentID = GenerateID(),
+                    CustomerID = customerId.Trim(),
+                    ScheduleID = null,
+                    PaymentDate = DateTime.Now,
+                    DepositDate = (depositDate ?? DateTime.Today).Date,
+                    Amount = extraAmount,
+                    Method = method,
+                    ReferenceNo = referenceNo.Trim(),
+                    BankName = bankName.Trim(),
+                    Status = "Paid",
+                    Remarks = string.IsNullOrWhiteSpace(remarks)
+                        ? $"Extra payment received against installment {scheduleId}."
+                        : $"Extra payment received against installment {scheduleId}. {remarks}"
+                };
+                _context.Payments.Add(extraPayment);
+            }
+
             await _context.SaveChangesAsync();
+
+            if (proofAttachment != null && proofAttachment.Length > 0)
+            {
+                var uploadedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var attachmentError = await SavePaymentAttachmentAsync(payment.PaymentID, proofAttachment, proofDescription, uploadedBy);
+                if (attachmentError != null)
+                {
+                    TempData["Error"] = attachmentError;
+                    return RedirectToAction(nameof(RecordPayment), new { customerId = customerId.Trim(), scheduleId });
+                }
+            }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
@@ -581,9 +688,19 @@ namespace PMS.Controllers
                     ? "Record Payment"
                     : $"Record Payment - {userName}";
                 await LogActivityAsync(userId, actionText, "Payment", payment.PaymentID);
+
+                if (extraPayment != null)
+                {
+                    var extraActionText = string.IsNullOrEmpty(userName)
+                        ? "Record Extra Payment"
+                        : $"Record Extra Payment - {userName}";
+                    await LogActivityAsync(userId, extraActionText, "Payment", extraPayment.PaymentID);
+                }
             }
 
-            TempData["Success"] = $"Payment of PKR {amount:N2} recorded. Outstanding for this installment: PKR {totalDue - amount:N2}. You can record another payment if needed.";
+            TempData["Success"] = extraAmount > 0m
+                ? $"Payment of PKR {amount:N0} recorded and extra payment of PKR {extraAmount:N0} added. Outstanding for this installment: PKR {totalDue - amount:N0}."
+                : $"Payment of PKR {amount:N0} recorded. Outstanding for this installment: PKR {totalDue - amount:N0}. You can record another payment if needed.";
             return RedirectToAction(nameof(RecordPayment), new { customerId = customerId.Trim(), scheduleId });
         }
 
@@ -595,6 +712,7 @@ namespace PMS.Controllers
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
             ViewBag.PreSelectedCustomerId = customerId;
+            ViewBag.BankNames = await GetBankNamesAsync();
             return View();
         }
 
@@ -608,7 +726,11 @@ namespace PMS.Controllers
         {
             public string? CustomerId { get; set; }
             public decimal TotalAmount { get; set; }
+            public bool AddExtraPayment { get; set; }
+            public decimal ExtraAmount { get; set; }
             public string? ReferenceNo { get; set; }
+            public string? BankName { get; set; }
+            public DateTime? DepositDate { get; set; }
             public string? Method { get; set; }
             public string? Remarks { get; set; }
             public DateTime PaymentDate { get; set; }
@@ -617,25 +739,41 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> MultiplePayments([FromBody] MultiPaymentRequest request)
+        public async Task<IActionResult> MultiplePayments([FromForm] string? payload, IFormFile? proofAttachment = null, string? proofDescription = null)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
 
             try
             {
+                var request = string.IsNullOrWhiteSpace(payload)
+                    ? null
+                    : JsonSerializer.Deserialize<MultiPaymentRequest>(payload, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
                 if (request == null || string.IsNullOrWhiteSpace(request.CustomerId))
                     return Json(new { success = false, message = "Customer ID is required." });
 
-                if (request.Payments == null || !request.Payments.Any(p => p.Amount > 0))
-                    return Json(new { success = false, message = "At least one payment row with amount > 0 is required." });
+                if (string.IsNullOrWhiteSpace(request.ReferenceNo))
+                    return Json(new { success = false, message = "Reference Number is required." });
 
-                var rows = request.Payments.Where(p => p.Amount > 0).ToList();
+                if (string.IsNullOrWhiteSpace(request.BankName))
+                    return Json(new { success = false, message = "Bank Name is required." });
+
+                var rows = request.Payments?.Where(p => p.Amount > 0).ToList() ?? new List<MultiPaymentRow>();
+                var extraAmount = request.AddExtraPayment ? request.ExtraAmount : 0m;
+                if (request.AddExtraPayment && extraAmount <= 0)
+                    return Json(new { success = false, message = "Extra amount must be greater than zero when Add Extra Payment is enabled." });
+                if (!rows.Any() && extraAmount <= 0)
+                    return Json(new { success = false, message = "Enter at least one installment amount or add an extra payment." });
 
                 // Validate sum equals total
                 var sumRows = rows.Sum(p => p.Amount);
-                if (Math.Abs(sumRows - request.TotalAmount) > 0.01m)
-                    return Json(new { success = false, message = $"Sum of installment amounts (PKR {sumRows:N2}) must equal Total Payment (PKR {request.TotalAmount:N2})." });
+                var distributedTotal = sumRows + extraAmount;
+                if (Math.Abs(distributedTotal - request.TotalAmount) > 0.01m)
+                    return Json(new { success = false, message = $"Installment amounts (PKR {sumRows:N0}) plus extra payment (PKR {extraAmount:N0}) must equal Total Payment (PKR {request.TotalAmount:N0})." });
 
                 var customer = await _context.Customers.AsNoTracking()
                     .Where(c => c.CustomerID == request.CustomerId.Trim() && (c.Status ?? "Active") == "Active")
@@ -644,6 +782,9 @@ namespace PMS.Controllers
 
                 if (customer == null)
                     return Json(new { success = false, message = "Customer not found or inactive." });
+
+                if (await HasCrossCustomerDuplicateReferenceAsync(request.CustomerId.Trim(), request.BankName, request.ReferenceNo))
+                    return Json(new { success = false, message = $"Reference Number '{request.ReferenceNo?.Trim()}' is already used with bank '{request.BankName?.Trim()}' for another customer." });
 
                 var scheduleIds = rows.Select(r => r.ScheduleId).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
 
@@ -656,6 +797,7 @@ namespace PMS.Controllers
                     return Json(new { success = false, message = "One or more selected installments do not belong to this customer's plan." });
 
                 var paymentDate = request.PaymentDate == default ? DateTime.Now : request.PaymentDate;
+                var depositDate = (request.DepositDate ?? DateTime.Today).Date;
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
                 var savedIds = new List<string>();
@@ -667,7 +809,7 @@ namespace PMS.Controllers
                     var outstanding = Math.Max(0m, schedule.Amount - paidSoFar);
 
                     if (row.Amount > outstanding + 0.01m)
-                        return Json(new { success = false, message = $"Amount for Installment #{schedule.InstallmentNo} (PKR {row.Amount:N2}) exceeds outstanding (PKR {outstanding:N2})." });
+                        return Json(new { success = false, message = $"Amount for Installment #{schedule.InstallmentNo} (PKR {row.Amount:N0}) exceeds outstanding (PKR {outstanding:N0})." });
 
                     var isFullPayment = row.Amount >= outstanding - 0.01m;
                     var status = isFullPayment ? "Paid" : "Partially Paid";
@@ -678,9 +820,11 @@ namespace PMS.Controllers
                         CustomerID  = request.CustomerId.Trim(),
                         ScheduleID  = row.ScheduleId,
                         PaymentDate = paymentDate,
+                        DepositDate = depositDate,
                         Amount      = row.Amount,
                         Method      = request.Method,
-                        ReferenceNo = request.ReferenceNo,
+                        ReferenceNo = request.ReferenceNo?.Trim(),
+                        BankName    = request.BankName?.Trim(),
                         Status      = status,
                         Remarks     = request.Remarks
                     };
@@ -689,7 +833,42 @@ namespace PMS.Controllers
                     savedIds.Add(payment.PaymentID);
                 }
 
+                if (extraAmount > 0m)
+                {
+                    var extraPayment = new Payment
+                    {
+                        PaymentID = GenerateID(),
+                        CustomerID = request.CustomerId.Trim(),
+                        ScheduleID = null,
+                        PaymentDate = paymentDate,
+                        DepositDate = depositDate,
+                        Amount = extraAmount,
+                        Method = request.Method,
+                        ReferenceNo = request.ReferenceNo?.Trim(),
+                        BankName = request.BankName?.Trim(),
+                        Status = "Paid",
+                        Remarks = string.IsNullOrWhiteSpace(request.Remarks)
+                            ? "Extra payment received."
+                            : $"Extra payment received. {request.Remarks}"
+                    };
+                    _context.Payments.Add(extraPayment);
+                    savedIds.Add(extraPayment.PaymentID);
+                }
+
                 await _context.SaveChangesAsync();
+
+                if (proofAttachment != null && proofAttachment.Length > 0)
+                {
+                    var uploadedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    foreach (var paymentId in savedIds)
+                    {
+                        var attachmentError = await SavePaymentAttachmentAsync(paymentId, proofAttachment, proofDescription, uploadedBy);
+                        if (attachmentError != null)
+                        {
+                            return Json(new { success = false, message = attachmentError });
+                        }
+                    }
+                }
 
                 if (!string.IsNullOrEmpty(userId))
                 {
@@ -700,7 +879,7 @@ namespace PMS.Controllers
                         await LogActivityAsync(userId, actionText, "Payment", pid);
                 }
 
-                return Json(new { success = true, count = savedIds.Count, message = $"{savedIds.Count} payment(s) recorded successfully (PKR {sumRows:N2} total)." });
+                return Json(new { success = true, count = savedIds.Count, message = $"{savedIds.Count} payment(s) recorded successfully (PKR {distributedTotal:N0} total)." });
             }
             catch (Exception ex)
             {
@@ -779,13 +958,14 @@ namespace PMS.Controllers
             }
 
             ViewBag.PaymentStatuses = new List<string> { "Pending", "Paid", "Partially Paid" };
+            ViewBag.BankNames = await GetBankNamesAsync();
 
             return View(payment);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditPayment(string paymentId, DateTime paymentDate, decimal amount, string method, string referenceNo, string status, string remarks)
+        public async Task<IActionResult> EditPayment(string paymentId, DateTime? depositDate, decimal amount, string method, string referenceNo, string bankName, string status, string remarks, IFormFile? proofAttachment = null, string? proofDescription = null)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -812,6 +992,18 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(EditPayment), new { paymentId });
             }
 
+            if (string.IsNullOrWhiteSpace(referenceNo))
+            {
+                TempData["Error"] = "Reference Number is required.";
+                return RedirectToAction(nameof(EditPayment), new { paymentId });
+            }
+
+            if (string.IsNullOrWhiteSpace(bankName))
+            {
+                TempData["Error"] = "Bank Name is required.";
+                return RedirectToAction(nameof(EditPayment), new { paymentId });
+            }
+
             var schedule = payment.PaymentSchedule;
             if (schedule != null)
             {
@@ -821,19 +1013,37 @@ namespace PMS.Controllers
                 var maxAllowed = schedule.Amount - otherPaymentsSum;
                 if (amount > maxAllowed)
                 {
-                    TempData["Error"] = $"Amount (PKR {amount:N2}) must not exceed the remaining due for this installment (PKR {maxAllowed:N2}).";
+                    TempData["Error"] = $"Amount (PKR {amount:N0}) must not exceed the remaining due for this installment (PKR {maxAllowed:N0}).";
                     return RedirectToAction(nameof(EditPayment), new { paymentId });
                 }
             }
 
-            payment.PaymentDate = paymentDate;
+            if (await HasCrossCustomerDuplicateReferenceAsync(payment.CustomerID?.Trim(), bankName, referenceNo, paymentId))
+            {
+                TempData["Error"] = $"Reference Number '{referenceNo.Trim()}' is already used with bank '{bankName.Trim()}' for another customer.";
+                return RedirectToAction(nameof(EditPayment), new { paymentId });
+            }
+
+            payment.DepositDate = (depositDate ?? payment.DepositDate ?? DateTime.Today).Date;
             payment.Amount = amount;
             payment.Method = method;
-            payment.ReferenceNo = referenceNo;
+            payment.ReferenceNo = referenceNo.Trim();
+            payment.BankName = bankName.Trim();
             payment.Status = status;
             payment.Remarks = remarks;
 
             await _context.SaveChangesAsync();
+
+            if (proofAttachment != null && proofAttachment.Length > 0)
+            {
+                var uploadedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var attachmentError = await SavePaymentAttachmentAsync(payment.PaymentID, proofAttachment, proofDescription, uploadedBy);
+                if (attachmentError != null)
+                {
+                    TempData["Error"] = attachmentError;
+                    return RedirectToAction(nameof(EditPayment), new { paymentId });
+                }
+            }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
@@ -865,6 +1075,9 @@ namespace PMS.Controllers
             if (denied != null) return denied;
             try
             {
+                const decimal MaxAmountPkr = 1_000_000_000m; // 100 crores
+                static bool IsWholeAmount(decimal amount) => decimal.Truncate(amount) == amount;
+
                 if (viewModel?.PaymentPlan == null || viewModel?.PaymentSchedules == null)
                 {
                     return Json(new { success = false, message = "Invalid data provided" });
@@ -875,7 +1088,37 @@ namespace PMS.Controllers
                 {
                     return Json(new { success = false, message = "Project is required." });
                 }
+                if (string.IsNullOrWhiteSpace(planData.RegisteredSize))
+                {
+                    return Json(new { success = false, message = "Size is required." });
+                }
+                if (string.IsNullOrWhiteSpace(planData.SubProject))
+                {
+                    return Json(new { success = false, message = "Subproject is required." });
+                }
                 var scheduleData = viewModel.PaymentSchedules;
+
+                var projectMeta = await _context.Projects
+                    .AsNoTracking()
+                    .Where(p => p.ProjectID == planData.ProjectID)
+                    .Select(p => new { p.Sizes, p.SubProjects })
+                    .FirstOrDefaultAsync();
+                if (projectMeta == null)
+                {
+                    return Json(new { success = false, message = "Selected project was not found." });
+                }
+
+                var allowedSizes = SplitCsvValues(projectMeta.Sizes);
+                if (allowedSizes.Count > 0 && !allowedSizes.Contains(planData.RegisteredSize.Trim(), StringComparer.OrdinalIgnoreCase))
+                {
+                    return Json(new { success = false, message = "Selected size is not available for this project." });
+                }
+
+                var allowedSubProjects = SplitCsvValues(projectMeta.SubProjects);
+                if (allowedSubProjects.Count > 0 && !allowedSubProjects.Contains(planData.SubProject.Trim(), StringComparer.OrdinalIgnoreCase))
+                {
+                    return Json(new { success = false, message = "Selected subproject is not available for this project." });
+                }
 
                 var exchangeRate = planData.ExchangeRate > 0 ? planData.ExchangeRate : await GetUsdToPkrRateAsync();
                 var hasExchangeRate = exchangeRate > 0;
@@ -884,11 +1127,34 @@ namespace PMS.Controllers
                 {
                     return Json(new { success = false, message = "Total amount (PKR) must be greater than zero." });
                 }
+                if (!IsWholeAmount(planData.TotalAmount))
+                {
+                    return Json(new { success = false, message = "Total amount (PKR) must be a whole number (no decimals)." });
+                }
+                if (planData.TotalAmount > MaxAmountPkr)
+                {
+                    return Json(new { success = false, message = "Total amount (PKR) cannot exceed 100 crores (1,000,000,000)." });
+                }
 
                 // Validate total amount: Token + Installments must not exceed Plan Total Amount
                 var totalInstallments = scheduleData.TotalInstallments;
                 var totalPlanAmount = planData.TotalAmount;
                 var tokenAmount = scheduleData.IncludeToken && scheduleData.TokenAmount.HasValue ? scheduleData.TokenAmount.Value : 0;
+                if (scheduleData.IncludeToken)
+                {
+                    if (!scheduleData.TokenAmount.HasValue || scheduleData.TokenAmount.Value <= 0)
+                    {
+                        return Json(new { success = false, message = "Token amount (PKR) must be greater than zero when token is included." });
+                    }
+                    if (!IsWholeAmount(tokenAmount))
+                    {
+                        return Json(new { success = false, message = "Token amount (PKR) must be a whole number (no decimals)." });
+                    }
+                    if (tokenAmount > MaxAmountPkr)
+                    {
+                        return Json(new { success = false, message = "Token amount (PKR) cannot exceed 100 crores (1,000,000,000)." });
+                    }
+                }
                 decimal? tokenAmountUSD = null;
                 if (scheduleData.IncludeToken)
                 {
@@ -900,6 +1166,14 @@ namespace PMS.Controllers
                 if (possessionAmount < 0)
                 {
                     return Json(new { success = false, message = "Possession amount cannot be negative." });
+                }
+                if (!IsWholeAmount(possessionAmount))
+                {
+                    return Json(new { success = false, message = "Possession amount (PKR) must be a whole number (no decimals)." });
+                }
+                if (possessionAmount > MaxAmountPkr)
+                {
+                    return Json(new { success = false, message = "Possession amount (PKR) cannot exceed 100 crores (1,000,000,000)." });
                 }
                 if (possessionAmount > 0 && string.IsNullOrWhiteSpace(scheduleData.PossessionPaymentDescription))
                 {
@@ -930,6 +1204,14 @@ namespace PMS.Controllers
                 {
                     return Json(new { success = false, message = "Installment amount (PKR) must be greater than zero." });
                 }
+                if (!IsWholeAmount(installmentAmount))
+                {
+                    return Json(new { success = false, message = "Installment amount (PKR) must be a whole number (no decimals)." });
+                }
+                if (installmentAmount > MaxAmountPkr)
+                {
+                    return Json(new { success = false, message = "Installment amount (PKR) cannot exceed 100 crores (1,000,000,000)." });
+                }
 
                 decimal? installmentAmountUSD = hasExchangeRate
                     ? Math.Round(installmentAmount / exchangeRate, 2, MidpointRounding.AwayFromZero)
@@ -943,7 +1225,7 @@ namespace PMS.Controllers
                     decimal excess = grandTotal - planData.TotalAmount;
                     return Json(new { 
                         success = false, 
-                        message = $"Total Installments Amount (PKR {totalInstallmentsAmount:N2}) + Token Amount (PKR {tokenAmount:N2}) + Possession Amount (PKR {possessionAmount:N2}) = PKR {grandTotal:N2} exceeds Parent Total Amount (PKR {planData.TotalAmount:N2}). Excess: PKR {excess:N2}." 
+                        message = $"Total Installments Amount (PKR {totalInstallmentsAmount:N0}) + Token Amount (PKR {tokenAmount:N0}) + Possession Amount (PKR {possessionAmount:N0}) = PKR {grandTotal:N0} exceeds Parent Total Amount (PKR {planData.TotalAmount:N0}). Excess: PKR {excess:N0}." 
                     });
                 }
 
@@ -953,6 +1235,8 @@ namespace PMS.Controllers
                     PlanID = GenerateID(),
                     PlanName = planData.PlanName,
                     ProjectID = string.IsNullOrEmpty(planData.ProjectID) ? null : planData.ProjectID,
+                    RegisteredSize = planData.RegisteredSize?.Trim(),
+                    SubProject = planData.SubProject?.Trim(),
                     TotalAmount = planData.TotalAmount,
                     TotalAmountUSD = hasExchangeRate
                         ? Math.Round(planData.TotalAmount / exchangeRate, 2, MidpointRounding.AwayFromZero)
@@ -986,6 +1270,10 @@ namespace PMS.Controllers
                 {
                     surchargeRate = 0.05m;
                 }
+                // Surcharge input applies to regular installments only.
+                // Token and Possession are always created with surcharge 0.
+                var regularInstallmentSurchargeApplied = surchargeApplied;
+                var regularInstallmentSurchargeRate = regularInstallmentSurchargeApplied ? surchargeRate : 0m;
 
                 int installmentNo = 0;
 
@@ -1027,8 +1315,8 @@ namespace PMS.Controllers
                         DueDate = dueDate,
                         Amount = installmentAmount,
                         AmountUSD = installmentAmountUSD,
-                        SurchargeApplied = surchargeApplied,
-                        SurchargeRate = surchargeRate
+                        SurchargeApplied = regularInstallmentSurchargeApplied,
+                        SurchargeRate = regularInstallmentSurchargeRate
                     };
                     schedules.Add(schedule);
                     installmentNo++;
@@ -1074,6 +1362,44 @@ namespace PMS.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSizes(string projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return Json(Array.Empty<string>());
+            }
+
+            var projectSizes = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectID == projectId)
+                .Select(p => p.Sizes)
+                .FirstOrDefaultAsync();
+
+            return Json(SplitCsvValues(projectSizes));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSubProjects(string projectId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(projectId))
+            {
+                return Json(Array.Empty<string>());
+            }
+
+            var projectSubProjects = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectID == projectId)
+                .Select(p => p.SubProjects)
+                .FirstOrDefaultAsync();
+
+            return Json(SplitCsvValues(projectSubProjects));
+        }
+
         private DateTime CalculateDueDate(DateTime firstDueDate, string frequency, int installmentIndex)
         {
             return frequency switch
@@ -1099,6 +1425,63 @@ namespace PMS.Controllers
             }
 
             return defaultRate;
+        }
+
+        private static List<string> SplitCsvValues(string? csv)
+        {
+            if (string.IsNullOrWhiteSpace(csv))
+            {
+                return new List<string>();
+            }
+
+            return csv
+                .Split(',')
+                .Select(v => v.Trim())
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private async Task<List<string>> GetBankNamesAsync()
+        {
+            var configValue = await _context.Configurations
+                .AsNoTracking()
+                .Where(c => c.ConfigKey == "banks")
+                .Select(c => c.ConfigValue)
+                .FirstOrDefaultAsync();
+
+            return SplitCsvValues(configValue);
+        }
+
+        private async Task<bool> HasCrossCustomerDuplicateReferenceAsync(string? customerId, string? bankName, string? referenceNo, string? excludePaymentId = null)
+        {
+            var normalizedCustomerId = (customerId ?? string.Empty).Trim();
+            var normalizedBankName = (bankName ?? string.Empty).Trim();
+            var normalizedReferenceNo = (referenceNo ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(normalizedCustomerId)
+                || string.IsNullOrWhiteSpace(normalizedBankName)
+                || string.IsNullOrWhiteSpace(normalizedReferenceNo))
+            {
+                return false;
+            }
+
+            var query = _context.Payments
+                .AsNoTracking()
+                .Where(p => p.BankName != null
+                    && p.ReferenceNo != null
+                    && p.CustomerID != null
+                    && p.BankName.Trim() == normalizedBankName
+                    && p.ReferenceNo.Trim() == normalizedReferenceNo
+                    && p.CustomerID.Trim() != normalizedCustomerId);
+
+            if (!string.IsNullOrWhiteSpace(excludePaymentId))
+            {
+                var paymentId = excludePaymentId.Trim();
+                query = query.Where(p => p.PaymentID != paymentId);
+            }
+
+            return await query.AnyAsync();
         }
 
         [HttpGet]
@@ -1128,7 +1511,7 @@ namespace PMS.Controllers
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
             // Surcharge rate is handled as a fractional value end-to-end (e.g. 0.05 = 5%).
-            if (schedule.SurchargeApplied && schedule.SurchargeRate <= 0m)
+            if (schedule.SurchargeApplied && schedule.SurchargeRate < 0m)
             {
                 schedule.SurchargeRate = 0.05m;
             }
@@ -1148,7 +1531,7 @@ namespace PMS.Controllers
             if (projectedTotal > plan.TotalAmount)
             {
                 var remaining = plan.TotalAmount - existingTotal;
-                ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N2} PKR.");
+                ModelState.AddModelError("Amount", $"Installments total would exceed plan total. Remaining allowed: {remaining:N0} PKR.");
             }
 
             var exchangeRate = plan.ExchangeRate.GetValueOrDefault();
@@ -1176,6 +1559,43 @@ namespace PMS.Controllers
             return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
         }
 
+        [HttpGet]
+        public async Task<IActionResult> EditPaymentSchedule(string scheduleId)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+
+            if (string.IsNullOrWhiteSpace(scheduleId))
+                return NotFound();
+
+            var schedule = await _context.PaymentSchedules
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
+
+            if (schedule == null)
+                return NotFound();
+
+            var plan = await _context.PaymentPlans
+                .AsNoTracking()
+                .Include(p => p.PaymentSchedules)
+                .FirstOrDefaultAsync(p => p.PlanID == schedule.PlanID);
+
+            if (plan == null)
+                return NotFound();
+
+            var customersOnPlanCount = await _context.Customers
+                .AsNoTracking()
+                .CountAsync(c => c.PlanID == schedule.PlanID);
+
+            ViewBag.PaymentPlan = plan;
+            ViewBag.CustomersOnPlanCount = customersOnPlanCount;
+            ViewBag.OthersAmountSum = plan.PaymentSchedules
+                .Where(ps => ps.ScheduleID != schedule.ScheduleID)
+                .Sum(ps => ps.Amount);
+
+            return View(schedule);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditPaymentSchedule(
@@ -1187,9 +1607,15 @@ namespace PMS.Controllers
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
 
-            if (schedule.SurchargeApplied && schedule.SurchargeRate <= 0m)
+            if (schedule.SurchargeApplied && schedule.SurchargeRate < 0m)
             {
                 schedule.SurchargeRate = 0.05m;
+            }
+
+            if (schedule.SurchargeApplied && (schedule.SurchargeRate < 0m || schedule.SurchargeRate > 100m))
+            {
+                TempData["Error"] = "Surcharge rate must be between 0 and 100.";
+                return RedirectToAction(nameof(EditPaymentSchedule), new { scheduleId = schedule.ScheduleID });
             }
 
             var plan = await _context.PaymentPlans
@@ -1213,19 +1639,21 @@ namespace PMS.Controllers
             var totalWithoutThis = plan.PaymentSchedules.Where(ps => ps.ScheduleID != schedule.ScheduleID).Sum(ps => ps.Amount);
             var projectedSchedulesTotal = Math.Round(totalWithoutThis + schedule.Amount, 2, MidpointRounding.AwayFromZero);
             var planTotalExceeded = projectedSchedulesTotal > Math.Round(plan.TotalAmount, 2, MidpointRounding.AwayFromZero);
+            var isAmountIncrease = schedule.Amount > existingSchedule.Amount + 0.000001m;
+            var requiresPlanTotalAdjustment = planTotalExceeded && isAmountIncrease;
 
-            if (planTotalExceeded && !adjustPlanTotal)
+            if (requiresPlanTotalAdjustment && !adjustPlanTotal)
             {
                 var remaining = plan.TotalAmount - totalWithoutThis;
                 TempData["Error"] =
-                    $"Installments total would exceed the plan total (remaining for this installment: PKR {remaining:N2}). " +
+                    $"Installments total would exceed the plan total (remaining for this installment: PKR {remaining:N0}). " +
                     $"{customersAssignedCount} customer(s) are assigned to this plan. " +
                     "Open the installment again, enable \"Increase payment plan total\", enter a reason, and save — or reduce the amount.";
                 return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
             }
 
             decimal? newPlanTotalApplied = null;
-            if (planTotalExceeded && adjustPlanTotal)
+            if (requiresPlanTotalAdjustment && adjustPlanTotal)
             {
                 if (string.IsNullOrWhiteSpace(changeReason))
                 {
@@ -1240,7 +1668,7 @@ namespace PMS.Controllers
 
                 if (targetTotal < projectedSchedulesTotal)
                 {
-                    TempData["Error"] = $"New plan total must be at least PKR {projectedSchedulesTotal:N2} (sum of all installments after this change).";
+                    TempData["Error"] = $"New plan total must be at least PKR {projectedSchedulesTotal:N0} (sum of all installments after this change).";
                     return RedirectToAction(nameof(PaymentSchedule), new { planId = schedule.PlanID });
                 }
 
@@ -1301,7 +1729,7 @@ namespace PMS.Controllers
                     };
                     var detailsJson = JsonSerializer.Serialize(auditPayload, jsonOptions);
                     var actionSummary = newPlanTotalApplied.HasValue
-                        ? $"Installment updated; plan total PKR {oldPlanTotal:N2}→{plan.TotalAmount:N2} ({customersAssignedCount} customers on plan)"
+                        ? $"Installment updated; plan total PKR {oldPlanTotal:N0}→{plan.TotalAmount:N0} ({customersAssignedCount} customers on plan)"
                         : $"Installment updated (schedule {schedule.ScheduleID})";
                     await LogActivityAsync(userId, actionSummary, "PaymentSchedule", schedule.ScheduleID, detailsJson, saveImmediately: false);
                 }
@@ -1309,7 +1737,7 @@ namespace PMS.Controllers
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
                 TempData["Success"] = newPlanTotalApplied.HasValue
-                    ? $"Installment saved. Payment plan total increased to PKR {plan.TotalAmount:N2}. {customersAssignedCount} customer(s) remain on this plan."
+                    ? $"Installment saved. Payment plan total increased to PKR {plan.TotalAmount:N0}. {customersAssignedCount} customer(s) remain on this plan."
                     : "Installment updated successfully.";
             }
             catch (Exception ex)
@@ -1392,53 +1820,40 @@ namespace PMS.Controllers
         [HttpGet]
         public async Task<IActionResult> Waivers()
         {
-            var denied = await EnsurePermissionAsync("Read");
-            if (denied != null) return denied;
-            var waivers = await _context.Waivers
-                .Include(w => w.Customer)
-                .Include(w => w.ApprovedByUser)
-                .ToListAsync();
-            
-            ViewBag.Customers = await _context.Customers.ToListAsync();
-            return View(waivers);
+            return RedirectToAction("Index", "Waiver");
         }
 
         [HttpPost]
         public async Task<IActionResult> AddWaiver(string customerId, decimal amount, string reason)
         {
-            var denied = await EnsurePermissionAsync("Edit");
-            if (denied != null) return denied;
-            if (string.IsNullOrEmpty(customerId) || amount <= 0)
-            {
-                return BadRequest();
-            }
-
-            var waiver = new Waiver
-            {
-                WaiverID = GenerateID(),
-                CustomerID = customerId,
-                Amount = amount,
-                Reason = reason,
-                ApprovedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                CreatedAt = DateTime.Now
-            };
-
-            _context.Waivers.Add(waiver);
-            await _context.SaveChangesAsync();
-
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!string.IsNullOrEmpty(userId))
-            {
-                await LogActivityAsync(userId, "Add Waiver", "Waiver", waiver.WaiverID);
-            }
-
-            return RedirectToAction(nameof(Waivers));
+            return RedirectToAction("Create", "Waiver", new { customerId });
         }
 
         private static string TruncateForLog(string? value, int maxLen)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
             return value.Length <= maxLen ? value : value[..maxLen];
+        }
+
+        private static string SanitizePathSegment(string? segment)
+        {
+            var s = (segment ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(s))
+            {
+                return string.Empty;
+            }
+
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                s = s.Replace(c, '_');
+            }
+
+            s = s.Replace(Path.DirectorySeparatorChar, '_')
+                 .Replace(Path.AltDirectorySeparatorChar, '_')
+                 .Trim()
+                 .TrimEnd('.');
+
+            return s;
         }
 
         /// <param name="saveImmediately">When false, caller must call <c>SaveChangesAsync</c> (e.g. within a transaction).</param>
@@ -1457,6 +1872,68 @@ namespace PMS.Controllers
             _context.ActivityLogs.Add(activityLog);
             if (saveImmediately)
                 await _context.SaveChangesAsync();
+        }
+
+        private async Task<string?> SavePaymentAttachmentAsync(string paymentId, IFormFile file, string? description, string? uploadedByRaw)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return null;
+            }
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!AllowedPaymentAttachmentExtensions.Contains(ext))
+            {
+                return "Only image files (JPG, PNG, GIF, BMP) and PDF are allowed for payment proof.";
+            }
+            if (file.Length > MaxPaymentAttachmentSize)
+            {
+                return "Payment proof file size exceeds 8MB limit.";
+            }
+
+            var safeId = SanitizePathSegment(paymentId);
+            if (string.IsNullOrWhiteSpace(safeId))
+            {
+                return "Invalid payment ID for file storage.";
+            }
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "payments", safeId);
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var uniqueFileName = $"{Guid.NewGuid():N}{ext}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+            var relativePath = $"/uploads/payments/{safeId}/{uniqueFileName}";
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var uploadedBy = string.IsNullOrEmpty(uploadedByRaw)
+                ? null
+                : (uploadedByRaw.Length <= 10 ? uploadedByRaw : uploadedByRaw[..10]);
+
+            var attachment = new Attachment
+            {
+                AttachmentID = GenerateID(),
+                RefType = "Payment",
+                RefID = paymentId,
+                AttachmentType = "Proof",
+                FileName = file.FileName,
+                FilePath = relativePath,
+                FileSize = file.Length,
+                FileType = file.ContentType,
+                Description = string.IsNullOrWhiteSpace(description) ? "Payment proof" : description.Trim(),
+                UploadedBy = uploadedBy,
+                UploadedAt = DateTime.Now
+            };
+
+            _context.Attachments.Add(attachment);
+            await _context.SaveChangesAsync();
+            return null;
         }
 
         private string GenerateID()

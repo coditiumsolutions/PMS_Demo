@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
 using PMS.Services;
+using System.Text.RegularExpressions;
+using System.IO;
 
 namespace PMS.Controllers
 {
@@ -12,6 +14,8 @@ namespace PMS.Controllers
     public class NDCController : Controller
     {
         private const string ModuleKey = "NDC";
+        private static readonly string[] AllowedNdcAttachmentExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
+        private const long MaxNdcAttachmentSize = 8 * 1024 * 1024; // 8MB
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
 
@@ -140,10 +144,10 @@ namespace PMS.Controllers
             return View(model);
         }
 
-        /// <summary>AJAX: Returns customer info and payment summary (totalDue, totalPaid). Only allow NDC creation when due == paid.</summary>
+        /// <summary>AJAX: Returns customer info, due/paid summary, and computed transfer fee amounts for selected customer/project/subproject.</summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GetCustomerForNDC(string customerId)
+        public async Task<IActionResult> GetCustomerForNDC(string customerId, string? ndcType = null)
         {
             if (string.IsNullOrWhiteSpace(customerId))
                 return Json(new { success = false, message = "Customer ID is required." });
@@ -151,6 +155,8 @@ namespace PMS.Controllers
             var customer = await _context.Customers
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(pp => pp!.PaymentSchedules)
+                .Include(c => c.PaymentPlan)
+                    .ThenInclude(pp => pp!.Project)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.CustomerID == customerId.Trim());
 
@@ -173,15 +179,35 @@ namespace PMS.Controllers
                 .Where(p => p.CustomerID == customerId)
                 .SumAsync(p => p.Amount);
 
-            var allPaymentClear = totalDueAmount == totalPaidAmount && totalDueAmount >= 0;
+            var remainingDues = Math.Max(totalDueAmount - totalPaidAmount, 0m);
+            var allPaymentClear = remainingDues <= 0m;
 
             var today = DateTime.Today;
             var hasActiveNDC = await _context.NDCs
                 .AnyAsync(n => n.CustomerID == customerId.Trim() && n.NDCExpiryDate.HasValue && n.NDCExpiryDate.Value >= today);
 
-            var message = !allPaymentClear ? "NDC can only be created when all dues are cleared (Total Due = Total Paid)."
-                : hasActiveNDC ? "This customer already has an active NDC (expiry on or after today). A new NDC cannot be created until the current one has expired."
-                : null;
+            var message = !allPaymentClear
+                ? $"Customer has remaining dues of {remainingDues:N0}."
+                : hasActiveNDC
+                    ? "Customer has an active NDC, but creation is allowed. Please verify dates and workflow."
+                    : "No remaining dues.";
+
+            var projectId = customer.ProjectID ?? customer.PaymentPlan?.ProjectID;
+            var subProject = customer.SubProject;
+            var projectName = customer.PaymentPlan?.Project?.ProjectName;
+            var transferPriority = ResolveTransferPriority(ndcType);
+            var transferType = string.IsNullOrWhiteSpace(ndcType) ? null : ndcType.Trim();
+            var transferFee = await FindTransferFeeAsync(projectId, subProject, transferType, transferPriority);
+            var propertySize = ParsePropertySizeValue(customer.RegisteredSize);
+            var transferFeeExists = transferFee != null;
+            var amountPerUnit = transferFee?.AmountPerUnit ?? 0m;
+            var transferFeeAmount = Math.Round(amountPerUnit * propertySize, 2, MidpointRounding.AwayFromZero);
+            var addTransferFeeUrl = Url.Action("Create", "TransferFee", new { projectId, subProject });
+
+            if (!transferFeeExists)
+            {
+                message = $"Transfer fee does not exist for Project '{projectName ?? projectId ?? "N/A"}' and SubProject '{subProject ?? "N/A"}'. Please add Transfer Fee first.";
+            }
 
             return Json(new
             {
@@ -195,17 +221,27 @@ namespace PMS.Controllers
                 address = customer.MailingAddress ?? customer.PermanentAddress,
                 planName = customer.PaymentPlan?.PlanName,
                 projectName = customer.PaymentPlan?.Project?.ProjectName,
+                projectId,
+                subProject,
                 totalDueAmount,
                 totalPaidAmount,
+                remainingDues,
                 allPaymentClear,
                 hasActiveNDC,
-                message
+                message,
+                transferFeeExists,
+                addTransferFeeUrl,
+                transferType,
+                transferPriority,
+                amountPerUnit,
+                propertySize,
+                transferFeeAmount
             });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(NDC model)
+        public async Task<IActionResult> Create(NDC model, IFormFile? ndcAttachment = null, string? ndcAttachmentTitle = null)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -235,6 +271,26 @@ namespace PMS.Controllers
                 return View(model);
             }
 
+            var projectId = customer.ProjectID ?? customer.PaymentPlan?.ProjectID;
+            var subProject = customer.SubProject;
+            var transferPriority = ResolveTransferPriority(model.NDCType);
+            var transferType = string.IsNullOrWhiteSpace(model.NDCType) ? null : model.NDCType.Trim();
+            var transferFee = await FindTransferFeeAsync(projectId, subProject, transferType, transferPriority);
+            if (transferFee == null)
+            {
+                await SetNDCConfigViewBagAsync();
+                ModelState.AddModelError("", $"Transfer fee does not exist for Project '{projectId ?? "N/A"}' and SubProject '{subProject ?? "N/A"}'.");
+                return View(model);
+            }
+
+            var propertySize = ParsePropertySizeValue(customer.RegisteredSize);
+            if (propertySize <= 0m)
+            {
+                await SetNDCConfigViewBagAsync();
+                ModelState.AddModelError("", "Customer Registered Size does not contain a numeric value. Please correct size before creating NDC.");
+                return View(model);
+            }
+
             model.CreatedAt = DateTime.Now;
             var asOfDate = model.CreatedAt;
 
@@ -246,23 +302,8 @@ namespace PMS.Controllers
                 .Where(p => p.CustomerID == model.CustomerID)
                 .SumAsync(p => p.Amount);
 
-            var allPaymentClear = totalDueAmount == totalPaidAmount && totalDueAmount >= 0;
-            if (!allPaymentClear)
-            {
-                await SetNDCConfigViewBagAsync();
-                ModelState.AddModelError("", "NDC can only be created when all dues are cleared. Total Due: " + totalDueAmount.ToString("N0") + ", Total Paid: " + totalPaidAmount.ToString("N0") + ".");
-                return View(model);
-            }
-
-            var today = DateTime.Today;
-            var hasActiveNDC = await _context.NDCs
-                .AnyAsync(n => n.CustomerID == model.CustomerID.Trim() && n.NDCExpiryDate.HasValue && n.NDCExpiryDate.Value >= today);
-            if (hasActiveNDC)
-            {
-                await SetNDCConfigViewBagAsync();
-                ModelState.AddModelError("", "This customer already has an active NDC (expiry on or after today). A new NDC cannot be created until the current one has expired.");
-                return View(model);
-            }
+            var remainingDues = Math.Max(totalDueAmount - totalPaidAmount, 0m);
+            var allPaymentClear = remainingDues <= 0m;
 
             var expiryDays = await GetNDCExpiryDaysAsync();
             var startNormalDays = await GetNDCStartNormalDaysAsync();
@@ -279,11 +320,26 @@ namespace PMS.Controllers
             model.NDCExpiryDate = model.CreatedAt.Date.AddDays(expiryDays);
             model.TotalDueAmount = totalDueAmount;
             model.TotalDueInstallments = totalPaidAmount;
-            model.AllPaymentClear = true;
+            model.RemainingDues = remainingDues;
+            model.AllPaymentClear = allPaymentClear;
+            model.AmountPerUnit = transferFee.AmountPerUnit;
+            model.PropertySize = propertySize;
+            model.TransferFeeAmount = Math.Round(transferFee.AmountPerUnit * propertySize, 2, MidpointRounding.AwayFromZero);
             model.WorkFlowStatus ??= defaultStatus;
 
             _context.NDCs.Add(model);
             await _context.SaveChangesAsync();
+
+            if (ndcAttachment != null && ndcAttachment.Length > 0)
+            {
+                var uploadedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var attachmentError = await SaveNdcAttachmentAsync(model.NDCID, ndcAttachment, ndcAttachmentTitle, uploadedBy);
+                if (attachmentError != null)
+                {
+                    TempData["Error"] = attachmentError;
+                    return RedirectToAction(nameof(Edit), new { id = model.NDCID });
+                }
+            }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
@@ -291,7 +347,7 @@ namespace PMS.Controllers
                 await LogActivity(userId, "Create NDC", "NDC", model.NDCID);
             }
 
-            TempData["Success"] = "NDC created successfully. Issued Date: " + model.IssuedDate.ToString("MMM dd, yyyy") + ", Expiry: " + model.NDCExpiryDate?.ToString("MMM dd, yyyy") + ".";
+            TempData["Success"] = "NDC created successfully. Issued Date: " + model.IssuedDate.ToString("MMM dd, yyyy") + ", Expiry: " + model.NDCExpiryDate?.ToString("MMM dd, yyyy") + ", Remaining Dues: " + remainingDues.ToString("N0") + ".";
             return RedirectToAction(nameof(Details), new { id = model.NDCID });
         }
 
@@ -310,6 +366,18 @@ namespace PMS.Controllers
 
             if (ndc == null)
                 return NotFound();
+
+            ViewBag.NdcAttachments = await _context.Attachments
+                .AsNoTracking()
+                .Where(a => a.RefType == "NDC" && a.RefID == id)
+                .OrderByDescending(a => a.UploadedAt)
+                .ToListAsync();
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, "View NDC Details", "NDC", ndc.NDCID);
+            }
 
             return View(ndc);
         }
@@ -330,7 +398,248 @@ namespace PMS.Controllers
             if (ndc == null)
                 return NotFound();
 
+            ViewBag.NdcAttachments = await _context.Attachments
+                .AsNoTracking()
+                .Where(a => a.RefType == "NDC" && a.RefID == id)
+                .OrderByDescending(a => a.UploadedAt)
+                .ToListAsync();
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, "Print NDC", "NDC", ndc.NDCID);
+            }
+
             return View(ndc);
+        }
+
+        public async Task<IActionResult> Edit(string id)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(id))
+                return NotFound();
+
+            var ndc = await _context.NDCs
+                .Include(n => n.Customer)
+                    .ThenInclude(c => c!.PaymentPlan)
+                        .ThenInclude(p => p!.Project)
+                .FirstOrDefaultAsync(n => n.NDCID == id);
+
+            if (ndc == null)
+                return NotFound();
+
+            if (IsApprovedStatus(ndc.WorkFlowStatus))
+            {
+                TempData["Error"] = "Approved NDC cannot be edited.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            ViewBag.NdcAttachments = await _context.Attachments
+                .AsNoTracking()
+                .Where(a => a.RefType == "NDC" && a.RefID == id)
+                .OrderByDescending(a => a.UploadedAt)
+                .ToListAsync();
+            await SetNDCConfigViewBagAsync();
+            return View(ndc);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(string id, NDC model, IFormFile? ndcAttachment = null, string? ndcAttachmentTitle = null)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(id) || id != model.NDCID)
+                return NotFound();
+
+            var existing = await _context.NDCs
+                .Include(n => n.Customer)
+                    .ThenInclude(c => c!.PaymentPlan)
+                        .ThenInclude(p => p!.Project)
+                .FirstOrDefaultAsync(n => n.NDCID == id);
+
+            if (existing == null)
+                return NotFound();
+
+            if (IsApprovedStatus(existing.WorkFlowStatus))
+            {
+                TempData["Error"] = "Approved NDC cannot be edited.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            existing.NDCType = model.NDCType;
+            existing.Title = model.Title;
+            existing.WorkFlowStatus = model.WorkFlowStatus;
+            existing.Comments = model.Comments;
+            existing.Remarks = model.Remarks;
+
+            await _context.SaveChangesAsync();
+
+            if (ndcAttachment != null && ndcAttachment.Length > 0)
+            {
+                var uploadedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var attachmentError = await SaveNdcAttachmentAsync(existing.NDCID, ndcAttachment, ndcAttachmentTitle, uploadedBy);
+                if (attachmentError != null)
+                {
+                    TempData["Error"] = attachmentError;
+                    return RedirectToAction(nameof(Edit), new { id = existing.NDCID });
+                }
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, "Edit NDC", "NDC", existing.NDCID);
+            }
+
+            TempData["Success"] = "NDC updated successfully.";
+            return RedirectToAction(nameof(Details), new { id = existing.NDCID });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var denied = await EnsurePermissionAsync("Admin");
+            if (denied != null) return denied;
+            if (string.IsNullOrWhiteSpace(id))
+                return RedirectToAction(nameof(Index));
+
+            var ndc = await _context.NDCs.FirstOrDefaultAsync(n => n.NDCID == id);
+            if (ndc == null)
+            {
+                TempData["Error"] = "NDC record not found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            _context.NDCs.Remove(ndc);
+            await _context.SaveChangesAsync();
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, "Delete NDC", "NDC", id);
+            }
+
+            TempData["Success"] = "NDC deleted successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        private static bool IsApprovedStatus(string? status)
+        {
+            return string.Equals(status?.Trim(), "Approved", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveTransferPriority(string? ndcType)
+        {
+            return !string.IsNullOrWhiteSpace(ndcType) &&
+                   ndcType.Contains("Urgent", StringComparison.OrdinalIgnoreCase)
+                ? "Urgent"
+                : "Normal";
+        }
+
+        private static decimal ParsePropertySizeValue(string? registeredSize)
+        {
+            if (string.IsNullOrWhiteSpace(registeredSize))
+                return 0m;
+
+            var match = Regex.Match(registeredSize, @"\d+(\.\d+)?");
+            if (!match.Success)
+                return 0m;
+
+            return decimal.TryParse(match.Value, out var parsed) ? parsed : 0m;
+        }
+
+        private async Task<TransferFee?> FindTransferFeeAsync(string? projectId, string? subProject, string? transferType, string? transferPriority)
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                return null;
+
+            var normalizedSubProject = (subProject ?? string.Empty).Trim();
+            var normalizedType = (transferType ?? string.Empty).Trim();
+            var normalizedPriority = (transferPriority ?? string.Empty).Trim();
+
+            var candidates = await _context.TransferFees
+                .AsNoTracking()
+                .Where(t => t.ProjectID == projectId)
+                .OrderByDescending(t => t.CreatedOn)
+                .ToListAsync();
+
+            var byProjectAndSub = candidates
+                .Where(t => string.Equals((t.SubProject ?? string.Empty).Trim(), normalizedSubProject, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (!byProjectAndSub.Any())
+                return null;
+
+            var exact = byProjectAndSub.FirstOrDefault(t =>
+                string.Equals((t.TransferType ?? string.Empty).Trim(), normalizedType, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals((t.TransferPriority ?? string.Empty).Trim(), normalizedPriority, StringComparison.OrdinalIgnoreCase));
+
+            return exact ?? byProjectAndSub.FirstOrDefault();
+        }
+
+        private static string SanitizePathSegment(string? segment)
+        {
+            var s = (segment ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(s))
+                return string.Empty;
+
+            foreach (var c in Path.GetInvalidFileNameChars())
+                s = s.Replace(c, '_');
+
+            s = s.Replace(Path.DirectorySeparatorChar, '_')
+                 .Replace(Path.AltDirectorySeparatorChar, '_')
+                 .Trim()
+                 .TrimEnd('.');
+            return s;
+        }
+
+        private async Task<string?> SaveNdcAttachmentAsync(string ndcId, IFormFile file, string? description, string? uploadedByRaw)
+        {
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!AllowedNdcAttachmentExtensions.Contains(ext))
+                return "Only image files (JPG, PNG, GIF, BMP) and PDF are allowed.";
+            if (file.Length > MaxNdcAttachmentSize)
+                return "Attachment file size exceeds 8MB limit.";
+
+            var safeId = SanitizePathSegment(ndcId);
+            if (string.IsNullOrWhiteSpace(safeId))
+                return "Invalid NDC ID for file storage.";
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "ndc", safeId);
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = $"{Guid.NewGuid():N}{ext}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+            var relativePath = $"/uploads/ndc/{safeId}/{uniqueFileName}";
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            var uploadedBy = string.IsNullOrEmpty(uploadedByRaw)
+                ? null
+                : (uploadedByRaw.Length <= 10 ? uploadedByRaw : uploadedByRaw[..10]);
+
+            var attachment = new Attachment
+            {
+                AttachmentID = GenerateID(),
+                RefType = "NDC",
+                RefID = ndcId,
+                AttachmentType = "Proof",
+                FileName = file.FileName,
+                FilePath = relativePath,
+                FileSize = file.Length,
+                FileType = file.ContentType,
+                Description = string.IsNullOrWhiteSpace(description) ? "NDC attachment" : description.Trim(),
+                UploadedBy = uploadedBy,
+                UploadedAt = DateTime.Now
+            };
+
+            _context.Attachments.Add(attachment);
+            await _context.SaveChangesAsync();
+            return null;
         }
 
         private async Task LogActivity(string userId, string action, string refType, string refId)

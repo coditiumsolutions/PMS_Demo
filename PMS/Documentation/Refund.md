@@ -2,81 +2,128 @@
 
 ## Overview
 
-The Refund module allows staff to initiate a refund against one or more payments made by a customer. Refunds go through an approval workflow; once approved the selected payments are permanently deleted from the system.
+The Refund module allows staff to initiate and process customer refunds against one or more existing payments.  
+The module is workflow-driven from the `Configurations` table (`refundworkflow`) and supports:
 
-**Controller:** `RefundController.cs`
-**Model:** `Refund.cs`
+- create refund request
+- step-by-step workflow movement (forward/backward one step)
+- refund attachments (multiple files)
+- edit/delete with workflow restrictions
+- activity logging
+
+**Controller:** `RefundController.cs`  
+**Model:** `Refund.cs`  
 **Views:** `Views/Refund/`
 
 ---
 
-## Database Table: `Refund`
+## Database Tables Used
+
+### `Refund`
 
 | Column | Type | Notes |
 |--------|------|-------|
 | RefundID | CHAR(10) PK | Auto-generated: `RFD` + 7-digit sequence (e.g. `RFD0000001`) |
 | CustomerID | CHAR(10) FK | Customer being refunded |
 | RefundType | NVARCHAR(50) | `Full` or `Partial` |
-| PaidAmount | DECIMAL(18,2) | Sum of the selected payment amounts |
-| DeductionAmount | DECIMAL(18,2) | Processing fee or other deductions (default 0) |
-| RefundedAmount | DECIMAL(18,2) | `PaidAmount - DeductionAmount` (auto-calculated) |
-| Reason | NVARCHAR(255) | Why the refund is requested |
-| WorkflowStatus | NVARCHAR(100) | `Initiated`, `Approved`, or `Declined` |
-| SelectedPaymentIDs | NVARCHAR(MAX) | JSON array of PaymentIDs e.g. `["PAY0000001","PAY0000002"]` |
+| PaidAmount | DECIMAL(18,2) | Sum of selected payment amounts |
+| DeductionAmount | DECIMAL(18,2) | Processing fee/charges (default 0) |
+| RefundedAmount | DECIMAL(18,2) | `PaidAmount - DeductionAmount` (minimum 0) |
+| Reason | NVARCHAR(255) | Refund reason |
+| WorkflowStatus | NVARCHAR(100) | Current step from configured `refundworkflow` |
+| SelectedPaymentIDs | NVARCHAR(MAX) | JSON array of selected Payment IDs |
 | CreatedBy | CHAR(10) FK | User who initiated |
-| CreatedAt | DATETIME | Auto-set |
-| ApprovedBy | CHAR(10) FK | User who approved or declined |
-| ApprovedAt | DATETIME | Timestamp of approval/decline |
-| Notes | NVARCHAR(500) | Approver's notes |
+| CreatedAt | DATETIME | Creation time |
+| ApprovedBy | CHAR(10) FK | User who moved to terminal decision (when applicable) |
+| ApprovedAt | DATETIME | Decision time (when applicable) |
+| Notes | NVARCHAR(500) | Internal notes |
+
+### `Attachments`
+
+Refund attachments are stored in common table `Attachments` with:
+
+- `RefType = "Refund"`
+- `RefID = RefundID`
+- multiple files allowed
+
+Uploaded files are stored under:
+
+- `wwwroot/uploads/refunds/{RefundID}/`
 
 ---
 
-## Workflow
+## Workflow (Config-Driven)
 
-```
-Initiated  -->  Approved   (payments deleted, refund finalised)
-           -->  Declined   (no changes to payments)
-```
+Workflow steps come from:
 
-- Only refunds in `Initiated` status can be approved or declined.
-- Once approved or declined, the status is final.
+- `Configurations.ConfigKey = "refundworkflow"`
 
----
+Example configured value:
 
-## Key Business Rules
+- `Initiated,Accounts Desk,Approved,Declined`
 
-1. **Payment Selection:** User searches a customer (AJAX), sees all their payments that have not already been refunded. They pick one or more payments to include in the refund.
-2. **Already-Refunded Filter:** Payments linked to any previously `Approved` refund are excluded from the selectable list (tracked via `SelectedPaymentIDs` JSON).
-3. **Amount Calculation:** `RefundedAmount = PaidAmount - DeductionAmount`. If negative, clamped to 0.
-4. **Approval Deletes Payments:** When a refund is approved, all payments in `SelectedPaymentIDs` are permanently removed from the `Payments` table. Each deletion is individually logged in ActivityLog.
-5. **Decline Is Safe:** Declining a refund only changes the status; no payments are affected.
-6. **Approval Requires Admin:** Only users with `Admin` permission on the Refund module can approve. Declining requires `Edit`.
+### Important behavior
+
+1. On create, status is always set to configured **Initiated**.
+2. In Edit, user can move only **one step forward** or **one step backward**.
+3. No free status dropdown selection is used.
+4. Once status reaches configured **Approved**, Edit is blocked/hidden.
 
 ---
 
-## Pages & Actions
+## Core Business Rules
 
-| Action | Permission | Description |
-|--------|-----------|-------------|
-| `Index` | Read | List refunds with workflow and customer filters; shows Initiated/Approved/Declined counts |
-| `Create` | Edit | Initiate a new refund: search customer, select payments, enter deduction and reason |
-| `Details(id)` | Read | View refund details including the list of selected payments |
-| `Approve(refundId)` | Admin | Approve refund and delete selected payments |
-| `Decline(refundId)` | Edit | Decline refund with optional notes |
-| `SearchCustomerForRefund` (AJAX) | - | Returns customer info and eligible (non-refunded) payments |
+1. **Customer payment selection:** Refund is initiated by selecting customer and one or more eligible payments.
+2. **Eligibility filter:** Payments already `Refunded` are excluded from the selection list.
+3. **Amount calculation:** `RefundedAmount = PaidAmount - DeductionAmount`, clamped at 0.
+4. **On move to Approved:**
+   - all payments of that customer are set to `Refunded`
+   - customer status is set to `Refunded`
+5. **Delete restriction:** Refund delete is allowed only while refund is in configured `Initiated`.
+6. **Edit restriction:** Approved refunds cannot be edited.
+
+---
+
+## UI/Action Matrix
+
+| Action | Permission | Notes |
+|--------|-----------|-------|
+| `Index` | Read | List/filter refunds, show workflow counts, action buttons |
+| `Create` | Edit | Initiate refund with customer search + payment selection |
+| `Details(id)` | Read | Read-only view, payments summary, attachments panel |
+| `Edit(id)` | Edit | Edit refund details + workflow step forward/back controls |
+| `MoveStatus(id, direction)` | Edit | Moves exactly one step (`forward` or `backward`) |
+| `Delete(id)` | Admin | Allowed only when current status is configured Initiated |
+| `UploadAttachment` | Edit | Upload refund attachment (multi-file supported) |
+| `GetAttachments` | Read | List refund attachments |
+| `DeleteAttachment` | Admin | Remove refund attachment |
+| `SearchCustomerForRefund` (AJAX) | Read/Edit flow | Returns customer + eligible payments |
 
 ---
 
 ## Activity Logging
 
-- **On initiation:** Logs refund ID, customer ID, and paid amount.
-- **On approval:** Logs the approval plus one entry per deleted payment (amount and payment ID).
-- **On decline:** Logs the decline.
+Logs are written to `ActivityLog` for major events, including:
 
-All entries use `RefType = "Refund"` or `"Payment"` with the respective ID.
+- refund initiated
+- refund edited
+- workflow status moved (from step X to step Y)
+- refund approved (including refunded-state action details)
+- refund declined
+- refund deleted
+
+`RefType` is `Refund` and `RefID` is the corresponding `RefundID`.
 
 ---
 
-## Config-Driven Values
+## Configuration Dependency
 
-- **Workflow Statuses:** Read from `Configurations` table key `refundworkflow` (comma-separated). Fallback: `Initiated, Approved, Declined`.
+The module expects `refundworkflow` to exist in `Configurations`.
+
+Recommended value:
+
+- `Initiated,Accounts Desk,Approved,Declined`
+
+If not present, fallback is:
+
+- `Initiated,Approved,Declined`

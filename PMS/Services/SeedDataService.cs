@@ -33,6 +33,7 @@ namespace PMS.Services
 
             // Seed NDC section in Configuration (if missing)
             await SeedNDCConfiguration();
+            await SeedWaiverConfiguration();
 
             // Seed Users category in Configuration (Departments, Designations)
             await SeedUsersConfiguration();
@@ -43,9 +44,9 @@ namespace PMS.Services
 
         private static readonly string[] ModuleKeys = new[]
         {
-            "Home", "Registration", "Customer", "Transfer", "NDC", "Project", "Dealer", "Property", "Payment",
+            "Home", "Registration", "Customer", "Transfer", "TransferFee", "NDC", "Project", "Dealer", "Property", "Payment",
             "Allotment", "Rental", "SalesInquiry", "Reports", "Account", "Settings", "ActivityLog",
-            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi"
+            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "Waiver"
         };
 
         private async Task SeedUserModulePermissionsAsync()
@@ -154,6 +155,22 @@ namespace PMS.Services
                     Category = "NDC",
                     ConfigValue = "Normal Transfer,Urgent Transfer,Family Transfer,Death Transfer",
                     Description = "NDC types (comma-separated)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedWaiverConfiguration()
+        {
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "WaiverWorkFlow"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "WaiverWorkFlow",
+                    Category = "Waiver",
+                    ConfigValue = "Initialted,Approved,Declined",
+                    Description = "Waiver workflow statuses (comma-separated)",
                     CreatedAt = DateTime.Now
                 });
             }

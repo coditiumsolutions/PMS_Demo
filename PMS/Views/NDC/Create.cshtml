@@ -6,7 +6,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0"><i class="fas fa-file-certificate me-2"></i>New NDC (No Dues Certificate)</h2>
-    <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
+            <i class="fas fa-tags me-2"></i>Transfer Fee Module
+        </a>
+        <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
+    </div>
 </div>
 
 @if (TempData["Error"] != null)
@@ -22,7 +27,7 @@
         <h5 class="mb-0 text-white"><i class="fas fa-user-check me-2"></i>Create NDC – Customer must have all dues cleared</h5>
     </div>
     <div class="card-body">
-        <form asp-action="Create" method="post" id="ndcForm">
+        <form asp-action="Create" method="post" id="ndcForm" enctype="multipart/form-data">
             <div class="row mb-4">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Customer ID <span class="text-danger">*</span></label>
@@ -39,12 +44,24 @@
                     <div class="p-3 rounded" style="background: rgba(72, 123, 165, 0.06); border: 1px solid rgba(72, 123, 165, 0.15);">
                         <div class="small text-muted">Name / Plan</div>
                         <div class="fw-bold" id="summaryName">—</div>
-                        <div class="small text-muted mt-2">Total Due / Total Paid</div>
+                        <div class="small text-muted mt-2">Total Due / Total Paid / Remaining Dues</div>
                         <div id="summaryAmounts" class="fw-bold">—</div>
+                        <div class="small text-muted mt-2">Amount/Unit | Property Size | Transfer Fee Amount</div>
+                        <div id="summaryTransferFee" class="fw-bold">—</div>
                         <div id="summaryMessage" class="small mt-2"></div>
+                        <div id="transferFeeMissingActions" class="mt-2" style="display:none;">
+                            <a id="addTransferFeeBtn" href="@Url.Action("Create", "TransferFee")" class="btn btn-sm btn-warning">
+                                <i class="fas fa-plus me-1"></i>Add Transfer Fee
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <input asp-for="AmountPerUnit" type="hidden" id="AmountPerUnit" />
+            <input asp-for="PropertySize" type="hidden" id="PropertySize" />
+            <input asp-for="TransferFeeAmount" type="hidden" id="TransferFeeAmount" />
+            <input asp-for="RemainingDues" type="hidden" id="RemainingDues" />
 
             <div class="row g-2 mb-3">
                 <div class="col-md-6">
@@ -84,11 +101,20 @@
                     <label class="form-label">Remarks</label>
                     <input asp-for="Remarks" class="form-control" />
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Attachment (Optional)</label>
+                    <input type="file" name="ndcAttachment" class="form-control" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                    <small class="text-muted">Allowed: JPG, PNG, GIF, BMP, PDF (max 8MB)</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Attachment Title / Notes (Optional)</label>
+                    <input type="text" name="ndcAttachmentTitle" class="form-control" maxlength="500" placeholder="e.g. Supporting proof" />
+                </div>
             </div>
 
             <div class="alert alert-info small">
                 <i class="fas fa-info-circle me-1"></i>
-                On create: <strong>Issued Date</strong> = @(ViewBag.NDCStartNormalDays ?? 3) days from today (or @(ViewBag.NDCStartUrgentDays ?? 0) days if type contains &quot;Urgent&quot;), <strong>NDC Expiry</strong> = @(ViewBag.NDCExpiryDays ?? 14) days from today (from Configuration). NDC can only be created when Total Due = Total Paid.
+                On create: <strong>Issued Date</strong> = @(ViewBag.NDCStartNormalDays ?? 3) days from today (or @(ViewBag.NDCStartUrgentDays ?? 0) days if type contains &quot;Urgent&quot;), <strong>NDC Expiry</strong> = @(ViewBag.NDCExpiryDays ?? 14) days from today (from Configuration). Remaining dues are calculated and saved as a snapshot.
             </div>
 
             <div class="mt-4">
@@ -103,14 +129,41 @@
 
 @section Scripts {
     <script>
+        function syncTitleWithNdcType(force) {
+            var ndcTypeEl = document.querySelector('select[name="NDCType"]');
+            var titleEl = document.querySelector('input[name="Title"]');
+            if (!ndcTypeEl || !titleEl) return;
+
+            if (force || !titleEl.value.trim()) {
+                titleEl.value = ndcTypeEl.value || '';
+            }
+        }
+
+        var ndcTypeSelect = document.querySelector('select[name="NDCType"]');
+        if (ndcTypeSelect) {
+            ndcTypeSelect.addEventListener('change', function () {
+                // Auto-fill title from selected type, but keep field editable.
+                syncTitleWithNdcType(true);
+            });
+        }
+
+        // Initial sync: only fill title if it is currently empty.
+        syncTitleWithNdcType(false);
+
         document.getElementById('btnSearchCustomer').addEventListener('click', function () {
             var customerId = document.getElementById('CustomerID').value.trim();
             var validationEl = document.getElementById('customerIdValidation');
             validationEl.textContent = '';
             document.getElementById('summaryName').textContent = '—';
             document.getElementById('summaryAmounts').textContent = '—';
+            document.getElementById('summaryTransferFee').textContent = '—';
             document.getElementById('summaryMessage').textContent = '';
+            document.getElementById('transferFeeMissingActions').style.display = 'none';
             document.getElementById('btnCreateNDC').disabled = true;
+            document.getElementById('AmountPerUnit').value = '';
+            document.getElementById('PropertySize').value = '';
+            document.getElementById('TransferFeeAmount').value = '';
+            document.getElementById('RemainingDues').value = '';
 
             if (!customerId) {
                 validationEl.textContent = 'Enter Customer ID.';
@@ -118,7 +171,9 @@
             }
 
             var token = document.querySelector('input[name="__RequestVerificationToken"]');
-            var body = (token ? '__RequestVerificationToken=' + encodeURIComponent(token.value) + '&' : '') + 'customerId=' + encodeURIComponent(customerId);
+            var ndcTypeValue = document.querySelector('select[name="NDCType"]')?.value || '';
+            var body = (token ? '__RequestVerificationToken=' + encodeURIComponent(token.value) + '&' : '') +
+                'customerId=' + encodeURIComponent(customerId) + '&ndcType=' + encodeURIComponent(ndcTypeValue);
 
             fetch('@Url.Action("GetCustomerForNDC", "NDC")', {
                 method: 'POST',
@@ -130,17 +185,39 @@
                 if (data.success) {
                     validationEl.textContent = '';
                     document.getElementById('summaryName').textContent = (data.fullName || '—') + ' / ' + (data.planName || '—');
-                    document.getElementById('summaryAmounts').textContent = 'Due: ' + (data.totalDueAmount != null ? Number(data.totalDueAmount).toLocaleString() : '0') + ' | Paid: ' + (data.totalPaidAmount != null ? Number(data.totalPaidAmount).toLocaleString() : '0');
-                    if (data.hasActiveNDC) {
-                        document.getElementById('summaryMessage').innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + (data.message || 'This customer already has an active NDC.') + '</span>';
+                    document.getElementById('summaryAmounts').textContent =
+                        'Due: ' + (data.totalDueAmount != null ? Number(data.totalDueAmount).toLocaleString() : '0') +
+                        ' | Paid: ' + (data.totalPaidAmount != null ? Number(data.totalPaidAmount).toLocaleString() : '0') +
+                        ' | Remaining: ' + (data.remainingDues != null ? Number(data.remainingDues).toLocaleString() : '0');
+                    document.getElementById('summaryTransferFee').textContent =
+                        'Amount/Unit: ' + (data.amountPerUnit != null ? Number(data.amountPerUnit).toLocaleString() : '0') +
+                        ' | Size: ' + (data.propertySize != null ? Number(data.propertySize).toLocaleString() : '0') +
+                        ' | Fee: ' + (data.transferFeeAmount != null ? Number(data.transferFeeAmount).toLocaleString() : '0');
+
+                    document.getElementById('AmountPerUnit').value = data.amountPerUnit != null ? data.amountPerUnit : '';
+                    document.getElementById('PropertySize').value = data.propertySize != null ? data.propertySize : '';
+                    document.getElementById('TransferFeeAmount').value = data.transferFeeAmount != null ? data.transferFeeAmount : '';
+                    document.getElementById('RemainingDues').value = data.remainingDues != null ? data.remainingDues : '';
+
+                    if (!data.transferFeeExists) {
+                        document.getElementById('summaryMessage').innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + (data.message || 'Transfer fee does not exist for this Project and SubProject.') + '</span>';
+                        var addBtn = document.getElementById('addTransferFeeBtn');
+                        if (data.addTransferFeeUrl) {
+                            addBtn.href = data.addTransferFeeUrl;
+                        }
+                        document.getElementById('transferFeeMissingActions').style.display = 'block';
                         document.getElementById('btnCreateNDC').disabled = true;
+                        return;
+                    }
+
+                    if (data.hasActiveNDC) {
+                        document.getElementById('summaryMessage').innerHTML = '<span class="text-warning"><i class="fas fa-info-circle me-1"></i>' + (data.message || 'Customer already has an active NDC. Creation is still allowed.') + '</span>';
                     } else if (data.allPaymentClear) {
                         document.getElementById('summaryMessage').innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i>All dues cleared. You can create NDC.</span>';
-                        document.getElementById('btnCreateNDC').disabled = false;
                     } else {
-                        document.getElementById('summaryMessage').innerHTML = '<span class="text-danger">' + (data.message || 'Clear all dues before creating NDC.') + '</span>';
-                        document.getElementById('btnCreateNDC').disabled = true;
+                        document.getElementById('summaryMessage').innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>' + (data.message || 'Customer has remaining dues.') + '</span>';
                     }
+                    document.getElementById('btnCreateNDC').disabled = false;
                 } else {
                     validationEl.textContent = data.message || 'Customer not found.';
                 }
@@ -149,5 +226,14 @@
                 validationEl.textContent = 'Request failed.';
             });
         });
+
+        if (ndcTypeSelect) {
+            ndcTypeSelect.addEventListener('change', function () {
+                var customerId = document.getElementById('CustomerID').value.trim();
+                if (customerId) {
+                    document.getElementById('btnSearchCustomer').click();
+                }
+            });
+        }
     </script>
 }

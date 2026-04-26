@@ -80,7 +80,7 @@
                                 }
                             </td>
                             <td>
-                                <strong class="text-danger">@penalty.Amount.ToString("N2") PKR</strong>
+                                <strong class="text-danger">@penalty.Amount.ToString("N0") PKR</strong>
                             </td>
                             <td>@penalty.Reason</td>
                             <td>
@@ -126,7 +126,7 @@
 
                     <div class="mb-3">
                         <label for="amount" class="form-label">Penalty Amount (PKR) *</label>
-                        <input type="number" name="amount" id="amount" step="0.01" class="form-control" required />
+                        <input type="number" name="amount" id="amount" step="1" min="1" class="form-control" required />
                     </div>
 
                     <div class="mb-3">

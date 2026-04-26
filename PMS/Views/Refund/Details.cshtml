@@ -1,12 +1,19 @@
 @model PMS.Models.Refund
 @{
     ViewData["Title"] = "Refund Details – " + Model.RefundID;
-    var wf = Model.WorkflowStatus ?? "Initiated";
-    var badgeClass = wf == "Approved" ? "bg-success" : wf == "Declined" ? "bg-danger" : "bg-warning text-dark";
+    var initiatedStatus = (string?)ViewBag.InitiatedStatus ?? "Initiated";
+    var approvedStatus = (string?)ViewBag.ApprovedStatus ?? "Approved";
+    var declinedStatus = (string?)ViewBag.DeclinedStatus ?? "Declined";
+    var wf = Model.WorkflowStatus ?? initiatedStatus;
+    var badgeClass = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
+        ? "bg-success"
+        : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase)
+            ? "bg-danger"
+            : "bg-warning text-dark";
     var selectedPayments = ViewBag.SelectedPayments as List<PMS.Models.Payment> ?? new List<PMS.Models.Payment>();
-    bool isPending = wf == "Initiated";
-    bool isAdmin = ViewBag.CanDelete == true;
 }
+
+<div style="display:none;">@Html.AntiForgeryToken()</div>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2 class="mb-0"><i class="fas fa-undo-alt me-2"></i>Refund <code>@Model.RefundID</code></h2>
@@ -31,11 +38,11 @@
 }
 
 <!-- Status Banner -->
-<div class="alert @(wf == "Approved" ? "alert-success" : wf == "Declined" ? "alert-danger" : "alert-warning") d-flex align-items-center gap-2 mb-4">
-    <i class="fas @(wf == "Approved" ? "fa-check-circle" : wf == "Declined" ? "fa-times-circle" : "fa-clock") fa-lg"></i>
+<div class="alert @(string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase) ? "alert-success" : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase) ? "alert-danger" : "alert-warning") d-flex align-items-center gap-2 mb-4">
+    <i class="fas @(string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase) ? "fa-check-circle" : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase) ? "fa-times-circle" : "fa-clock") fa-lg"></i>
     <div>
         <strong>Status: @wf</strong>
-        @if (!isPending && Model.ApprovedAt.HasValue)
+        @if (!string.Equals(wf, initiatedStatus, StringComparison.OrdinalIgnoreCase) && Model.ApprovedAt.HasValue)
         {
             <span class="ms-2 small">on @Model.ApprovedAt.Value.ToString("MMM dd, yyyy HH:mm") by @(Model.ApprovedByUser?.FullName ?? Model.ApprovedBy)</span>
         }
@@ -113,7 +120,7 @@
                             <th>Method</th>
                             <th>Date</th>
                             <th>Ref #</th>
-                            @if (wf == "Approved")
+                            @if (string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase))
                             {
                                 <th>Status</th>
                             }
@@ -130,9 +137,9 @@
                                 <td>@(p.Method ?? "—")</td>
                                 <td>@p.PaymentDate.ToString("MMM dd, yyyy")</td>
                                 <td>@(p.ReferenceNo ?? "—")</td>
-                                @if (wf == "Approved")
+                                @if (string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    <td><span class="badge bg-danger">Deleted on Approval</span></td>
+                                    <td><span class="badge bg-success">Refunded</span></td>
                                 }
                             </tr>
                         }
@@ -141,7 +148,7 @@
                         <tr class="table-secondary fw-bold">
                             <td colspan="3" class="text-end">Total:</td>
                             <td class="text-end">PKR @selectedPayments.Sum(p => p.Amount).ToString("N0")</td>
-                            <td colspan="@(wf == "Approved" ? 4 : 3)"></td>
+                            <td colspan="@(string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase) ? 4 : 3)"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -150,56 +157,143 @@
     </div>
 </div>
 
-<!-- Actions (only for Initiated) -->
-@if (isPending && isAdmin)
+<!-- Attachments -->
+<div class="card mt-4">
+    <div class="card-header fw-semibold">
+        <i class="fas fa-paperclip me-2"></i>Attachments
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">Upload multiple supporting files. Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file.</p>
+        @if (ViewBag.CanEdit == true)
+        {
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <input type="file" id="refundFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="refundDescription" class="form-control form-control-sm" placeholder="Description (optional)" />
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="button" class="btn btn-sm btn-primary" id="uploadRefundBtn">
+                        <i class="fas fa-upload me-1"></i>Upload
+                    </button>
+                </div>
+            </div>
+        }
+        <div id="refundAttachmentsList" class="refund-att-list"></div>
+    </div>
+</div>
+
+<!-- Workflow actions -->
+@if (!string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase))
 {
-    <div class="row g-3 mt-2">
-        <div class="col-md-6">
-            <div class="card border-success">
-                <div class="card-header bg-success text-white fw-semibold"><i class="fas fa-check me-2"></i>Approve Refund</div>
-                <div class="card-body">
-                    <p class="small text-muted mb-2">
-                        Approving will <strong>permanently delete</strong> the selected payments from the system and cannot be undone.
-                    </p>
-                    <form asp-action="Approve" method="post">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="refundId" value="@Model.RefundID" />
-                        <div class="mb-3">
-                            <label class="form-label">Approval Notes (optional)</label>
-                            <textarea name="notes" class="form-control" rows="2" maxlength="500"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100"
-                                onclick="return confirm('CONFIRM: This will permanently delete @selectedPayments.Count payment(s). Proceed?')">
-                            <i class="fas fa-check me-2"></i>Approve &amp; Delete Payments
-                        </button>
-                    </form>
-                </div>
-            </div>
+    <div class="alert alert-info mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <i class="fas fa-info-circle me-2"></i>Use Edit to move status one step forward/backward according to configured refundworkflow.
         </div>
-        <div class="col-md-6">
-            <div class="card border-danger">
-                <div class="card-header bg-danger text-white fw-semibold"><i class="fas fa-times me-2"></i>Decline Refund</div>
-                <div class="card-body">
-                    <p class="small text-muted mb-2">Declining will reject the refund request. No payments will be deleted.</p>
-                    <form asp-action="Decline" method="post">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="refundId" value="@Model.RefundID" />
-                        <div class="mb-3">
-                            <label class="form-label">Reason for Decline <span class="text-danger">*</span></label>
-                            <textarea name="notes" class="form-control" rows="2" maxlength="500" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-danger w-100">
-                            <i class="fas fa-times me-2"></i>Decline Refund
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+        @if (ViewBag.CanEdit == true)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.RefundID" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit me-1"></i>Open Workflow Controls
+            </a>
+        }
     </div>
 }
-else if (isPending)
-{
-    <div class="alert alert-info mt-3">
-        <i class="fas fa-info-circle me-2"></i>This refund is awaiting admin approval. Only admins can approve or decline.
-    </div>
+
+<style>
+    .refund-att-list .att-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
+    .refund-att-list .att-item:last-child { border-bottom: none; }
+</style>
+
+@section Scripts {
+<script>
+(function() {
+    var refundId = '@Model.RefundID';
+    var canDelete = @((ViewBag.CanDelete == true).ToString().ToLowerInvariant());
+    var token = document.querySelector('input[name="__RequestVerificationToken"]');
+    function getToken() { return token ? token.value : ''; }
+
+    function loadAttachments() {
+        $.ajax({
+            url: '@Url.Action("GetAttachments", "Refund")',
+            method: 'GET',
+            data: { refundId: refundId },
+            success: function(res) {
+                if (res.success && res.attachments) {
+                    renderList(res.attachments);
+                }
+            }
+        });
+    }
+
+    function renderList(items) {
+        var $c = $('#refundAttachmentsList');
+        $c.empty();
+        if (!items || items.length === 0) {
+            $c.html('<p class="text-muted mb-0 small"><i class="fas fa-inbox me-1"></i>No attachments</p>');
+            return;
+        }
+        items.forEach(function(a) {
+            var isImg = a.fileType && a.fileType.indexOf('image') === 0;
+            var isPdf = a.fileType && a.fileType.indexOf('pdf') >= 0;
+            var icon = isImg ? 'fa-image' : (isPdf ? 'fa-file-pdf text-danger' : 'fa-file');
+            var delBtn = canDelete
+                ? '<button type="button" class="btn btn-sm btn-outline-danger delete-att" data-id="' + a.attachmentID + '" title="Delete"><i class="fas fa-trash"></i></button>'
+                : '';
+            var row = '<div class="att-item">' +
+                '<span><i class="fas ' + icon + ' me-2"></i>' + (a.fileName || 'File') + '</span>' +
+                '<span>' +
+                '<a href="' + a.filePath + '" target="_blank" class="btn btn-sm btn-outline-primary me-1" title="View"><i class="fas fa-eye"></i></a>' +
+                delBtn +
+                '</span></div>';
+            $c.append(row);
+        });
+        $c.find('.delete-att').on('click', function() {
+            var id = $(this).data('id');
+            if (!confirm('Delete this attachment?')) return;
+            $.post('@Url.Action("DeleteAttachment", "Refund")', { __RequestVerificationToken: getToken(), attachmentId: id })
+                .done(function(r) { if (r.success) loadAttachments(); else alert(r.message); })
+                .fail(function() { alert('Error deleting'); });
+        });
+    }
+
+    function upload() {
+        var fileInput = document.getElementById('refundFile');
+        var descInput = document.getElementById('refundDescription');
+        var btn = document.getElementById('uploadRefundBtn');
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+            alert('Please select a file.');
+            return;
+        }
+        var fd = new FormData();
+        fd.append('refundId', refundId);
+        fd.append('file', fileInput.files[0]);
+        fd.append('description', descInput ? descInput.value : '');
+        fd.append('__RequestVerificationToken', getToken());
+        $(btn).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Uploading...');
+        $.ajax({
+            url: '@Url.Action("UploadAttachment", "Refund")',
+            method: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function(r) {
+                if (r.success) {
+                    fileInput.value = '';
+                    if (descInput) descInput.value = '';
+                    loadAttachments();
+                } else alert(r.message || 'Upload failed');
+                $(btn).prop('disabled', false).html('<i class="fas fa-upload me-1"></i>Upload');
+            },
+            error: function() {
+                alert('Upload failed.');
+                $(btn).prop('disabled', false).html('<i class="fas fa-upload me-1"></i>Upload');
+            }
+        });
+    }
+
+    $('#uploadRefundBtn').on('click', upload);
+    loadAttachments();
+})();
+</script>
 }

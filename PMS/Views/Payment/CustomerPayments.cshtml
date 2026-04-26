@@ -4,30 +4,24 @@
     ViewData["Title"] = "Customer Payments";
 }
 
-<!-- Banner with purple gradient -->
 <div class="custom-banner mb-4" style="margin-top: 20px;">
-    <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="text-white mb-1" style="font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                    <!-- <i class="fas fa-money-bill-wave me-2"></i>Customer Payments -->
-                </h2>
-                <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.95rem;">
-                    View and manage all payment transactions from customers
-                </p>
-            </div>
-            @if (ViewBag.CanCreate == true)
-            {
-            <div class="d-flex gap-2">
+    <div class="d-flex justify-content-end align-items-center gap-2">
+                <a asp-controller="PaymentAudit" asp-action="Index" class="btn btn-outline-primary">
+                    <i class="fas fa-clipboard-check me-2"></i>Audit Payments
+                </a>
+                <a asp-controller="PaymentAudit" asp-action="Index" asp-route-auditFilter="Pending" class="btn btn-outline-warning">
+                    <i class="fas fa-clock me-2"></i>Pending
+                    <span class="badge bg-warning text-dark ms-1">@ViewBag.PendingAuditCount</span>
+                </a>
+                @if (ViewBag.CanCreate == true)
+                {
                 <a asp-action="MultiplePayments" class="btn btn-warning">
                     <i class="fas fa-layer-group me-2"></i>Multiple Payments
                 </a>
-                <a asp-action="RecordPayment" class="btn btn-light">
+                <a asp-action="RecordPayment" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Record Payment
                 </a>
-            </div>
-            }
-        </div>
+                }
     </div>
 </div>
 
@@ -61,7 +55,7 @@
                     </div>
                     <div class="flex-grow-1 ms-3">
                         <h6 class="mb-1 text-muted">Total Received (PKR)</h6>
-                        <h4 class="mb-0" data-format-number="@Model.Sum(p => p.Amount)">@Model.Sum(p => p.Amount).ToString("N0")</h4>
+                        <h4 class="mb-0">@Model.Sum(p => p.Amount).ToString("N0")</h4>
                     </div>
                 </div>
             </div>
@@ -122,10 +116,13 @@
                             <th>Customer</th>
                             <th>Payment Plan</th>
                             <th>Installment</th>
-                            <th>Date</th>
-                            <th>Amount</th>
+                            <th>Entry Date</th>
+                            <th>Deposit Date</th>
+                            <th class="amount-col">Amount</th>
                             <th>Reference</th>
+                            <th>Bank</th>
                             <th>Status</th>
+                            <th>Audit Status</th>
                             <th>Method</th>
                         </tr>
                     </thead>
@@ -211,12 +208,32 @@
                                     @payment.PaymentDate.ToString("MMM dd, yyyy")
                                 </td>
                                 <td>
-                                    <strong class="text-success"><span data-format-number="@payment.Amount">@payment.Amount.ToString("N0")</span> PKR</strong>
+                                    @if (payment.DepositDate.HasValue)
+                                    {
+                                        <span>@payment.DepositDate.Value.ToString("MMM dd, yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="amount-col">
+                                    <strong class="text-success">@payment.Amount.ToString("N0") PKR</strong>
                                 </td>
                                 <td>
                                     @if (!string.IsNullOrEmpty(payment.ReferenceNo))
                                     {
                                         <code>@payment.ReferenceNo</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(payment.BankName))
+                                    {
+                                        <span class="badge bg-light text-dark border">@payment.BankName</span>
                                     }
                                     else
                                     {
@@ -239,6 +256,20 @@
                                     else
                                     {
                                         <span class="badge bg-secondary">@payment.Status</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (payment.AuditStatus == "Approved")
+                                    {
+                                        <span class="badge bg-success">Approved</span>
+                                    }
+                                    else if (payment.AuditStatus == "Declined")
+                                    {
+                                        <span class="badge bg-danger">Declined</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Pending</span>
                                     }
                                 </td>
                                 <td>
@@ -309,6 +340,10 @@
                             <p class="mb-0">@payment.PaymentDate.ToString("MMMM dd, yyyy hh:mm tt")</p>
                         </div>
                         <div class="col-md-6">
+                            <label class="text-muted small">Deposit Date</label>
+                            <p class="mb-0">@(payment.DepositDate?.ToString("MMMM dd, yyyy") ?? "-")</p>
+                        </div>
+                        <div class="col-md-6">
                             <label class="text-muted small">Customer Name</label>
                             <p class="mb-0"><strong>@payment.Customer?.FullName</strong></p>
                         </div>
@@ -331,7 +366,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="text-muted small">Amount Paid (PKR)</label>
-                            <p class="mb-0"><strong class="text-success fs-5" data-format-number="@payment.Amount">@payment.Amount.ToString("N0")</strong></p>
+                            <p class="mb-0"><strong class="text-success fs-5">@payment.Amount.ToString("N0")</strong></p>
                         </div>
                         <div class="col-md-6">
                             <label class="text-muted small">Payment Method</label>
@@ -340,6 +375,10 @@
                         <div class="col-md-6">
                             <label class="text-muted small">Reference Number</label>
                             <p class="mb-0"><code>@payment.ReferenceNo</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Bank Name</label>
+                            <p class="mb-0">@(!string.IsNullOrWhiteSpace(payment.BankName) ? payment.BankName : "-")</p>
                         </div>
                         <div class="col-md-6">
                             <label class="text-muted small">Status</label>
@@ -351,6 +390,23 @@
                                 else
                                 {
                                     <span class="badge bg-warning">@payment.Status</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Audit Status</label>
+                            <p class="mb-0">
+                                @if (payment.AuditStatus == "Approved")
+                                {
+                                    <span class="badge bg-success">Approved</span>
+                                }
+                                else if (payment.AuditStatus == "Declined")
+                                {
+                                    <span class="badge bg-danger">Declined</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Pending</span>
                                 }
                             </p>
                         </div>
@@ -423,6 +479,12 @@
         font-size: 24px;
     }
 
+    #paymentsTable th.amount-col,
+    #paymentsTable td.amount-col {
+        min-width: 150px;
+        white-space: nowrap;
+    }
+
     /* Payment Modals - No Backdrop (same as Users page) */
     .modal-backdrop {
         display: none !important;
@@ -479,7 +541,7 @@
     <script>
         $(document).ready(function () {
             $('#paymentsTable').DataTable({
-                "order": [[5, "desc"]], // Sort by date descending (column index 5 after Actions first)
+                "order": [[5, "desc"]], // Date column remains index 5
                 "pageLength": 25,
                 "language": {
                     "search": "Search payments:",

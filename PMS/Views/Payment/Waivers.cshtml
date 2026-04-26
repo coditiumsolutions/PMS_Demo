@@ -29,7 +29,7 @@
     </div>
     <div class="col-md-4">
         <div class="stats-card">
-            <div class="stats-number">@Model.Sum(w => w.Amount).ToString("N0")</div>
+            <div class="stats-number">@Model.Sum(w => w.WaivedAmount).ToString("N0")</div>
             <div class="stats-label">Total Amount (PKR)</div>
             <i class="fas fa-money-bill-wave fa-2x mt-2" style="color: var(--accent-gold);"></i>
         </div>
@@ -81,9 +81,9 @@
                                 }
                             </td>
                             <td>
-                                <strong style="color: var(--accent-gold);">@waiver.Amount.ToString("N2") PKR</strong>
+                                <strong style="color: var(--accent-gold);">@waiver.WaivedAmount.ToString("N0") PKR</strong>
                             </td>
-                            <td>@waiver.Reason</td>
+                            <td>@waiver.Comments</td>
                             <td>
                                 @if (waiver.ApprovedByUser != null)
                                 {
@@ -137,7 +137,7 @@
 
                     <div class="mb-3">
                         <label for="amount" class="form-label">Waiver Amount (PKR) *</label>
-                        <input type="number" name="amount" id="amount" step="0.01" class="form-control" required />
+                        <input type="number" name="amount" id="amount" step="1" min="1" class="form-control" required />
                     </div>
 
                     <div class="mb-3">

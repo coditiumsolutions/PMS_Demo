@@ -7,14 +7,14 @@
 <div class="custom-banner mb-4" style="margin-top: 20px;">
     <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
         <div class="d-flex justify-content-between align-items-center">
-            <div>
+            <!-- <div>
                 <h2 class="text-white mb-1" style="font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                     <i class="fas fa-layer-group me-2"></i>Multiple Payments
                 </h2>
                 <p class="text-white mb-0" style="opacity: 0.95; font-size: 0.95rem;">
                     Distribute a single payment across multiple installments at once
                 </p>
-            </div>
+            </div> -->
             <a asp-action="CustomerPayments" class="btn btn-light">
                 <i class="fas fa-arrow-left me-2"></i>Back to Payments
             </a>
@@ -56,16 +56,43 @@
                     <label class="form-label fw-semibold">
                         <i class="fas fa-coins me-1" style="color:var(--primary)"></i>Total Payment (PKR) <span class="text-danger">*</span>
                     </label>
-                    <input type="number" id="totalAmount" class="form-control form-control-lg fw-bold" placeholder="0.00" step="0.01" min="0.01" />
+                    <input type="text" id="totalAmount" class="form-control form-control-lg fw-bold" placeholder="0" inputmode="numeric" />
                     <div id="totalMatchMsg" class="small mt-1"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold d-block">
+                        <i class="fas fa-plus-circle me-1" style="color:var(--primary)"></i>Extra Payment
+                    </label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="addExtraPayment">
+                        <label class="form-check-label" for="addExtraPayment">
+                            Add extra payment beyond selected installments
+                        </label>
+                    </div>
+                    <input type="text" id="extraAmount" class="form-control" placeholder="Extra amount (PKR)" inputmode="numeric" disabled />
+                    <small class="text-muted">Use for amount above due installments (example: due 9,990, paid 10,000 -> extra 10).</small>
                 </div>
 
                 <!-- Reference Number -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold">
-                        <i class="fas fa-hashtag me-1" style="color:var(--primary)"></i>Reference Number
+                        <i class="fas fa-hashtag me-1" style="color:var(--primary)"></i>Reference Number <span class="text-danger">*</span>
                     </label>
                     <input type="text" id="referenceNo" class="form-control" placeholder="DD/DS, Cheque, Transaction No." />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-university me-1" style="color:var(--primary)"></i>Bank Name <span class="text-danger">*</span>
+                    </label>
+                    <select id="bankName" class="form-select">
+                        <option value="">Select Bank</option>
+                        @foreach (var bank in (ViewBag.BankNames as IEnumerable<string> ?? Array.Empty<string>()))
+                        {
+                            <option value="@bank">@bank</option>
+                        }
+                    </select>
                 </div>
 
                 <!-- Payment Method -->
@@ -86,9 +113,16 @@
                 <!-- Payment Date -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold">
-                        <i class="fas fa-calendar me-1" style="color:var(--primary)"></i>Payment Date <span class="text-danger">*</span>
+                        <i class="fas fa-calendar me-1" style="color:var(--primary)"></i>Entry Date
                     </label>
                     <input type="date" id="paymentDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-calendar-day me-1" style="color:var(--primary)"></i>Deposit Date <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" id="depositDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
                 </div>
 
                 <!-- Remarks -->
@@ -99,20 +133,38 @@
                     <textarea id="remarks" class="form-control" rows="2" placeholder="Optional notes…"></textarea>
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-paperclip me-1" style="color:var(--primary)"></i>Payment Proof (Optional)
+                    </label>
+                    <input type="file" id="proofAttachment" class="form-control" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                    <small class="text-muted d-block mt-1">If attached, same proof is linked to each created payment. Max 8MB.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fas fa-file-alt me-1" style="color:var(--primary)"></i>Proof Title / Notes (Optional)
+                    </label>
+                    <input type="text" id="proofDescription" class="form-control" maxlength="500" placeholder="e.g. One slip covering all installments" />
+                </div>
+
                 <!-- Running Total Indicator -->
                 <div class="p-3 rounded" style="background:rgba(156,106,222,0.07); border:1px solid rgba(156,106,222,0.2);">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="text-muted">Total Payment</small>
-                        <strong id="hdrTotal" class="text-primary">PKR 0.00</strong>
+                        <strong id="hdrTotal" class="text-primary">PKR 0</strong>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="text-muted">Distributed</small>
-                        <strong id="hdrDistributed" class="text-success">PKR 0.00</strong>
+                        <strong id="hdrDistributed" class="text-success">PKR 0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Extra Payment</small>
+                        <strong id="hdrExtra" class="text-info">PKR 0</strong>
                     </div>
                     <hr class="my-2">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted fw-semibold">Remaining</small>
-                        <strong id="hdrRemaining" class="text-danger">PKR 0.00</strong>
+                        <strong id="hdrRemaining" class="text-danger">PKR 0</strong>
                     </div>
                 </div>
 
@@ -176,12 +228,12 @@
                         <tfoot class="table-light fw-semibold">
                             <tr>
                                 <td colspan="6" class="text-end text-muted">Selected Outstanding:</td>
-                                <td class="text-end" id="footOutstanding">PKR 0.00</td>
-                                <td class="text-end" style="color:var(--primary);" id="footPayNow">PKR 0.00</td>
+                                <td class="text-end" id="footOutstanding">PKR 0</td>
+                                <td class="text-end" style="color:var(--primary);" id="footPayNow">PKR 0</td>
                             </tr>
                             <tr>
                                 <td colspan="7" class="text-end text-muted">Total Paying Now:</td>
-                                <td class="text-end fw-bold" id="footPayNowTotal" style="color:var(--primary);">PKR 0.00</td>
+                                <td class="text-end fw-bold" id="footPayNowTotal" style="color:var(--primary);">PKR 0</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -201,7 +253,7 @@
             <i class="fas fa-info-circle me-2"></i>
             <strong>How it works:</strong> Enter a total payment amount, then distribute it across one or more outstanding installments.
             Partial payments are allowed — an installment doesn't need to be fully paid.
-            The sum of <em>Pay Now</em> fields must exactly equal the <em>Total Payment</em> amount before saving.
+            If needed, use <em>Extra Payment</em>. The sum of <em>Pay Now</em> fields plus <em>Extra Payment</em> must exactly equal the <em>Total Payment</em> amount before saving.
         </div>
     </div>
 </div>
@@ -211,28 +263,51 @@
 $(function () {
 
     var fmt = function (n) {
-        return 'PKR ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return 'PKR ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     };
     var fmtN = function (n) {
-        return Number(n || 0).toFixed(2);
+        return Math.round(Number(n || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     };
+    var fmtWhole = function (n) {
+        return Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    };
+    function parseWholeInput(v) {
+        var digits = String(v || '').replace(/[^\d]/g, '');
+        return digits ? parseInt(digits, 10) : 0;
+    }
+    function sanitizeWholeInput($input) {
+        var n = parseWholeInput($input.val());
+        $input.val(n > 0 ? String(n) : '');
+        return n;
+    }
+    function getPayNowValue($input) {
+        return parseWholeInput($input.val());
+    }
+    function setPayNowValue($input, value) {
+        var n = Math.max(0, Math.round(Number(value) || 0));
+        $input.val(n > 0 ? fmtWhole(n) : '');
+    }
 
     var schedulesData = [];  // raw from API
 
     // ── Running totals ──────────────────────────────────────────────────
     function recalc() {
-        var total   = parseFloat($('#totalAmount').val()) || 0;
+        var total   = parseWholeInput($('#totalAmount').val());
         var distrib = 0;
+        var addExtraPayment = $('#addExtraPayment').is(':checked');
+        var extra = addExtraPayment ? parseWholeInput($('#extraAmount').val()) : 0;
         $('#installmentsTbody .pay-now-input').each(function () {
-            distrib += parseFloat($(this).val()) || 0;
+            distrib += getPayNowValue($(this));
         });
-        var remaining = total - distrib;
+        var distributedTotal = distrib + extra;
+        var remaining = total - distributedTotal;
 
         $('#hdrTotal').text(fmt(total));
         $('#hdrDistributed').text(fmt(distrib));
+        $('#hdrExtra').text(fmt(extra));
         $('#hdrRemaining').text(fmt(Math.abs(remaining)));
         $('#hdrRemaining').removeClass('text-danger text-success')
-            .addClass(Math.abs(remaining) < 0.01 ? 'text-success' : 'text-danger');
+            .addClass(Math.abs(remaining) < 1 ? 'text-success' : 'text-danger');
 
         // Footer totals — only count selected rows
         var totalOutstanding = 0;
@@ -243,12 +318,12 @@ $(function () {
         });
         $('#footOutstanding').text(fmt(totalOutstanding));
         $('#footPayNow').text(fmt(distrib));
-        $('#footPayNowTotal').text(fmt(distrib));
+        $('#footPayNowTotal').text(fmt(distributedTotal));
 
         // Match message
         var $msg = $('#totalMatchMsg');
         if (total <= 0) { $msg.text(''); }
-        else if (Math.abs(remaining) < 0.01) {
+        else if (Math.abs(remaining) < 1) {
             $msg.html('<span class="text-success"><i class="fas fa-check-circle me-1"></i>Amounts match ✓</span>');
         } else if (remaining > 0) {
             $msg.html('<span class="text-warning"><i class="fas fa-exclamation-circle me-1"></i>PKR ' + fmtN(remaining) + ' still to distribute</span>');
@@ -262,11 +337,26 @@ $(function () {
 
         // Submit button
         var customerId = $('#customerId').val();
-        var canSubmit = customerId && total > 0 && Math.abs(remaining) < 0.01 && distrib > 0;
+        var canSubmit = customerId && total > 0 && Math.abs(remaining) < 1 && distributedTotal > 0;
         $('#btnSubmit').prop('disabled', !canSubmit);
     }
 
-    $('#totalAmount').on('input', recalc);
+    $('#totalAmount').on('input', function () {
+        sanitizeWholeInput($(this));
+        recalc();
+    });
+    $('#addExtraPayment').on('change', function () {
+        var enabled = $(this).is(':checked');
+        $('#extraAmount').prop('disabled', !enabled);
+        if (!enabled) {
+            $('#extraAmount').val('');
+        }
+        recalc();
+    });
+    $('#extraAmount').on('input', function () {
+        sanitizeWholeInput($(this));
+        recalc();
+    });
 
     // ── Customer Search ─────────────────────────────────────────────────
     function doSearch() {
@@ -344,11 +434,10 @@ $(function () {
                 '<td class="text-end small text-muted">PKR ' + fmtN(s.paid) + '</td>' +
                 '<td class="text-end small fw-semibold" style="color:var(--primary);">PKR ' + fmtN(s.outstanding) + '</td>' +
                 '<td class="text-end">' +
-                    '<input type="number" class="form-control form-control-sm text-end pay-now-input" ' +
+                    '<input type="text" class="form-control form-control-sm text-end pay-now-input" inputmode="numeric" ' +
                            'data-max="' + s.outstanding + '" ' +
-                           'step="0.01" min="0" max="' + s.outstanding + '" ' +
-                           'placeholder="0.00" value="" />' +
-                    '<small class="text-muted d-block mt-1 outstanding-hint">max PKR ' + fmtN(s.outstanding) + '</small>' +
+                           'placeholder="0" value="" />' +
+                    '<small class="text-muted d-block mt-1 outstanding-hint">max PKR ' + fmtWhole(s.outstanding) + '</small>' +
                 '</td>'
             );
 
@@ -358,8 +447,9 @@ $(function () {
         // Live validation per row + recalc on every input change
         $tbody.on('input', '.pay-now-input', function () {
             var max = parseFloat($(this).data('max')) || 0;
-            var val = parseFloat($(this).val()) || 0;
-            if (val > max + 0.005) {
+            var val = getPayNowValue($(this));
+            setPayNowValue($(this), val);
+            if (val > max) {
                 $(this).addClass('is-invalid');
             } else {
                 $(this).removeClass('is-invalid');
@@ -387,7 +477,7 @@ $(function () {
 
     // ── Auto-distribute ─────────────────────────────────────────────────
     $('#btnAutoDistribute').on('click', function () {
-        var total = parseFloat($('#totalAmount').val()) || 0;
+        var total = parseWholeInput($('#totalAmount').val());
         if (total <= 0) { alert('Enter Total Payment amount first.'); return; }
 
         var remaining = total;
@@ -399,7 +489,8 @@ $(function () {
             if (remaining <= 0) { $input.val(''); return; }
             var toApply = Math.min(outstanding, remaining);
             toApply = Math.round(toApply * 100) / 100;
-            $input.val(toApply > 0 ? toApply.toFixed(2) : '').removeClass('is-invalid');
+            setPayNowValue($input, toApply);
+            $input.removeClass('is-invalid');
             remaining = Math.round((remaining - toApply) * 100) / 100;
         });
         recalc();
@@ -423,7 +514,9 @@ $(function () {
     // ── Submit ──────────────────────────────────────────────────────────
     $('#btnSubmit').on('click', function () {
         var customerId = $('#customerId').val();
-        var totalAmount = parseFloat($('#totalAmount').val()) || 0;
+        var totalAmount = parseWholeInput($('#totalAmount').val());
+        var addExtraPayment = $('#addExtraPayment').is(':checked');
+        var extraAmount = addExtraPayment ? parseWholeInput($('#extraAmount').val()) : 0;
 
         // Build rows
         var payments = [];
@@ -432,10 +525,10 @@ $(function () {
             var $chk = $(this).find('.row-checkbox');
             if (!$chk.is(':checked')) return;
             var $input = $(this).find('.pay-now-input');
-            var amount = parseFloat($input.val()) || 0;
+            var amount = getPayNowValue($input);
             if (amount <= 0) return;
             var max = parseFloat($input.data('max')) || 0;
-            if (amount > max + 0.005) { hasInvalid = true; return; }
+            if (amount > max) { hasInvalid = true; return; }
             payments.push({
                 scheduleId: $(this).data('schedule-id'),
                 amount: amount
@@ -443,34 +536,58 @@ $(function () {
         });
 
         if (hasInvalid) { showAlert('danger', 'One or more amounts exceed the outstanding balance. Please fix before saving.'); return; }
-        if (payments.length === 0) { showAlert('danger', 'No installment amounts entered.'); return; }
+        if (payments.length === 0 && extraAmount <= 0) { showAlert('danger', 'No installment amounts entered and no extra payment provided.'); return; }
+        if (addExtraPayment && extraAmount <= 0) { showAlert('danger', 'Extra amount must be greater than zero when Add Extra Payment is enabled.'); return; }
 
         var sum = payments.reduce(function (a, b) { return a + b.amount; }, 0);
-        sum = Math.round(sum * 100) / 100;
-        totalAmount = Math.round(totalAmount * 100) / 100;
-        if (Math.abs(sum - totalAmount) > 0.01) {
-            showAlert('danger', 'Sum of amounts (PKR ' + sum.toFixed(2) + ') must equal Total Payment (PKR ' + totalAmount.toFixed(2) + ').');
+        if ((sum + extraAmount) !== totalAmount) {
+            showAlert('danger', 'Installment amounts (PKR ' + fmtN(sum) + ') plus extra payment (PKR ' + fmtN(extraAmount) + ') must equal Total Payment (PKR ' + fmtN(totalAmount) + ').');
             return;
         }
 
         var payload = {
             customerId:  customerId,
             totalAmount: totalAmount,
+            addExtraPayment: addExtraPayment,
+            extraAmount: extraAmount,
             referenceNo: $('#referenceNo').val(),
+            bankName: $('#bankName').val(),
+            depositDate: $('#depositDate').val(),
             method:      $('#paymentMethod').val(),
             remarks:     $('#remarks').val(),
             paymentDate: $('#paymentDate').val(),
             payments:    payments
         };
 
+        if (!payload.referenceNo || !String(payload.referenceNo).trim()) {
+            showAlert('danger', 'Reference Number is required.');
+            return;
+        }
+        if (!payload.bankName || !String(payload.bankName).trim()) {
+            showAlert('danger', 'Bank Name is required.');
+            return;
+        }
+
         $('#btnSubmit').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Saving…');
+
+        var formData = new FormData();
+        formData.append('payload', JSON.stringify(payload));
+        var proofFile = $('#proofAttachment')[0]?.files?.[0];
+        if (proofFile) {
+            formData.append('proofAttachment', proofFile);
+        }
+        var proofDescription = ($('#proofDescription').val() || '').toString().trim();
+        if (proofDescription) {
+            formData.append('proofDescription', proofDescription);
+        }
 
         $.ajax({
             url:         '@Url.Action("MultiplePayments", "Payment")',
             type:        'POST',
-            contentType: 'application/json',
             headers:     { 'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val() },
-            data:        JSON.stringify(payload),
+            processData: false,
+            contentType: false,
+            data:        formData,
             success: function (res) {
                 if (res.success) {
                     showAlert('success', '<i class="fas fa-check-circle me-2"></i>' + res.message + ' <a href="@Url.Action("CustomerPayments", "Payment")" class="alert-link ms-2">View all payments →</a>');

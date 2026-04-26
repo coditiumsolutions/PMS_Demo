@@ -145,7 +145,7 @@
                         <th>Full Name</th>
                         <th>Project</th>
                         <th>Allotment Status</th>
-                        <th>City</th>
+                        <th>PlanPlan</th>
                         <th>Status</th>
                         <th>Created Date</th>
                         <th>Actions</th>
@@ -176,9 +176,13 @@
                                 }
                             </td>
                             <td>
-                                @if (customer.PaymentPlan?.Project != null)
+                                @{
+                                    var projectName = customer.PaymentPlan?.Project?.ProjectName
+                                        ?? customer.Project?.ProjectName;
+                                }
+                                @if (!string.IsNullOrWhiteSpace(projectName))
                                 {
-                                    <span class="badge bg-info">@customer.PaymentPlan.Project.ProjectName</span>
+                                    <span class="badge bg-info">@projectName</span>
                                 }
                                 else
                                 {
@@ -199,7 +203,24 @@
                                     </span>
                                 }
                             </td>
-                            <td>@customer.City</td>
+                            <td>
+                                @{
+                                    var planName = customer.PaymentPlan?.PlanName;
+                                    var planId = customer.PlanID;
+                                }
+                                @if (!string.IsNullOrWhiteSpace(planName) || !string.IsNullOrWhiteSpace(planId))
+                                {
+                                    <strong>@(string.IsNullOrWhiteSpace(planName) ? "Unknown Plan" : planName)</strong>
+                                    @if (!string.IsNullOrWhiteSpace(planId))
+                                    {
+                                        <br><small class="text-muted">@planId</small>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No Plan Allocated</span>
+                                }
+                            </td>
                             <td>
                                 <span class="badge @((customer.Status ?? "Active") == "Active" ? "bg-success" : "bg-warning")">
                                     @(customer.Status ?? "Active")
@@ -208,6 +229,9 @@
                             <td>@customer.CreatedAt.ToString("MMM dd, yyyy")</td>
                             <td>
                                 <div class="btn-group" role="group">
+                                    <a asp-action="AccountStatement" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-info" title="Account Statement">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                    </a>
                                     @if (ViewBag.CanEdit == true)
                                     {
                                     <a asp-action="Edit" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-success" title="Edit">
@@ -247,7 +271,7 @@ else
                             <th>Full Name</th>
                             <th>Project</th>
                             <th>Allotment Status</th>
-                            <th>City</th>
+                            <th>PlanPlan</th>
                             <th>Status</th>
                             <th>Created Date</th>
                             <th>Actions</th>
@@ -268,9 +292,13 @@ else
                                     }
                                 </td>
                                 <td>
-                                    @if (customer.PaymentPlan?.Project != null)
+                                    @{
+                                        var projectName = customer.PaymentPlan?.Project?.ProjectName
+                                            ?? customer.Project?.ProjectName;
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(projectName))
                                     {
-                                        <span class="badge bg-info">@customer.PaymentPlan.Project.ProjectName</span>
+                                        <span class="badge bg-info">@projectName</span>
                                     }
                                     else
                                     {
@@ -291,7 +319,24 @@ else
                                         </span>
                                     }
                                 </td>
-                                <td>@customer.City</td>
+                                <td>
+                                    @{
+                                        var planName = customer.PaymentPlan?.PlanName;
+                                        var planId = customer.PlanID;
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(planName) || !string.IsNullOrWhiteSpace(planId))
+                                    {
+                                        <strong>@(string.IsNullOrWhiteSpace(planName) ? "Unknown Plan" : planName)</strong>
+                                        @if (!string.IsNullOrWhiteSpace(planId))
+                                        {
+                                            <br><small class="text-muted">@planId</small>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No Plan Allocated</span>
+                                    }
+                                </td>
                                 <td>
                                     <span class="badge @((customer.Status ?? "Active") == "Active" ? "bg-success" : "bg-warning")">
                                         @(customer.Status ?? "Active")
@@ -300,6 +345,9 @@ else
                                 <td>@customer.CreatedAt.ToString("MMM dd, yyyy")</td>
                                 <td>
                                     <div class="btn-group" role="group">
+                                        <a asp-action="AccountStatement" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-info" title="Account Statement">
+                                            <i class="fas fa-file-invoice-dollar"></i>
+                                        </a>
                                         @if (ViewBag.CanEdit == true)
                                         {
                                             <a asp-action="Edit" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-success" title="Edit">

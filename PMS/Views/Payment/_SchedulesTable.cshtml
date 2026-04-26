@@ -183,11 +183,11 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Paid Amount</small>
-                                            <p><strong style="color: var(--accent-gold);">@totalPaid.ToString("N2", EnUs) PKR</strong></p>
+                                            <p><strong style="color: var(--accent-gold);">@totalPaid.ToString("N0", EnUs) PKR</strong></p>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Balance</small>
-                                            <p><strong class="@(remaining > 0 ? "text-danger" : "text-success")">@remaining.ToString("N2", EnUs) PKR</strong></p>
+                                            <p><strong class="@(remaining > 0 ? "text-danger" : "text-success")">@remaining.ToString("N0", EnUs) PKR</strong></p>
                                         </div>
                                     </div>
                                     
@@ -201,7 +201,7 @@
                                                 <div class="list-group-item">
                                                     <div class="d-flex justify-content-between">
                                                         <div>
-                                                            <strong>@payment.Amount.ToString("N2", EnUs) PKR</strong>
+                                                            <strong>@payment.Amount.ToString("N0", EnUs) PKR</strong>
                                                             <br>
                                                             <small class="text-muted">@payment.PaymentDate.ToString("MMM dd, yyyy")</small>
                                                         </div>

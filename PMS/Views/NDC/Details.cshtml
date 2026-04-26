@@ -13,9 +13,39 @@
         <a asp-action="Print" asp-route-id="@Model.NDCID" target="_blank" class="btn btn-outline-secondary" title="Print NDC">
             <i class="fas fa-print me-2"></i>Print NDC
         </a>
+        @if (ViewBag.CanEdit == true && !string.Equals(Model.WorkFlowStatus?.Trim(), "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.NDCID" class="btn btn-outline-warning" title="Edit NDC">
+                <i class="fas fa-edit me-2"></i>Edit
+            </a>
+        }
+        @if (ViewBag.CanDelete == true)
+        {
+            <form asp-action="Delete" asp-route-id="@Model.NDCID" method="post" class="d-inline" onsubmit="return confirm('Delete this NDC record?');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger" title="Delete NDC">
+                    <i class="fas fa-trash me-2"></i>Delete
+                </button>
+            </form>
+        }
         <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
     </div>
 </div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
 <div class="row g-3">
     <div class="col-md-6">
@@ -68,6 +98,10 @@
                         <div class="fw-bold">@(Model.TotalDueInstallments?.ToString("N0") ?? "—")</div>
                     </div>
                     <div class="col-12">
+                        <div class="text-muted small">Remaining Dues (at creation)</div>
+                        <div class="fw-bold">@(Model.RemainingDues?.ToString("N0") ?? "—")</div>
+                    </div>
+                    <div class="col-12">
                         <div class="text-muted small">All Payment Clear</div>
                         <div>
                             @if (Model.AllPaymentClear)
@@ -76,9 +110,51 @@
                             { <span class="badge bg-warning">No</span> }
                         </div>
                     </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Amount Per Unit</div>
+                        <div class="fw-bold">@(Model.AmountPerUnit?.ToString("N2") ?? "—")</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Property Size</div>
+                        <div class="fw-bold">@(Model.PropertySize?.ToString("N2") ?? "—")</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Transfer Fee Amount</div>
+                        <div class="fw-bold">@(Model.TransferFeeAmount?.ToString("N0") ?? "—")</div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+@{
+    var ndcAttachments = ViewBag.NdcAttachments as List<PMS.Models.Attachment> ?? new List<PMS.Models.Attachment>();
+}
+<div class="card border-0 shadow-sm mt-3">
+    <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+        <h5 class="mb-0 text-white"><i class="fas fa-paperclip me-2"></i>Attachments</h5>
+    </div>
+    <div class="card-body">
+        @if (ndcAttachments.Count == 0)
+        {
+            <div class="text-muted">No attachments uploaded.</div>
+        }
+        else
+        {
+            <ul class="mb-0 ps-3">
+                @foreach (var att in ndcAttachments)
+                {
+                    <li class="mb-1">
+                        <a href="@att.FilePath" target="_blank" rel="noopener">@att.FileName</a>
+                        @if (!string.IsNullOrWhiteSpace(att.Description))
+                        {
+                            <span class="text-muted"> - @att.Description</span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
     </div>
 </div>
 

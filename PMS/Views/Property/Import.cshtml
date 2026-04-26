@@ -33,16 +33,17 @@
                             <li>Data starts from row 2</li>
                         </ul>
 
-                        <h6 class="text-primary mt-3">Required Columns (A to H):</h6>
+                        <h6 class="text-primary mt-3">Columns Sequence (A to I):</h6>
                         <ol>
+                            <li><strong>SubProject</strong> - Sub project name (required)</li>
+                            <li><strong>Block</strong> - Block identifier (required)</li>
+                            <li><strong>Size</strong> - Property size (required)</li>
                             <li><strong>Unit No</strong> - Unit number (required)</li>
-                            <li><strong>Street</strong> - Street name</li>
-                            <li><strong>PlotType</strong> - Type of plot (e.g., General, Corner, Park Facing)</li>
-                            <li><strong>Block</strong> - Block identifier</li>
-                            <li><strong>PropertyType</strong> - Type of property (e.g., Plot, Apartment, House)</li>
-                            <li><strong>Size</strong> - Property size (e.g., 1000 sq ft, 10 Marla)</li>
                             <li><strong>Floor</strong> - Floor (optional, e.g. G, 1, 2, Basement)</li>
+                            <li><strong>Category/Type</strong> - Category/type (required)</li>
+                            <li><strong>PropertyType</strong> - Type of property (optional)</li>
                             <li><strong>Additional Info</strong> - Additional notes (optional)</li>
+                            <li><strong>Street</strong> - Street name (optional)</li>
                         </ol>
                     </div>
                     <div class="col-md-6">
@@ -51,26 +52,28 @@
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Unit No</th>
-                                        <th>Street</th>
-                                        <th>PlotType</th>
+                                        <th>SubProject</th>
                                         <th>Block</th>
-                                        <th>PropertyType</th>
                                         <th>Size</th>
+                                        <th>Unit No</th>
                                         <th>Floor</th>
+                                        <th>Category/Type</th>
+                                        <th>PropertyType</th>
                                         <th>Additional Info</th>
+                                        <th>Street</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
+                                        <td>Phase 1</td>
+                                        <td>A</td>
+                                        <td>10 Marla</td>
                                         <td>1</td>
-                                        <td>Main Street</td>
-                                        <td>General</td>
-                                        <td>5</td>
-                                        <td>Plot</td>
-                                        <td>1000 sq ft</td>
                                         <td>G</td>
+                                        <td>Corner</td>
+                                        <td>Plot</td>
                                         <td>Main Street Plot</td>
+                                        <td>Main Street</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -88,6 +91,7 @@
                                 <li>All imported properties will be assigned to the selected dealer</li>
                                 <li>CreatedAt will be set automatically</li>
                                 <li>Duplicate properties (same selected project + Unit No + Block) will be skipped</li>
+                                <li>SubProject from file is stored with Additional Info for traceability</li>
                             </ul>
                         </div>
                     </div>

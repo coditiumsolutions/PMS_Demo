@@ -13,6 +13,9 @@ namespace PMS.Models
         [StringLength(10)]
         public string? ProjectID { get; set; }
 
+        [StringLength(100)]
+        public string? SubProject { get; set; }
+
         [StringLength(50)]
         public string? PlotNo { get; set; }
 

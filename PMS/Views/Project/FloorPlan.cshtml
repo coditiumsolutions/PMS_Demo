@@ -1,7 +1,8 @@
 @model PMS.Models.FloorPlanViewModel
 @{
     ViewData["Title"] = "Floor Plan";
-    var projects = ViewBag.ProjectsWithFloor as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var projects = ViewBag.Projects as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+    var subProjects = ViewBag.SubProjects as IList<string> ?? new List<string>();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -16,10 +17,10 @@
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" asp-action="FloorPlan" class="row g-3 align-items-end">
-            <div class="col-md-8">
+            <div class="col-md-5">
                 <label for="projectId" class="form-label fw-semibold">Select Project</label>
                 <select name="projectId" id="projectId" class="form-select form-select-lg" onchange="this.form.submit()">
-                    <option value="">-- Select a project with floor data --</option>
+                    <option value="">-- Select a project --</option>
                     @if (projects != null)
                     {
                         @foreach (var item in projects)
@@ -36,13 +37,30 @@
                     }
                 </select>
             </div>
-            <div class="col-md-4 d-flex align-items-end">
+            <div class="col-md-5">
+                <label for="subProject" class="form-label fw-semibold">SubProject</label>
+                <select name="subProject" id="subProject" class="form-select form-select-lg" @(string.IsNullOrWhiteSpace(Model.SelectedProjectID) ? "disabled" : null)>
+                    <option value="">-- All SubProjects --</option>
+                    @foreach (var sub in subProjects)
+                    {
+                        if (string.Equals(sub, Model.SelectedSubProject, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@sub" selected>@sub</option>
+                        }
+                        else
+                        {
+                            <option value="@sub">@sub</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-search me-2"></i>View Floor Plan
                 </button>
             </div>
             <div class="col-12 pt-0">
-                <small class="text-muted">Only projects with floor-assigned properties are listed.</small>
+                <small class="text-muted">Select a project first, then optionally narrow units by subproject.</small>
             </div>
         </form>
     </div>
@@ -132,6 +150,10 @@
         <h5 class="text-primary">
             <i class="fas fa-building me-2"></i>@Model.Project.ProjectName
             <span class="badge bg-secondary ms-2">@Model.Project.ProjectID</span>
+            @if (!string.IsNullOrWhiteSpace(Model.SelectedSubProject))
+            {
+                <span class="badge bg-info text-dark ms-2">SubProject: @Model.SelectedSubProject</span>
+            }
         </h5>
     </div>
 
@@ -188,7 +210,7 @@
 else if (!string.IsNullOrEmpty(Model.SelectedProjectID))
 {
     <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i>No properties with floor data found for this project.
+        <i class="fas fa-info-circle me-2"></i>No properties with floor data found for this selection.
     </div>
 }
 else
@@ -241,5 +263,6 @@ else
 @section Scripts {
     <script>
         document.getElementById('projectId').value = '@(Model.SelectedProjectID ?? "")';
+        document.getElementById('subProject').value = '@(Model.SelectedSubProject ?? "")';
     </script>
 }

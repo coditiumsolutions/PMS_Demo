@@ -76,7 +76,7 @@
     </div>
 
     <!-- Refund Form -->
-    <form asp-action="Create" method="post" id="refundForm">
+    <form asp-action="Create" method="post" id="refundForm" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         <input type="hidden" name="CustomerID" id="hiddenCustomerId" />
         <input type="hidden" name="PaidAmount" id="hiddenPaidAmount" value="0" />
@@ -116,6 +116,19 @@
                     <div class="col-12">
                         <label class="form-label fw-semibold">Notes</label>
                         <textarea name="Notes" class="form-control" rows="2" maxlength="500" placeholder="Additional notes (optional)"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="refundAttachment" class="form-label fw-semibold">
+                            <i class="fas fa-paperclip me-1"></i>Attachment (Optional)
+                        </label>
+                        <input type="file" name="refundAttachment" id="refundAttachment" class="form-control" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                        <small class="text-muted d-block mt-1">Allowed: JPG, PNG, GIF, BMP, PDF (max 8MB)</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="refundAttachmentDescription" class="form-label fw-semibold">
+                            <i class="fas fa-file-alt me-1"></i>Attachment Title / Notes (Optional)
+                        </label>
+                        <input type="text" name="refundAttachmentDescription" id="refundAttachmentDescription" class="form-control" maxlength="500" placeholder="e.g. Approval Note, Bank Slip" />
                     </div>
                 </div>
             </div>

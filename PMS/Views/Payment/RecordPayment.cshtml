@@ -60,9 +60,9 @@
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Outstanding Amount</small>
-                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">PKR @scheduleOutstanding.ToString("N2")</p>
-                            <small class="text-muted d-block">Total: PKR @schedule.Amount.ToString("N2")</small>
-                            <small class="text-muted d-block">Paid: PKR @((schedule.Amount - scheduleOutstanding).ToString("N2"))</small>
+                            <p class="fw-bold mb-0" style="color: #9C6ADE; font-size: 1.3rem;">PKR @scheduleOutstanding.ToString("N0")</p>
+                            <small class="text-muted d-block">Total: PKR @schedule.Amount.ToString("N0")</small>
+                            <small class="text-muted d-block">Paid: PKR @((schedule.Amount - scheduleOutstanding).ToString("N0"))</small>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Surcharge Rate</small>
@@ -98,7 +98,7 @@
                     </div>
                 }
 
-                <form asp-action="RecordPayment" method="post" id="paymentForm">
+                <form asp-action="RecordPayment" method="post" id="paymentForm" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <input type="hidden" id="preSelectedScheduleId" value="@(preSelectedScheduleId ?? "")" />
 
@@ -138,11 +138,30 @@
                             <label for="amount" class="form-label fw-semibold">
                                 <i class="fas fa-coins me-1" style="color: #9C6ADE;"></i>Amount Received (PKR) *
                             </label>
-                            <input type="number" name="amount" id="amount" step="0.01" min="0.01" class="form-control" 
+                            <input type="text" name="amount" id="amount" class="form-control" 
                                    placeholder="Enter amount" value="" required disabled 
-                                   inputmode="decimal" />
+                                   inputmode="numeric" />
                             <small class="text-muted" id="amountHint">You can enter a partial amount (e.g. two payments of 500 for 1000)</small>
                             <div id="amountValidationError" class="invalid-feedback d-block" style="display: none !important;"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-plus-circle me-1" style="color: #9C6ADE;"></i>Extra Payment
+                            </label>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="addExtraPayment" name="addExtraPayment" value="true" />
+                                <label class="form-check-label" for="addExtraPayment">
+                                    Add extra payment beyond selected installment
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text">PKR</span>
+                                <input type="text" name="extraAmount" id="extraAmount" class="form-control"
+                                       inputmode="numeric"
+                                       placeholder="Extra amount" disabled />
+                            </div>
+                            <small class="text-muted d-block mt-1">Use this when customer pays more than installment due (e.g. due 9,990, paid 10,000 -> extra 10).</small>
                         </div>
 
                         <!-- Payment Method -->
@@ -164,11 +183,31 @@
                         <!-- Reference Number -->
                         <div class="col-md-6">
                             <label for="referenceNo" class="form-label fw-semibold">
-                                <i class="fas fa-hashtag me-1" style="color: #9C6ADE;"></i>Reference Number
+                                <i class="fas fa-hashtag me-1" style="color: #9C6ADE;"></i>Reference Number *
                             </label>
                             <input type="text" name="referenceNo" id="referenceNo" class="form-control" 
-                                   placeholder="Transaction/Receipt/Cheque Number" />
+                                   placeholder="Transaction/Receipt/Cheque Number" required />
                             <small class="text-muted" id="refHint">Enter transaction reference number</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label fw-semibold">
+                                <i class="fas fa-university me-1" style="color: #9C6ADE;"></i>Bank Name *
+                            </label>
+                            <select name="bankName" id="bankName" class="form-select" required>
+                                <option value="">Select Bank</option>
+                                @foreach (var bank in (ViewBag.BankNames as IEnumerable<string> ?? Array.Empty<string>()))
+                                {
+                                    <option value="@bank">@bank</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="depositDate" class="form-label fw-semibold">
+                                <i class="fas fa-calendar-day me-1" style="color: #9C6ADE;"></i>Deposit Date *
+                            </label>
+                            <input type="date" name="depositDate" id="depositDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
                         </div>
 
                         <!-- Payment Status (Paid only when amount = total due; Partially Paid only when amount < total due) -->
@@ -193,6 +232,20 @@
                             </label>
                             <textarea name="remarks" id="remarks" class="form-control" rows="3" 
                                       placeholder="Enter any additional notes or remarks about this payment"></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="proofAttachment" class="form-label fw-semibold">
+                                <i class="fas fa-paperclip me-1" style="color: #9C6ADE;"></i>Payment Proof (Optional)
+                            </label>
+                            <input type="file" name="proofAttachment" id="proofAttachment" class="form-control" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                            <small class="text-muted d-block mt-1">Allowed: JPG, PNG, GIF, BMP, PDF (max 8MB)</small>
+                        </div>
+                        <div class="col-12">
+                            <label for="proofDescription" class="form-label fw-semibold">
+                                <i class="fas fa-file-alt me-1" style="color: #9C6ADE;"></i>Proof Title / Notes (Optional)
+                            </label>
+                            <input type="text" name="proofDescription" id="proofDescription" class="form-control" maxlength="500" placeholder="e.g. Deposit Slip, Bank Receipt #123" />
                         </div>
                     </div>
 
@@ -279,15 +332,29 @@
         $(document).ready(function() {
             var formatCurrency = function(value) {
                 var numeric = Number(value || 0);
-                return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return numeric.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
             };
 
             var schedulesData = []; // store schedule objects from last search for schedule change handler
+            function parseWhole(value) {
+                var digits = String(value || '').replace(/[^\d]/g, '');
+                return digits ? parseInt(digits, 10) : 0;
+            }
+            function sanitizeWholeInput($input, minValue) {
+                var n = parseWhole($input.val());
+                if (n > 0) {
+                    if (minValue && n < minValue) n = minValue;
+                    $input.val(String(n));
+                } else {
+                    $input.val('');
+                }
+                return n;
+            }
 
             function setSubmitState() {
                 var hasCustomer = $('#customerId').val();
                 var hasSchedule = $('#scheduleId').val() && !$('#scheduleId').prop('disabled');
-                var hasAmount = parseFloat($('#amount').val()) > 0;
+                var hasAmount = parseWhole($('#amount').val()) > 0;
                 $('#btnSubmitPayment').prop('disabled', !hasCustomer || !hasSchedule || !hasAmount);
             }
 
@@ -417,7 +484,7 @@
                 $('#amount').prop('disabled', false).attr('max', amount).removeClass('is-invalid');
                 $('#amountValidationError').hide().removeClass('text-danger').text('');
                 if (amount > 0) {
-                    $('#amount').val(amount.toFixed(2));
+                    $('#amount').val(Math.round(amount));
                     $('#amountHint').text('Total Due: PKR ' + formatCurrency(amount) + '. You can enter a partial amount; must not exceed this.');
                 }
                 updateStatusOptions();
@@ -426,24 +493,29 @@
 
             function updateStatusOptions() {
                 var maxDue = parseFloat($('#scheduleId').find('option:selected').data('amount')) || 0;
-                var amount = parseFloat($('#amount').val()) || 0;
+                var amount = parseWhole($('#amount').val());
                 var $status = $('#status');
                 $status.find('option').prop('disabled', false).end().removeClass('is-invalid');
                 if (maxDue <= 0) return;
                 var isFullPayment = (amount >= maxDue);
                 if (isFullPayment) {
-                    $status.find('option[value="Partially Paid"]').prop('disabled', true);
-                    $status.val('Paid');
+                    if (!$status.val() || $status.val() === 'Pending') {
+                        $status.val('Paid');
+                    }
+                    $('#statusHint').text('Full payment detected. Recommended status: Paid.');
                 } else {
-                    $status.find('option[value="Paid"]').prop('disabled', true);
-                    $status.val('Partially Paid');
+                    if (!$status.val() || $status.val() === 'Pending') {
+                        $status.val('Partially Paid');
+                    }
+                    $('#statusHint').text('Partial payment detected. Recommended status: Partially Paid (you may keep Paid if needed).');
                 }
             }
 
             $('#amount').on('input', function() {
+                sanitizeWholeInput($(this), 1);
                 setSubmitState();
                 var maxDue = parseFloat($('#scheduleId').find('option:selected').data('amount')) || 0;
-                var val = parseFloat($(this).val()) || 0;
+                var val = parseWhole($(this).val());
                 var $err = $('#amountValidationError');
                 if (maxDue > 0 && val > maxDue) {
                     $err.css('display', 'block').addClass('text-danger').text('Amount must not exceed Total Due (PKR ' + formatCurrency(maxDue) + ').');
@@ -455,12 +527,27 @@
                 updateStatusOptions();
             });
 
-            // Form submit: ensure amount does not exceed Total Due and status matches full/partial
+            $('#addExtraPayment').on('change', function() {
+                var enabled = $(this).is(':checked');
+                $('#extraAmount').prop('disabled', !enabled);
+                if (!enabled) {
+                    $('#extraAmount').val('').removeClass('is-invalid');
+                }
+                setSubmitState();
+            });
+
+            $('#extraAmount').on('input', function() {
+                sanitizeWholeInput($(this), 1);
+                setSubmitState();
+            });
+
+            // Form submit: ensure amount does not exceed Total Due
             $('#paymentForm').on('submit', function(e) {
                 var $schedule = $('#scheduleId').find('option:selected');
                 var maxDue = parseFloat($schedule.data('amount')) || 0;
-                var amount = parseFloat($('#amount').val()) || 0;
-                var status = $('#status').val();
+                var amount = parseWhole($('#amount').val());
+                var addExtraPayment = $('#addExtraPayment').is(':checked');
+                var extraAmount = parseWhole($('#extraAmount').val());
                 if (maxDue > 0 && amount > maxDue) {
                     e.preventDefault();
                     $('#amountValidationError').css('display', 'block').addClass('text-danger')
@@ -468,18 +555,14 @@
                     $('#amount').addClass('is-invalid').focus();
                     return false;
                 }
-                var isFullPayment = (amount >= maxDue && maxDue > 0);
-                if (isFullPayment && status === 'Partially Paid') {
+                if (addExtraPayment && extraAmount <= 0) {
                     e.preventDefault();
-                    $('#status').addClass('is-invalid').focus();
-                    alert('Full payment amount must be recorded as Paid, not Partially Paid.');
+                    $('#extraAmount').addClass('is-invalid').focus();
+                    alert('Enter extra amount greater than zero, or uncheck Add Extra Payment.');
                     return false;
                 }
-                if (!isFullPayment && maxDue > 0 && status === 'Paid') {
-                    e.preventDefault();
-                    $('#status').addClass('is-invalid').focus();
-                    alert('Partial payment amount must be recorded as Partially Paid, not Paid.');
-                    return false;
+                if (!addExtraPayment) {
+                    $('#extraAmount').val('');
                 }
             });
 

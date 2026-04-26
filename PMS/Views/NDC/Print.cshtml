@@ -3,6 +3,11 @@
 @{
     Layout = null;
     ViewData["Title"] = "No Dues Certificate - " + Model.NDCID;
+    var orgName = "ZKB";
+    var orgSubName = "Property Management System";
+    var appNo = Model.NDCID;
+    var regNo = Model.CustomerID ?? "—";
+    var ndcType = string.IsNullOrWhiteSpace(Model.NDCType) ? "NDC" : Model.NDCType;
 }
 
 <!DOCTYPE html>
@@ -28,64 +33,37 @@
 
 <div class="a4-container">
     <div id="ndc-root">
-        <!-- Header Section -->
-        <div class="a4-header text-center">
-            <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
-            <div class="a4-title">No Dues Certificate (NDC)</div>
-            <div class="a4-subtitle">ZKB - Property Management System</div>
-            <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy")</div>
+        <!-- Header Section (reference style) -->
+        <div class="a4-header">
+            <div class="header-grid">
+                <div class="header-logo-wrap">
+                    <img src="~/images/logo.jpeg" alt="Organization Logo" class="a4-logo" />
+                </div>
+                <div class="header-center">
+                    <div class="org-name">@orgName</div>
+                    <div class="org-subname">@orgSubName</div>
+                    <div class="statement-title">Statement of NDC</div>
+                </div>
+                <div class="header-meta">
+                    <div><strong>Type:</strong> @ndcType</div>
+                    <div><strong>Registration No.:</strong> @regNo</div>
+                    <div><strong>Application No.:</strong> @appNo</div>
+                </div>
+            </div>
+            <div class="header-secondary mt-2">
+                <div><strong>Expiry Date:</strong> @(Model.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</div>
+                <div><strong>Initiating Office:</strong> @(Model.Customer?.City ?? "Head Office")</div>
+            </div>
         </div>
 
         <!-- NDC & Customer Information -->
         <div class="a4-section">
-            <div class="a4-info-grid">
-                <div class="a4-info-block">
-                    <h6>NDC Information</h6>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">NDC ID:</span>
-                        <span class="a4-info-value"><strong>@Model.NDCID</strong></span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Type:</span>
-                        <span class="a4-info-value">@(Model.NDCType ?? "—")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Workflow Status:</span>
-                        <span class="a4-info-value">@(Model.WorkFlowStatus ?? "—")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Issued Date:</span>
-                        <span class="a4-info-value">@Model.IssuedDate.ToString("MMM dd, yyyy")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Expiry Date:</span>
-                        <span class="a4-info-value">@(Model.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Created:</span>
-                        <span class="a4-info-value">@Model.CreatedAt.ToString("MMM dd, yyyy")</span>
-                    </div>
-                </div>
-                <div class="a4-info-block">
-                    <h6>Customer Information</h6>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Customer ID:</span>
-                        <span class="a4-info-value"><code>@(Model.CustomerID ?? "—")</code></span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Name:</span>
-                        <span class="a4-info-value">@(Model.Customer?.FullName ?? "—")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Project:</span>
-                        <span class="a4-info-value">@(Model.Customer?.PaymentPlan?.Project?.ProjectName ?? "—")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Plan:</span>
-                        <span class="a4-info-value">@(Model.Customer?.PaymentPlan?.PlanName ?? "—")</span>
-                    </div>
-                </div>
-            </div>
+            <p class="certificate-paragraph">
+                The details of dues till date against registration no. <strong>@(Model.CustomerID ?? "—")</strong>
+                for customer/applicant <strong>@(Model.Customer?.FullName ?? "—")</strong> under plan
+                <strong>@(Model.Customer?.PaymentPlan?.PlanName ?? "—")</strong> in project
+                <strong>@(Model.Customer?.PaymentPlan?.Project?.ProjectName ?? "—")</strong> are as follows:
+            </p>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(Model.Title))
@@ -98,19 +76,19 @@
             </div>
         }
 
-        <!-- Payment Summary -->
+        <!-- Remaining Dues Table -->
         <div class="a4-section">
-            <div class="a4-section-title">Payment Summary</div>
+            <div class="a4-section-title">Remaining Dues Summary</div>
             <table class="a4-table">
                 <thead>
                     <tr>
-                        <th class="text-start">Description</th>
+                        <th class="text-start">Particulars</th>
                         <th class="text-end">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-start">Total Due (Installments)</td>
+                        <td class="text-start">Total Due</td>
                         <td class="text-end">@((Model.TotalDueAmount ?? 0).ToString("N0"))</td>
                     </tr>
                     <tr>
@@ -118,8 +96,8 @@
                         <td class="text-end">@((Model.TotalDueInstallments ?? 0).ToString("N0"))</td>
                     </tr>
                     <tr>
-                        <td class="text-start">All Payments Clear</td>
-                        <td class="text-end">@(Model.AllPaymentClear ? "Yes" : "No")</td>
+                        <td class="text-start"><strong>Remaining Dues</strong></td>
+                        <td class="text-end"><strong>@((Model.RemainingDues ?? 0).ToString("N0"))</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -135,11 +113,38 @@
             </div>
         }
 
+        @{
+            var ndcAttachments = ViewBag.NdcAttachments as List<PMS.Models.Attachment> ?? new List<PMS.Models.Attachment>();
+        }
+        @if (ndcAttachments.Count > 0)
+        {
+            <div class="a4-section">
+                <div class="a4-section-title">Attachments</div>
+                <table class="a4-table">
+                    <thead>
+                        <tr>
+                            <th class="text-start">File</th>
+                            <th class="text-start">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var att in ndcAttachments)
+                        {
+                            <tr>
+                                <td class="text-start">@(att.FileName ?? "Attachment")</td>
+                                <td class="text-start">@(string.IsNullOrWhiteSpace(att.Description) ? "—" : att.Description)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
         <!-- Footer -->
         <div class="a4-footer">
-            <div>This is a system generated certificate and does not require a signature.</div>
+            <div>This is a system generated statement and does not require a signature.</div>
             <div style="margin-top: 10px;">
-                <strong>ZKB - Property Management System</strong><br>
+                <strong>@orgName - @orgSubName</strong><br>
                 Generated on: @DateTime.Now.ToString("MMMM dd, yyyy at hh:mm tt")
             </div>
         </div>
@@ -165,17 +170,61 @@
         margin-bottom: 12px;
     }
 
-    .a4-title {
-        font-size: 20px;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 5px;
+    .header-grid {
+        display: grid;
+        grid-template-columns: 120px 1fr 230px;
+        align-items: start;
+        gap: 12px;
     }
 
-    .a4-subtitle {
-        font-size: 11px;
-        color: #666;
-        margin-bottom: 3px;
+    .header-logo-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header-center {
+        text-align: center;
+    }
+
+    .org-name {
+        font-size: 34px;
+        font-weight: 800;
+        color: #111;
+        line-height: 1.1;
+    }
+
+    .org-subname {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111;
+        line-height: 1.1;
+        margin-top: 2px;
+    }
+
+    .statement-title {
+        font-size: 28px;
+        font-weight: 800;
+        margin-top: 10px;
+    }
+
+    .header-meta {
+        font-size: 15px;
+        line-height: 1.45;
+    }
+
+    .header-secondary {
+        font-size: 15px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-left: 132px;
+    }
+
+    .certificate-paragraph {
+        font-size: 14px;
+        line-height: 1.45;
+        margin: 0;
     }
 
     .a4-section {
@@ -264,9 +313,21 @@
     }
 
     .a4-logo {
-        max-width: 120px;
+        max-width: 100px;
         height: auto;
-        margin-bottom: 10px;
+    }
+
+    @@media (max-width: 992px) {
+        .header-grid {
+            grid-template-columns: 1fr;
+        }
+        .header-secondary {
+            margin-left: 0;
+            grid-template-columns: 1fr;
+        }
+        .header-center {
+            text-align: left;
+        }
     }
 
     @@media print {

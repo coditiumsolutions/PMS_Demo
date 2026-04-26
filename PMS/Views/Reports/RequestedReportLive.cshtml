@@ -1,0 +1,120 @@
+@{
+    var reportTitle = ViewBag.ReportTitle as string ?? "Requested Report";
+    var reportId = ViewBag.ReportId as string ?? string.Empty;
+    var reportColumns = ViewBag.ReportColumns as List<string> ?? new List<string>();
+    var reportRows = ViewBag.ReportRows as List<List<string>> ?? new List<List<string>>();
+    var reportSummary = ViewBag.ReportSummary as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var reportDescription = ViewBag.ReportDescription as string ?? string.Empty;
+    var filterX = (int?)ViewBag.FilterX ?? 2;
+    var fromDate = (DateTime?)ViewBag.FromDate ?? DateTime.Today.AddDays(-30);
+    var toDate = (DateTime?)ViewBag.ToDate ?? DateTime.Today;
+    ViewData["Title"] = reportTitle;
+}
+
+<div class="container-fluid py-3">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
+            <h5 class="mb-0 text-white">
+                <i class="fas fa-chart-line me-2"></i>@reportTitle
+            </h5>
+            <span class="badge bg-light text-dark">Live</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">@reportDescription</p>
+
+            @if (reportId == "defaulter-x-installments")
+            {
+                <form method="get" asp-action="RequestedReport" class="row g-2 mb-3">
+                    <input type="hidden" name="id" value="@reportId" />
+                    <input type="hidden" name="title" value="@reportTitle" />
+                    <div class="col-md-4">
+                        <label class="form-label">Defaulter Threshold (X Installments)</label>
+                        <input type="number" class="form-control" min="1" name="x" value="@filterX" />
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Apply</button>
+                    </div>
+                </form>
+            }
+
+            @if (reportId == "daily-transfer-report")
+            {
+                <form method="get" asp-action="RequestedReport" class="row g-2 mb-3">
+                    <input type="hidden" name="id" value="@reportId" />
+                    <input type="hidden" name="title" value="@reportTitle" />
+                    <div class="col-md-3">
+                        <label class="form-label">From Date</label>
+                        <input type="date" class="form-control" name="fromDate" value="@fromDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">To Date</label>
+                        <input type="date" class="form-control" name="toDate" value="@toDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Apply</button>
+                    </div>
+                </form>
+            }
+
+            @if (reportSummary.Any())
+            {
+                <div class="row g-3 mb-3">
+                    @foreach (var item in reportSummary)
+                    {
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">@item.Key</div>
+                                <div class="fw-bold">@item.Value</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (reportColumns.Any() && reportRows.Any())
+            {
+                <div class="table-responsive">
+                    <table id="requestedReportTable" class="table table-hover table-striped align-middle">
+                        <thead>
+                            <tr>
+                                @foreach (var col in reportColumns)
+                                {
+                                    <th>@col</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in reportRows)
+                            {
+                                <tr>
+                                    @for (var i = 0; i < reportColumns.Count; i++)
+                                    {
+                                        <td>@(i < row.Count ? row[i] : "—")</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-0">
+                    No records found for this report.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            if ($('#requestedReportTable').length) {
+                $('#requestedReportTable').DataTable({
+                    pageLength: 25
+                });
+            }
+        });
+    </script>
+}

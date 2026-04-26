@@ -319,33 +319,40 @@ namespace PMS.Controllers
             return RedirectToAction(nameof(Details), new { id = projectId });
         }
 
-        /// <summary>Floor Plan: projects with at least one property that has Floor set. When projectId is selected, shows visual floor plan.</summary>
+        /// <summary>Floor Plan: show all projects; optional sub-project filter after selecting a project.</summary>
         [HttpGet]
-        public async Task<IActionResult> FloorPlan(string? projectId)
+        public async Task<IActionResult> FloorPlan(string? projectId, string? subProject)
         {
             var denied = await EnsurePermissionAsync("Read");
             if (denied != null) return denied;
-            var projectIdsWithFloor = await _context.Properties
-                .Where(p => p.Floor != null && p.Floor != "")
-                .Select(p => p.ProjectID)
-                .Where(pid => pid != null)
-                .Distinct()
-                .ToListAsync();
 
-            var projectsWithFloor = await _context.Projects
-                .Where(p => projectIdsWithFloor.Contains(p.ProjectID))
+            var allProjects = await _context.Projects
                 .OrderBy(p => p.ProjectName)
                 .ToListAsync();
 
-            ViewBag.ProjectsWithFloor = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
-                projectsWithFloor,
+            ViewBag.Projects = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
+                allProjects,
                 "ProjectID",
                 "ProjectName",
                 projectId);
 
-            if (string.IsNullOrEmpty(projectId) || projectsWithFloor.All(p => p.ProjectID != projectId))
+            var selectedProjectMeta = allProjects.FirstOrDefault(p => p.ProjectID == projectId);
+            var subProjectOptions = (selectedProjectMeta?.SubProjects ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s)
+                .ToList();
+            ViewBag.SubProjects = subProjectOptions;
+
+            if (string.IsNullOrEmpty(projectId) || selectedProjectMeta == null)
             {
-                return View(new FloorPlanViewModel { SelectedProjectID = projectId });
+                return View(new FloorPlanViewModel
+                {
+                    SelectedProjectID = projectId,
+                    SelectedSubProject = subProject
+                });
             }
 
             var project = await _context.Projects
@@ -354,21 +361,34 @@ namespace PMS.Controllers
             if (project == null)
                 return NotFound();
 
+            var selectedSubProject = string.IsNullOrWhiteSpace(subProject) ? null : subProject.Trim();
             var propertiesByFloor = project.Properties
-                .Where(p => p.Floor != null && p.Floor != "")
-                .GroupBy(p => p.Floor!)
+                .Where(p => selectedSubProject == null
+                    || string.Equals((p.SubProject ?? string.Empty).Trim(), selectedSubProject, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(p =>
+                {
+                    var floor = (p.Floor ?? string.Empty).Trim();
+                    return string.IsNullOrWhiteSpace(floor) ? "No floor mentioned" : floor;
+                })
                 .Select(g => new FloorGroupViewModel
                 {
                     FloorName = g.Key,
                     Properties = g.OrderBy(p => p.PropertyID).ToList()
                 })
-                .OrderBy(f => f.FloorName == "G" ? 0 : (int.TryParse(f.FloorName, out var n) ? n : 999))
+                .OrderBy(f =>
+                {
+                    if (f.FloorName == "G") return 0;
+                    if (int.TryParse(f.FloorName, out var n)) return n;
+                    if (f.FloorName == "No floor mentioned") return 1000;
+                    return 999;
+                })
                 .ToList();
 
             var model = new FloorPlanViewModel
             {
                 Project = project,
                 SelectedProjectID = projectId,
+                SelectedSubProject = selectedSubProject,
                 Floors = propertiesByFloor
             };
 

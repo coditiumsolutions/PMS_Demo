@@ -5,6 +5,11 @@
     ViewData["Title"] = "Account Statement";
     var plan = Model.PaymentPlan;
     var schedules = plan?.PaymentSchedules?.OrderBy(ps => ps.InstallmentNo ?? int.MaxValue).ToList() ?? new List<PMS.Models.PaymentSchedule>();
+    var surchargeBySchedule = ViewBag.SurchargeBySchedule as IReadOnlyDictionary<string, PMS.Services.SurchargeComputationRow>
+        ?? new Dictionary<string, PMS.Services.SurchargeComputationRow>(StringComparer.OrdinalIgnoreCase);
+    var otherAccountHeadPayments = ViewBag.OtherAccountHeadPayments as List<PMS.Models.Payment> ?? new List<PMS.Models.Payment>();
+    var customerStatus = Model.Status?.Trim() ?? string.Empty;
+    var showStatusBanner = !string.IsNullOrWhiteSpace(customerStatus) && !string.Equals(customerStatus, "Active", StringComparison.OrdinalIgnoreCase);
 }
 
 <!DOCTYPE html>
@@ -32,12 +37,24 @@
 <div class="a4-container">
     <div id="statement-root">
         <!-- Header Section -->
-        <div class="a4-header text-center">
-            <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
-            <div class="a4-title">Account Statement</div>
-            <div class="a4-subtitle">ZKB - Property Management System</div>
-            <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy")</div>
+        <div class="a4-header">
+            <div class="a4-header-left">
+                <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
+            </div>
+            <div class="a4-header-center text-center">
+                <div class="a4-title">Account Statement</div>
+                <div class="a4-subtitle">ZKB - Property Management System</div>
+            </div>
+            <div class="a4-header-right text-end">
+                <div class="a4-subtitle">Date (Generated on: @DateTime.Now.ToString("MMMM, dd; yyyy"))</div>
+            </div>
         </div>
+        @if (showStatusBanner)
+        {
+            <div class="alert alert-warning py-2 px-3 mb-3 text-center">
+                <strong>Status:</strong> @customerStatus
+            </div>
+        }
 
         <!-- Customer and Plot Information -->
         <div class="a4-section">
@@ -73,25 +90,29 @@
                     }
                 </div>
                 <div class="a4-info-block">
-                    <h6>Plot / Plan Information</h6>
+                    <h6>Project / Plan Information</h6>
                     @{
                         var property = Model.Allotments?.FirstOrDefault()?.Property;
                     }
                     <div class="a4-info-row">
-                        <span class="a4-info-label">Plot:</span>
+                        <span class="a4-info-label">Unit:</span>
                         <span class="a4-info-value">@(property != null ? ($"{property.PlotNo}, Block {property.Block}{(string.IsNullOrWhiteSpace(property.Street) ? string.Empty : ", Street " + property.Street)}") : "-")</span>
                     </div>
                     <div class="a4-info-row">
-                        <span class="a4-info-label">Size:</span>
+                        <span class="a4-info-label">Registered Size:</span>
                         <span class="a4-info-value">@(property?.Size ?? Model.RegisteredSize ?? "-")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">Project Name:</span>
+                        <span class="a4-info-value">@(plan?.Project?.ProjectName ?? "-")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">SubProject Name:</span>
+                        <span class="a4-info-value">@(property?.SubProject ?? "-")</span>
                     </div>
                     <div class="a4-info-row">
                         <span class="a4-info-label">Plan:</span>
                         <span class="a4-info-value">@(plan?.PlanName ?? "-")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Total Amount:</span>
-                        <span class="a4-info-value">@(plan != null ? plan.TotalAmount.ToString("N0") + " " + (plan.Currency ?? "PKR") : "-")</span>
                     </div>
                 </div>
             </div>
@@ -108,14 +129,14 @@
                 <thead>
                     <tr>
                         <th class="text-start">Account Head</th>
-                        <th>Installment No</th>
-                        <th>Due Date</th>
+                        <th>Inst No</th>
                         <th class="text-end">Due Amount</th>
-                        <th class="text-end">Amount Due</th>
+                        <th>Due Date</th>
                         <th class="text-end">Amount Paid</th>
                         <th>Paid On</th>
-                        <th class="text-start">Payment DS/Instrument No</th>
-                        <th class="text-end">Surcharge (Daily)</th>
+                        <th class="text-start">DD/DS No</th>
+                        <th class="text-end">Outstanding</th>
+                        <th class="text-end">Surcharge</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -127,105 +148,117 @@
                 }
                 @foreach (var sch in schedules)
                 {
-                    var payments = sch.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<PMS.Models.Payment>();
+                    var currentCustomerId = Model.CustomerID?.Trim();
+                    var payments = (sch.Payments ?? new List<PMS.Models.Payment>())
+                        .Where(p => string.Equals(p.AuditStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(p.CustomerID?.Trim(), currentCustomerId, StringComparison.OrdinalIgnoreCase)
+                            && !string.Equals(p.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(p => p.PaymentDate)
+                        .ToList();
+                    var lastPayment = payments
+                        .OrderByDescending(p => p.PaymentDate)
+                        .ThenByDescending(p => p.PaymentID)
+                        .FirstOrDefault();
+                    var distinctStatuses = payments
+                        .Select(p => p.Status?.Trim())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    var paymentStatusForDisplay = !string.IsNullOrWhiteSpace(lastPayment?.Status)
+                        ? lastPayment.Status!.Trim()
+                        : (distinctStatuses.Count == 1 ? distinctStatuses[0] : null);
                     var amountPaid = payments.Sum(p => p.Amount);
                     var amountDue = Math.Max(0m, sch.Amount - amountPaid);
-                    
-                    // Calculate daily surcharge from DueDate until fully paid or today
-                    decimal surcharge = 0m;
-                    if (sch.SurchargeApplied)
-                    {
-                        var dueDate = sch.DueDate.Date;
-                        var today = DateTime.Now.Date;
-                        var endDate = today; // Default to today if not fully paid
-                        
-                        // If fully paid, calculate surcharge only until the last payment date
-                        if (amountPaid >= sch.Amount && payments.Any())
-                        {
-                            endDate = payments.Last().PaymentDate.Date;
-                        }
-                        
-                        // Calculate days overdue (only if past due date)
-                        if (endDate > dueDate)
-                        {
-                            var daysOverdue = (int)(endDate - dueDate).TotalDays;
-                            
-                            // Calculate surcharge: Use original due amount (sch.Amount) for fully paid installments,
-                            // or remaining amount due for partially paid installments
-                            // SurchargeRate format: 
-                            //   - Old records: stored as percentage (e.g., 0.05 = 0.05%, need to divide by 100)
-                            //   - New records: stored as decimal (e.g., 0.0005 = 0.05%, use directly)
-                            // Check if value > 1 to determine format (old percentage format vs new decimal format)
-                            var dailySurchargeRate = sch.SurchargeRate > 1m 
-                                ? sch.SurchargeRate / 100m  // Old format: 0.05 → 0.0005
-                                : sch.SurchargeRate;        // New format: 0.0005 → 0.0005
-                            // Daily surcharge = Amount × daily rate × Days Overdue
-                            // Example: 100,000 × 0.0005 = 50 per day, × 3 days = 150
-                            
-                            // Use original amount for surcharge calculation (not remaining amount due)
-                            // This ensures late payments are charged surcharge even if now fully paid
-                            var amountForSurcharge = amountPaid >= sch.Amount ? sch.Amount : amountDue;
-                            var dailySurchargeAmount = amountForSurcharge * dailySurchargeRate; // Amount × 0.0005 per day
-                            surcharge = Math.Round(dailySurchargeAmount * daysOverdue, 2);
-                        }
-                    }
+                    var surchargeData = !string.IsNullOrWhiteSpace(sch.ScheduleID) && surchargeBySchedule.TryGetValue(sch.ScheduleID, out var mapped)
+                        ? mapped
+                        : null;
+                    var surcharge = surchargeData?.Surcharge ?? 0m;
 
                     totalDueAmount += sch.Amount;
                     totalAmountDue += amountDue;
                     totalAmountPaid += amountPaid;
                     totalSurcharge += surcharge;
-                    
-                    // Calculate days overdue for display (for both unpaid and late-paid installments)
-                    var daysOverdueDisplay = 0;
-                    var dueDateDisplay = sch.DueDate.Date;
-                    var endDateDisplay = amountPaid >= sch.Amount && payments.Any() 
-                        ? payments.Last().PaymentDate.Date 
-                        : DateTime.Now.Date;
-                    
-                    if (endDateDisplay > dueDateDisplay)
-                    {
-                        daysOverdueDisplay = (int)(endDateDisplay - dueDateDisplay).TotalDays;
-                    }
+                    var daysOverdueDisplay = surchargeData?.DaysOverdue ?? 0;
 
                     <tr>
                         <td class="text-start">Installment</td>
-                        <td>@(sch.InstallmentNo?.ToString() ?? "N/A")</td>
+                        <td>@((sch.InstallmentNo ?? 0) == 0 ? "" : sch.InstallmentNo?.ToString())</td>
+                        <td class="text-end">@($"{sch.Amount:N0}")</td>
                         <td>
                             @sch.DueDate.ToString("MMM dd, yyyy")
-                            @if (daysOverdueDisplay > 0)
+                        </td>
+                        <td class="text-end">@($"{amountPaid:N0}")</td>
+                        <td>@(lastPayment?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
+                        <td class="text-start">
+                            @{
+                                var referenceNo = lastPayment?.ReferenceNo;
+                                var showStatusWithReference = !string.IsNullOrWhiteSpace(paymentStatusForDisplay)
+                                    && !string.Equals(paymentStatusForDisplay, "Paid", StringComparison.OrdinalIgnoreCase)
+                                    && !string.Equals(paymentStatusForDisplay, "Partially Paid", StringComparison.OrdinalIgnoreCase);
+                            }
+                            @if (!string.IsNullOrWhiteSpace(referenceNo))
                             {
-                                <br /><small class="text-danger">(@daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : "") overdue)</small>
+                                @(showStatusWithReference ? $"{referenceNo} ({paymentStatusForDisplay})" : referenceNo)
+                            }
+                            else
+                            {
+                                @("-")
                             }
                         </td>
-                        <td class="text-end">@($"{sch.Amount:N0}")</td>
                         <td class="text-end">@($"{amountDue:N0}")</td>
-                        <td class="text-end">@($"{amountPaid:N0}")</td>
-                        <td>@(payments.LastOrDefault()?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
-                        <td class="text-start">@(payments.LastOrDefault()?.ReferenceNo ?? "-")</td>
                         <td class="text-end">
                             @($"{surcharge:N0}")
-                            @if (sch.SurchargeApplied && daysOverdueDisplay > 0)
-                            {
-                                // Determine format and calculate display values
-                                var isOldFormat = sch.SurchargeRate > 1m;
-                                var dailyRatePercent = isOldFormat ? sch.SurchargeRate : sch.SurchargeRate * 100m;
-                                var dailyRateDecimal = isOldFormat ? sch.SurchargeRate / 100m : sch.SurchargeRate;
-                                var amountForDisplay = amountPaid >= sch.Amount ? sch.Amount : amountDue;
-                                var dailySurchargeAmount = amountForDisplay * dailyRateDecimal;
-                                <br /><small class="text-muted">(@($"{dailyRatePercent:N2}")% daily = @($"{dailySurchargeAmount:N0}") per day × @daysOverdueDisplay day@(daysOverdueDisplay != 1 ? "s" : ""))</small>
-                            }
                         </td>
+                    </tr>
+                }
+                @foreach (var other in otherAccountHeadPayments)
+                {
+                    var accountHead = !string.IsNullOrWhiteSpace(other.AccountHead) ? other.AccountHead.Trim() : "Waived Off";
+                    if (string.IsNullOrWhiteSpace(other.AccountHead) && !string.IsNullOrWhiteSpace(other.Remarks))
+                    {
+                        const string marker = "AccountHead:";
+                        var idx = other.Remarks.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+                        if (idx >= 0)
+                        {
+                            var parsed = other.Remarks[(idx + marker.Length)..].Trim();
+                            if (!string.IsNullOrWhiteSpace(parsed))
+                            {
+                                accountHead = parsed;
+                            }
+                        }
+                    }
+                    var isSurchargeWaiverLine =
+                        string.Equals(accountHead, "Surcharge Waived Off", StringComparison.OrdinalIgnoreCase)
+                        || (string.Equals(other.Method, "Waiver", StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(accountHead, "Waived Off", StringComparison.OrdinalIgnoreCase));
+                    var amountPaidDisplay = isSurchargeWaiverLine ? "-" : other.Amount.ToString("N0");
+                    var surchargeDisplay = isSurchargeWaiverLine ? other.Amount.ToString("N0") : "-";
+                    if (isSurchargeWaiverLine)
+                    {
+                        totalSurcharge += other.Amount;
+                    }
+                    <tr>
+                        <td class="text-start">@accountHead</td>
+                        <td></td>
+                        <td class="text-end">-</td>
+                        <td>@other.PaymentDate.ToString("MMM dd, yyyy")</td>
+                        <td class="text-end">@amountPaidDisplay</td>
+                        <td>@other.PaymentDate.ToString("MMM dd, yyyy")</td>
+                        <td class="text-start">@(!string.IsNullOrWhiteSpace(other.ReferenceNo) ? other.ReferenceNo : "-")</td>
+                        <td class="text-end">-</td>
+                        <td class="text-end">@surchargeDisplay</td>
                     </tr>
                 }
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="3" class="text-end">Totals</td>
+                        <td colspan="2" class="text-end">Totals</td>
                         <td class="text-end">@($"{totalDueAmount:N0}")</td>
-                        <td class="text-end">@($"{totalAmountDue:N0}")</td>
+                        <td></td>
                         <td class="text-end">@($"{totalAmountPaid:N0}")</td>
                         <td></td>
                         <td></td>
+                        <td class="text-end">@($"{totalAmountDue:N0}")</td>
                         <td class="text-end">@($"{totalSurcharge:N0}")</td>
                     </tr>
                 </tfoot>
@@ -265,9 +298,24 @@
     }
 
     .a4-header {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        align-items: center;
         border-bottom: 2px solid #333;
         padding-bottom: 10px;
         margin-bottom: 12px;
+    }
+
+    .a4-header-left {
+        text-align: left;
+    }
+
+    .a4-header-center {
+        text-align: center;
+    }
+
+    .a4-header-right {
+        text-align: right;
     }
 
     .a4-title {
@@ -380,9 +428,9 @@
     }
 
     .a4-logo {
-        max-width: 120px;
+        max-width: 100px;
         height: auto;
-        margin-bottom: 10px;
+        margin-bottom: 0;
     }
 
     /* Print Styles */
@@ -431,6 +479,7 @@
         }
         
         .a4-header {
+            grid-template-columns: 1fr 2fr 1fr;
             margin-bottom: 8px;
             padding-bottom: 8px;
         }

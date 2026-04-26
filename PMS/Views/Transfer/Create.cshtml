@@ -6,7 +6,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>New Transfer</h2>
-    <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
+            <i class="fas fa-tags me-2"></i>Transfer Fee Module
+        </a>
+        <a asp-action="Index" class="btn btn-outline-primary"><i class="fas fa-arrow-left me-2"></i>Back to List</a>
+    </div>
 </div>
 
 @if (TempData["ErrorMessage"] != null)
@@ -80,49 +85,102 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Buyer – all fields mandatory -->
+                <!-- Step 2: Buyer -->
                 <div class="wizard-step" id="step2" data-step="2" style="display: none;">
                     <h5 class="mb-4" style="color: rgb(104, 167, 226);">
                         <i class="fas fa-user-plus me-2"></i>Step 2: Buyer (New Owner)
                     </h5>
-                    <p class="text-muted small mb-3">All fields are required.</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label asp-for="BuyerName" class="form-label">Buyer Name <span class="text-danger">*</span></label>
-                            <input asp-for="BuyerName" id="BuyerName" class="form-control" placeholder="Letters only" required />
+                            <label asp-for="BuyerName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input asp-for="BuyerName" id="BuyerName" class="form-control" placeholder="Enter full name" required />
                             <span asp-validation-for="BuyerName" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
-                            <label asp-for="BuyerFatherName" class="form-label">Father Name <span class="text-danger">*</span></label>
-                            <input asp-for="BuyerFatherName" id="BuyerFatherName" class="form-control" placeholder="Letters only" required />
+                            <label asp-for="BuyerFatherName" class="form-label">Father's Name</label>
+                            <input asp-for="BuyerFatherName" id="BuyerFatherName" class="form-control" />
                             <span asp-validation-for="BuyerFatherName" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
-                            <label asp-for="BuyerCNIC" class="form-label">CNIC</label>
+                            <label asp-for="BuyerCNIC" class="form-label">National ID (CNIC)</label>
                             <input asp-for="BuyerCNIC" id="BuyerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
-                            <small class="text-muted">Digits only — hyphens auto-inserted. Either CNIC or Passport is required.</small>
+                            <small class="text-muted">Required format: 5 digits, hyphen, 7 digits, hyphen, 1 digit (e.g. 11111-1111111-1).</small>
                             <span asp-validation-for="BuyerCNIC" class="text-danger small d-block"></span>
                             <span id="buyerCnicValidation" class="text-danger small d-none"></span>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="BuyerPassportNo" class="form-label">Passport Number</label>
-                            <input asp-for="BuyerPassportNo" id="BuyerPassportNo" class="form-control" placeholder="e.g. AB1234567" />
-                            <small class="text-muted">Alphanumeric only. Provide if no CNIC.</small>
+                            <input asp-for="BuyerPassportNo" id="BuyerPassportNo" class="form-control" placeholder="Min 5 characters if no CNIC" />
+                            <small class="text-muted">Provide at least 5 characters if not providing CNIC.</small>
                             <span asp-validation-for="BuyerPassportNo" class="text-danger small d-block"></span>
                             <span id="buyerPassportValidation" class="text-danger small d-none"></span>
                         </div>
                         <div id="buyerCnicPassportRuleError" class="col-12 d-none">
-                            <div class="alert alert-warning small py-2 mb-1"><i class="fas fa-exclamation-triangle me-1"></i>Either Buyer CNIC (format XXXXX-XXXXXXX-X) or Passport Number is required.</div>
+                            <div class="alert alert-warning small py-2 mb-1"><i class="fas fa-exclamation-triangle me-1"></i>Either CNIC (valid format) or Passport Number (minimum 5 characters) is required.</div>
                         </div>
                         <div class="col-md-6">
-                            <label asp-for="BuyerContact" class="form-label">Contact <span class="text-danger">*</span></label>
-                            <input asp-for="BuyerContact" id="BuyerContact" class="form-control" placeholder="Digits and + only" required />
-                            <span asp-validation-for="BuyerContact" class="text-danger small"></span>
+                            <label asp-for="BuyerDOB" class="form-label">Date of Birth</label>
+                            <input asp-for="BuyerDOB" id="BuyerDOB" type="date" class="form-control" value="@(Model.BuyerDOB?.ToString("yyyy-MM-dd") ?? "1990-01-01")" max="@(DateTime.Today.AddYears(-16).ToString("yyyy-MM-dd"))" />
+                            <small class="text-muted">Default: 01/01/1990. Must be at least 16 years old.</small>
+                            <span asp-validation-for="BuyerDOB" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BuyerGender" class="form-label">Gender</label>
+                            <select asp-for="BuyerGender" class="form-select">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="BuyerGender" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BuyerNationality" class="form-label">Nationality</label>
+                            <select asp-for="BuyerNationality" class="form-select">
+                                <option value="">Select Nationality</option>
+                                @if (ViewBag.Nationalities != null)
+                                {
+                                    foreach (var nationality in (IEnumerable<string>)ViewBag.Nationalities)
+                                    {
+                                        <option value="@nationality">@nationality</option>
+                                    }
+                                }
+                            </select>
+                            <span asp-validation-for="BuyerNationality" class="text-danger small"></span>
                         </div>
                         <div class="col-12">
-                            <label asp-for="BuyerAddress" class="form-label">Address <span class="text-danger">*</span></label>
-                            <input asp-for="BuyerAddress" class="form-control" required />
-                            <span asp-validation-for="BuyerAddress" class="text-danger"></span>
+                            <label class="form-label fw-bold">Contact Information</label>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BuyerEmail" class="form-label">Email Address</label>
+                            <input asp-for="BuyerEmail" type="email" class="form-control" />
+                            <span asp-validation-for="BuyerEmail" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BuyerPhone" class="form-label">Phone (landline / primary contact) <span class="text-danger">*</span></label>
+                            <input asp-for="BuyerPhone" id="BuyerPhone" class="form-control" required />
+                            <span asp-validation-for="BuyerPhone" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BuyerMobile" class="form-label">Mobile <span class="text-danger">*</span></label>
+                            <input asp-for="BuyerMobile" id="BuyerMobile" class="form-control" required />
+                            <span asp-validation-for="BuyerMobile" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BuyerMobile2" class="form-label">Mobile 2</label>
+                            <input asp-for="BuyerMobile2" id="BuyerMobile2" class="form-control" />
+                            <small class="text-muted">Optional. Must differ from Phone and Mobile.</small>
+                            <span asp-validation-for="BuyerMobile2" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="BuyerMailingAddress" class="form-label">Mailing Address <span class="text-danger">*</span></label>
+                            <textarea asp-for="BuyerMailingAddress" class="form-control" rows="2" required></textarea>
+                            <span asp-validation-for="BuyerMailingAddress" class="text-danger"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="BuyerPermanentAddress" class="form-label">Permanent Address</label>
+                            <textarea asp-for="BuyerPermanentAddress" class="form-control" rows="2"></textarea>
+                            <span asp-validation-for="BuyerPermanentAddress" class="text-danger"></span>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="BuyerCity" class="form-label">City <span class="text-danger">*</span></label>
@@ -293,9 +351,13 @@
                 if (el) el.addEventListener('input', function() { this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, ''); });
             });
 
-            // Contact filter: digits and + only
-            var buyerContactEl = document.getElementById('BuyerContact');
-            if (buyerContactEl) buyerContactEl.addEventListener('input', function() { this.value = this.value.replace(/[^0-9\+]/g, ''); });
+            // Contact filters
+            var buyerPhoneEl = document.getElementById('BuyerPhone');
+            var buyerMobileEl = document.getElementById('BuyerMobile');
+            var buyerMobile2El = document.getElementById('BuyerMobile2');
+            if (buyerPhoneEl) buyerPhoneEl.addEventListener('input', function() { this.value = this.value.replace(/[^0-9\+]/g, ''); });
+            if (buyerMobileEl) buyerMobileEl.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
+            if (buyerMobile2El) buyerMobile2El.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
 
             // CNIC auto-hyphen: digits only
             var cnicEl = document.getElementById('BuyerCNIC');
@@ -324,7 +386,7 @@
                 var cnic     = (cnicEl     ? cnicEl.value.trim()     : '');
                 var passport = (passportEl ? passportEl.value.trim() : '');
                 var cnicValid    = cnicPattern.test(cnic);
-                var passportValid = passport.length >= 3;
+                var passportValid = passport.length >= 5;
                 var ruleEl = document.getElementById('buyerCnicPassportRuleError');
                 var cnicErrEl    = document.getElementById('buyerCnicValidation');
                 var passErrEl    = document.getElementById('buyerPassportValidation');
@@ -339,7 +401,15 @@
                     if (cnicEl)    cnicEl.classList.add('is-invalid');
                     if (cnicErrEl) { cnicErrEl.classList.remove('d-none'); cnicErrEl.textContent = 'CNIC must be XXXXX-XXXXXXX-X (digits only).'; }
                 }
-                return cnicValid || passportValid;
+                if (!cnic && passport && !passportValid) {
+                    if (passportEl) passportEl.classList.add('is-invalid');
+                    if (passErrEl) { passErrEl.classList.remove('d-none'); passErrEl.textContent = 'Passport Number must be at least 5 characters.'; }
+                }
+
+                if (cnic) {
+                    return cnicValid;
+                }
+                return passportValid;
             }
 
             // Keep old name for existing event bindings below
@@ -357,6 +427,48 @@
                     }
                 });
                 return valid;
+            }
+
+            function normalizeDigits(value) {
+                return (value || '').replace(/\D/g, '');
+            }
+
+            function validateBuyerStep2() {
+                var isValid = validateStepFields(step2);
+                if (!validateBuyerCnicPassport()) {
+                    isValid = false;
+                }
+
+                var buyerDobEl = document.getElementById('BuyerDOB');
+                if (buyerDobEl && buyerDobEl.value) {
+                    var dob = new Date(buyerDobEl.value + 'T00:00:00');
+                    var minDob = new Date();
+                    minDob.setFullYear(minDob.getFullYear() - 16);
+                    if (dob > minDob) {
+                        buyerDobEl.classList.add('is-invalid');
+                        isValid = false;
+                    } else {
+                        buyerDobEl.classList.remove('is-invalid');
+                    }
+                }
+
+                var phoneNorm = normalizeDigits(buyerPhoneEl ? buyerPhoneEl.value : '');
+                var mobileNorm = normalizeDigits(buyerMobileEl ? buyerMobileEl.value : '');
+                var mobile2Norm = normalizeDigits(buyerMobile2El ? buyerMobile2El.value : '');
+                if (phoneNorm && mobileNorm && phoneNorm === mobileNorm) {
+                    if (buyerMobileEl) buyerMobileEl.classList.add('is-invalid');
+                    isValid = false;
+                }
+                if (mobile2Norm && phoneNorm && mobile2Norm === phoneNorm) {
+                    if (buyerMobile2El) buyerMobile2El.classList.add('is-invalid');
+                    isValid = false;
+                }
+                if (mobile2Norm && mobileNorm && mobile2Norm === mobileNorm) {
+                    if (buyerMobile2El) buyerMobile2El.classList.add('is-invalid');
+                    isValid = false;
+                }
+
+                return isValid;
             }
 
             document.getElementById('btnSearchCustomer').addEventListener('click', function() {
@@ -405,7 +517,7 @@
                 if (currentStep === 1) {
                     if (!validateStep1()) return;
                 } else if (currentStep === 2) {
-                    if (!validateStepFields(step2)) {
+                    if (!validateBuyerStep2()) {
                         alert('Please fill all required Buyer fields.');
                         return;
                     }
@@ -438,6 +550,11 @@
                     var ruleEl = document.getElementById('buyerCnicPassportRuleError');
                     if (ruleEl) ruleEl.classList.remove('d-none');
                     document.getElementById('BuyerCNIC').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+                if (!validateBuyerStep2()) {
+                    e.preventDefault();
+                    alert('Please correct Buyer information before submitting.');
                     return false;
                 }
                 if (!transferHasActiveNDC) {

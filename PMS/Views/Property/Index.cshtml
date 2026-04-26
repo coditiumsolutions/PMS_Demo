@@ -21,6 +21,35 @@
     </div>
 </div>
 
+<form method="get" asp-action="Index" class="mb-3">
+    <div class="card">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label mb-1 fw-bold">Filter by Project</label>
+                    <select name="projectFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
+                        @if (ViewBag.Projects != null)
+                        {
+                            foreach (var project in ViewBag.Projects)
+                            {
+                                <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
+                                    @project.ProjectName
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -30,6 +59,7 @@
                         <th>Property ID</th>
                         <th>Unit No</th>
                         <th>Project</th>
+                        <th>SubProject</th>
                         <th>Block</th>
                         <th>Floor</th>
                         <th>Type</th>
@@ -62,6 +92,7 @@
                                     <span class="text-muted">No Project</span>
                                 }
                             </td>
+                            <td>@(string.IsNullOrWhiteSpace(property.SubProject) ? "—" : property.SubProject)</td>
                             <td>@property.Block</td>
                             <td>@(property.Floor ?? "—")</td>
                             <td>
@@ -109,7 +140,7 @@
                 "pageLength": 25,
                 "order": [[ 1, "asc" ]],
                 "columnDefs": [
-                    { "orderable": false, "targets": 7 }
+                    { "orderable": false, "targets": 9 }
                 ]
             });
         });
