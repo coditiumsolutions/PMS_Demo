@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
@@ -80,6 +81,13 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
+            var mappings = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == id)
+                .OrderBy(s => s.SubProjectName)
+                .ToListAsync();
+            ViewBag.SubProjectMappings = mappings;
+
             return View(project);
         }
 
@@ -103,7 +111,7 @@ namespace PMS.Controllers
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
-            // Check if Prefix already exists
+            // Project-level prefix is now optional (legacy compatibility only).
             if (!string.IsNullOrEmpty(project.Prefix))
             {
                 var existingProject = await _context.Projects
@@ -115,6 +123,9 @@ namespace PMS.Controllers
                 }
             }
 
+            var subProjectMappings = ParseSubProjectMappings(project.SubProjects, ModelState, nameof(project.SubProjects));
+            project.SubProjects = string.Join(",", subProjectMappings.Select(m => m.Name));
+
             if (ModelState.IsValid)
             {
                 project.ProjectID = GenerateID();
@@ -122,6 +133,7 @@ namespace PMS.Controllers
 
                 _context.Projects.Add(project);
                 await _context.SaveChangesAsync();
+                await ReplaceProjectSubProjectsAsync(project.ProjectID, subProjectMappings);
 
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (!string.IsNullOrEmpty(userId))
@@ -156,6 +168,25 @@ namespace PMS.Controllers
             {
                 return NotFound();
             }
+            var mappings = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == id)
+                .OrderBy(s => s.SubProjectName)
+                .Select(s => s.SubProjectName + "|" + s.Prefix)
+                .ToListAsync();
+            if (mappings.Count > 0)
+            {
+                project.SubProjects = string.Join(",", mappings);
+            }
+            else if (!string.IsNullOrWhiteSpace(project.SubProjects) && !string.IsNullOrWhiteSpace(project.Prefix))
+            {
+                var legacyNames = project.SubProjects
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => $"{s}|{project.Prefix!.Trim().ToUpperInvariant()}");
+                project.SubProjects = string.Join(",", legacyNames);
+            }
 
             // Load project types from Configuration table
             var projectTypesConfig = _context.Configurations
@@ -178,7 +209,7 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
-            // Check if Prefix already exists (excluding current project)
+            // Project-level prefix is now optional (legacy compatibility only).
             if (!string.IsNullOrEmpty(project.Prefix))
             {
                 var existingProject = await _context.Projects
@@ -190,12 +221,16 @@ namespace PMS.Controllers
                 }
             }
 
+            var subProjectMappings = ParseSubProjectMappings(project.SubProjects, ModelState, nameof(project.SubProjects));
+            project.SubProjects = string.Join(",", subProjectMappings.Select(m => m.Name));
+
             if (ModelState.IsValid)
             {
                 try
                 {
                     _context.Update(project);
                     await _context.SaveChangesAsync();
+                    await ReplaceProjectSubProjectsAsync(project.ProjectID, subProjectMappings);
 
                     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                     if (!string.IsNullOrEmpty(userId))
@@ -373,7 +408,10 @@ namespace PMS.Controllers
                 .Select(g => new FloorGroupViewModel
                 {
                     FloorName = g.Key,
-                    Properties = g.OrderBy(p => p.PropertyID).ToList()
+                    Properties = g
+                        .OrderBy(p => p.PlotNo ?? string.Empty)
+                        .ThenBy(p => p.PropertyID)
+                        .ToList()
                 })
                 .OrderBy(f =>
                 {
@@ -398,6 +436,93 @@ namespace PMS.Controllers
         private bool ProjectExists(string id)
         {
             return _context.Projects.Any(e => e.ProjectID == id);
+        }
+
+        private sealed class SubProjectPrefixMapping
+        {
+            public string Name { get; set; } = string.Empty;
+            public string Prefix { get; set; } = string.Empty;
+        }
+
+        private static List<SubProjectPrefixMapping> ParseSubProjectMappings(
+            string? rawCsv,
+            ModelStateDictionary modelState,
+            string modelKey)
+        {
+            var list = new List<SubProjectPrefixMapping>();
+            var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var seenPrefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var items = (rawCsv ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(i => i.Trim())
+                .Where(i => !string.IsNullOrWhiteSpace(i))
+                .ToList();
+
+            if (items.Count == 0)
+            {
+                modelState.AddModelError(modelKey, "At least one subproject with prefix is required.");
+                return list;
+            }
+
+            foreach (var item in items)
+            {
+                var parts = item.Split('|', 2, StringSplitOptions.TrimEntries);
+                if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+                {
+                    modelState.AddModelError(modelKey, $"Invalid subproject format: '{item}'. Use Name|Prefix (e.g., Phase 1|P1).");
+                    continue;
+                }
+
+                var name = parts[0].Trim();
+                var prefix = parts[1].Trim().ToUpperInvariant();
+                if (prefix.Length > 7)
+                {
+                    modelState.AddModelError(modelKey, $"Prefix '{prefix}' exceeds max length 7.");
+                    continue;
+                }
+
+                if (!seenNames.Add(name))
+                {
+                    modelState.AddModelError(modelKey, $"Duplicate subproject name: '{name}'.");
+                    continue;
+                }
+                if (!seenPrefixes.Add(prefix))
+                {
+                    modelState.AddModelError(modelKey, $"Duplicate subproject prefix: '{prefix}'.");
+                    continue;
+                }
+
+                list.Add(new SubProjectPrefixMapping { Name = name, Prefix = prefix });
+            }
+
+            return list;
+        }
+
+        private async Task ReplaceProjectSubProjectsAsync(string? projectId, List<SubProjectPrefixMapping> mappings)
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                return;
+
+            var existing = await _context.ProjectSubProjects
+                .Where(s => s.ProjectID == projectId)
+                .ToListAsync();
+            if (existing.Count > 0)
+                _context.ProjectSubProjects.RemoveRange(existing);
+
+            var rows = mappings.Select(m => new ProjectSubProject
+            {
+                Id = GenerateID(),
+                ProjectID = projectId,
+                SubProjectName = m.Name,
+                Prefix = m.Prefix,
+                CreatedAt = DateTime.Now
+            }).ToList();
+
+            if (rows.Count > 0)
+                _context.ProjectSubProjects.AddRange(rows);
+
+            await _context.SaveChangesAsync();
         }
 
         private async Task LogActivity(string userId, string action, string refType, string refId)

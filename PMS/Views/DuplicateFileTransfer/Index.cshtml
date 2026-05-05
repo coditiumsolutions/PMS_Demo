@@ -1,0 +1,180 @@
+@model IEnumerable<PMS.Models.DuplicateFileTransfer>
+@{
+    ViewData["Title"] = "Duplicate File Transfer";
+    const string Initiated = "Initiated";
+    const string Approved = "Approved";
+    const string Declined = "Declined";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="mb-0"><i class="fas fa-copy me-2"></i>Duplicate File Transfer</h2>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>New Request
+        </a>
+    }
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <a href="@Url.Action("Index", new { workflowFilter = Initiated })" class="text-decoration-none">
+            <div class="card border-0 h-100" style="background:#fff3cd;">
+                <div class="card-body text-center py-3">
+                    <div class="small text-muted text-uppercase fw-semibold">@Initiated</div>
+                    <div class="fs-3 fw-bold text-warning">@(ViewBag.InitiatedCount ?? 0)</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4">
+        <a href="@Url.Action("Index", new { workflowFilter = Approved })" class="text-decoration-none">
+            <div class="card border-0 h-100" style="background:#d4edda;">
+                <div class="card-body text-center py-3">
+                    <div class="small text-muted text-uppercase fw-semibold">@Approved</div>
+                    <div class="fs-3 fw-bold text-success">@(ViewBag.ApprovedCount ?? 0)</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4">
+        <a href="@Url.Action("Index", new { workflowFilter = Declined })" class="text-decoration-none">
+            <div class="card border-0 h-100" style="background:#f8d7da;">
+                <div class="card-body text-center py-3">
+                    <div class="small text-muted text-uppercase fw-semibold">@Declined</div>
+                    <div class="fs-3 fw-bold text-danger">@(ViewBag.DeclinedCount ?? 0)</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<form method="get" asp-action="Index" class="mb-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Status</label>
+                    @{
+                        var wfSel = ViewBag.WorkflowFilter as string ?? "";
+                    }
+                    <select name="workflowFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                        @if (wfSel == "")
+                        {
+                            <option value="" selected>All</option>
+                        }
+                        else
+                        {
+                            <option value="">All</option>
+                        }
+                        @if (wfSel == Initiated)
+                        {
+                            <option value="@Initiated" selected>@Initiated</option>
+                        }
+                        else
+                        {
+                            <option value="@Initiated">@Initiated</option>
+                        }
+                        @if (wfSel == Approved)
+                        {
+                            <option value="@Approved" selected>@Approved</option>
+                        }
+                        else
+                        {
+                            <option value="@Approved">@Approved</option>
+                        }
+                        @if (wfSel == Declined)
+                        {
+                            <option value="@Declined" selected>@Declined</option>
+                        }
+                        else
+                        {
+                            <option value="@Declined">@Declined</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Customer ID</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="customerFilter" class="form-control" placeholder="Filter" value="@ViewBag.CustomerFilter" />
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <a asp-action="Index" class="btn btn-secondary btn-sm"><i class="fas fa-times me-1"></i>Clear</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle" id="dftTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th class="text-end">Fee Due</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        var wf = r.Status ?? Initiated;
+                        var badge = string.Equals(wf, Approved, StringComparison.OrdinalIgnoreCase) ? "bg-success"
+                            : string.Equals(wf, Declined, StringComparison.OrdinalIgnoreCase) ? "bg-danger" : "bg-warning text-dark";
+                        <tr>
+                            <td><code>@r.Id</code></td>
+                            <td>
+                                <div><code>@r.CustomerID</code></div>
+                                <div class="small text-muted">@(r.CustomerName ?? "—")</div>
+                            </td>
+                            <td class="text-end">@(r.FeeDue.HasValue ? $"PKR {r.FeeDue:N0}" : "—")</td>
+                            <td><span class="badge @badge">@wf</span></td>
+                            <td>@r.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@r.Id" class="btn btn-sm btn-outline-info"><i class="fas fa-eye"></i></a>
+                                @if (string.Equals(wf, Approved, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <a asp-action="DuplicateFileLetter" asp-route-id="@r.Id" target="_blank" class="btn btn-sm btn-outline-success" title="Letter"><i class="fas fa-file-alt"></i></a>
+                                }
+                                @if (ViewBag.CanEdit == true && string.Equals(wf, Initiated, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $(function () {
+        $('#dftTable').DataTable({ pageLength: 25, order: [[4, 'desc']], columnDefs: [{ orderable: false, targets: 5 }] });
+    });
+</script>
+}

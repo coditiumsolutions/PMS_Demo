@@ -6,10 +6,16 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0"></h2>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
             <i class="fas fa-tags me-2"></i>Transfer Fee Module
         </a>
+        @if (ViewBag.ShowDuplicateFileTransferLink as bool? == true)
+        {
+            <a asp-controller="DuplicateFileTransfer" asp-action="Index" class="btn btn-outline-primary">
+                <i class="fas fa-copy me-2"></i>Duplicate file transfer
+            </a>
+        }
         @if (ViewBag.CanCreate == true)
         {
         <a asp-action="Create" class="btn btn-primary">

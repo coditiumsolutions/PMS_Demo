@@ -13,7 +13,7 @@ namespace PMS.Models
         [StringLength(150)]
         public string? ProjectName { get; set; }
 
-        [StringLength(4)]
+        [StringLength(7)]
         public string? Prefix { get; set; }
 
         [StringLength(50)]

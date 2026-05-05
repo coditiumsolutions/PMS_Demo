@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMS.Data;
@@ -40,6 +41,40 @@ namespace PMS.Controllers
             ViewBag.CanDelete = _modulePermission.CanDelete(perm);
             return null;
         }
+
+        /// <summary>Customer must match property: same ProjectID, SubProject, and customer RegisteredSize vs property Size (trimmed, case-insensitive).</summary>
+        private static bool CustomerMatchesPropertyForAllotment(Customer c, Property p)
+        {
+            if (string.IsNullOrWhiteSpace(p.ProjectID))
+                return false;
+            if (!string.Equals((c.ProjectID ?? "").Trim(), (p.ProjectID ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (!string.Equals((c.SubProject ?? "").Trim(), (p.SubProject ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (!string.Equals((c.RegisteredSize ?? "").Trim(), (p.Size ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                return false;
+            return true;
+        }
+
+        private static readonly string[] AllowedAllotmentAttachmentExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
+        private const long MaxAllotmentAttachmentSize = 8 * 1024 * 1024;
+
+        private static string SanitizePathSegment(string? segment)
+        {
+            var s = (segment ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(s))
+                return string.Empty;
+            foreach (var c in Path.GetInvalidFileNameChars())
+                s = s.Replace(c, '_');
+            s = s.Replace(Path.DirectorySeparatorChar, '_')
+                .Replace(Path.AltDirectorySeparatorChar, '_')
+                .Trim()
+                .TrimEnd('.');
+            return s;
+        }
+
+        private static string? TruncateUploadedBy(string? userId) =>
+            string.IsNullOrEmpty(userId) ? null : (userId.Length <= 10 ? userId : userId[..10]);
 
         public async Task<IActionResult> Index(string projectFilter = "All")
         {
@@ -97,46 +132,32 @@ namespace PMS.Controllers
             ViewBag.Projects = _context.Projects.ToList();
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
 
-            // Plot Type from Configuration
-            var plotTypesConfig = _context.Configurations
-                .FirstOrDefault(c => c.Category == "PlotTypes" || c.ConfigKey == "PlotTypes");
-            ViewBag.PlotTypes = (plotTypesConfig?.ConfigValue != null)
-                ? plotTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList()
-                : new List<string> { "Residential", "Commercial", "Industrial", "Agricultural" };
-
-            // Property Type from Configuration
-            var propertyTypesConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "propertytypes");
-            ViewBag.PropertyTypes = (propertyTypesConfig?.ConfigValue != null)
-                ? propertyTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList()
-                : new List<string>();
-
             return View();
         }
 
-        /// <summary>Returns Sizes and PropertyTypes for the selected project (for Property/Create dropdowns).</summary>
+        /// <summary>Returns SubProjects and Sizes from the Projects row (for Property Create/Edit). Property types come from Configurations (PropertyType key).</summary>
         [HttpGet]
         public IActionResult GetProjectDetails(string projectId)
         {
             if (string.IsNullOrWhiteSpace(projectId))
-                return Json(new { sizes = Array.Empty<string>(), propertyTypes = Array.Empty<string>() });
+                return Json(new { subProjects = Array.Empty<string>(), sizes = Array.Empty<string>() });
 
             var project = _context.Projects.AsNoTracking().FirstOrDefault(p => p.ProjectID == projectId);
             if (project == null)
-                return Json(new { sizes = Array.Empty<string>(), propertyTypes = Array.Empty<string>() });
+                return Json(new { subProjects = Array.Empty<string>(), sizes = Array.Empty<string>() });
 
+            var subProjects = (project.SubProjects ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToArray();
             var sizes = (project.Sizes ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim())
                 .Where(s => !string.IsNullOrEmpty(s))
                 .ToArray();
-            var propertyTypes = (project.PropertyTypes ?? "")
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .ToArray();
 
-            return Json(new { sizes, propertyTypes });
+            return Json(new { subProjects, sizes });
         }
 
         [HttpPost]
@@ -163,8 +184,6 @@ namespace PMS.Controllers
 
             ViewBag.Projects = _context.Projects.ToList();
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
-            var plotTypesConfig = _context.Configurations.FirstOrDefault(c => c.Category == "PlotTypes" || c.ConfigKey == "PlotTypes");
-            ViewBag.PlotTypes = (plotTypesConfig?.ConfigValue != null) ? plotTypesConfig.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList() : new List<string> { "Residential", "Commercial", "Industrial", "Agricultural" };
             return View(property);
         }
 
@@ -228,14 +247,7 @@ namespace PMS.Controllers
 
             ViewBag.Projects = _context.Projects.ToList();
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").ToList();
-            
-            // Reload sizes from Configuration table
-            var sizesConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "sizes");
-            ViewBag.Sizes = (sizesConfig?.ConfigValue != null)
-                ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
-                : new List<string>();
-            
+
             return View(property);
         }
 
@@ -256,23 +268,76 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
-            ViewBag.Customers = _context.Customers.ToList();
+            var candidates = string.IsNullOrWhiteSpace(property.ProjectID)
+                ? new List<Customer>()
+                : await _context.Customers.AsNoTracking()
+                    .Where(c => c.ProjectID != null && c.ProjectID == property.ProjectID)
+                    .ToListAsync();
+            var customers = candidates
+                .Where(c => CustomerMatchesPropertyForAllotment(c, property))
+                .OrderBy(c => c.FullName)
+                .ToList();
+            ViewBag.Customers = customers;
+            ViewBag.MatchingCustomerCount = customers.Count;
             ViewBag.Property = property;
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Allot(string propertyId, string customerId, string allotmentType, string comments)
+        [RequestFormLimits(MultipartBodyLengthLimit = 52_428_800)]
+        public async Task<IActionResult> Allot(string propertyId, string customerId, string allotmentType, string comments, [FromForm] List<IFormFile>? attachmentFiles)
         {
             if (string.IsNullOrEmpty(propertyId) || string.IsNullOrEmpty(customerId))
             {
                 return BadRequest();
             }
 
+            var property = await _context.Properties.FindAsync(propertyId);
+            var customer = await _context.Customers.FindAsync(customerId);
+            if (property == null || customer == null)
+            {
+                return BadRequest();
+            }
+
+            if (!CustomerMatchesPropertyForAllotment(customer, property))
+            {
+                TempData["Error"] = "Selected customer must match this property's project, subproject, and size (same as the customer's registered size).";
+                return RedirectToAction(nameof(Allot), new { id = propertyId });
+            }
+
+            if (string.IsNullOrWhiteSpace(allotmentType))
+            {
+                TempData["Error"] = "Please select an allotment type.";
+                return RedirectToAction(nameof(Allot), new { id = propertyId });
+            }
+
+            var filesToPersist = new List<IFormFile>();
+            if (attachmentFiles != null)
+            {
+                foreach (var file in attachmentFiles.Where(f => f != null && f.Length > 0))
+                {
+                    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                    if (!AllowedAllotmentAttachmentExtensions.Contains(ext))
+                    {
+                        TempData["Error"] = $"Attachments: invalid file type for \"{file.FileName}\". Only JPG, PNG, GIF, BMP, and PDF are allowed.";
+                        return RedirectToAction(nameof(Allot), new { id = propertyId });
+                    }
+
+                    if (file.Length > MaxAllotmentAttachmentSize)
+                    {
+                        TempData["Error"] = $"Attachments: \"{file.FileName}\" exceeds the 8 MB size limit.";
+                        return RedirectToAction(nameof(Allot), new { id = propertyId });
+                    }
+
+                    filesToPersist.Add(file);
+                }
+            }
+
+            var allotmentId = GenerateID();
             var allotment = new Allotment
             {
-                AllotmentID = GenerateID(),
+                AllotmentID = allotmentId,
                 PropertyID = propertyId,
                 CustomerID = customerId,
                 AllottedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
@@ -284,15 +349,55 @@ namespace PMS.Controllers
 
             _context.Allotments.Add(allotment);
 
-            // Update property status
-            var property = await _context.Properties.FindAsync(propertyId);
-            if (property != null)
-            {
-                property.Status = "Allotted";
-                _context.Update(property);
-            }
+            property.Status = "Allotted";
+            _context.Update(property);
 
             await _context.SaveChangesAsync();
+
+            if (filesToPersist.Count > 0)
+            {
+                var safeId = SanitizePathSegment(allotmentId);
+                if (string.IsNullOrEmpty(safeId))
+                {
+                    TempData["Warning"] = "Allotment was saved, but attachments could not be stored (invalid allotment id for file path).";
+                }
+                else
+                {
+                    var webRoot = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    var uploadsFolder = Path.Combine(webRoot, "uploads", "allotments", safeId);
+                    Directory.CreateDirectory(uploadsFolder);
+                    var uploadedBy = TruncateUploadedBy(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                    var newAttachments = new List<Attachment>();
+
+                    foreach (var file in filesToPersist)
+                    {
+                        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                        var uniqueFileName = $"{Guid.NewGuid():N}{ext}";
+                        var physicalPath = Path.Combine(uploadsFolder, uniqueFileName);
+                        await using (var stream = new FileStream(physicalPath, FileMode.Create))
+                            await file.CopyToAsync(stream);
+
+                        var relativePath = $"/uploads/allotments/{safeId}/{uniqueFileName}";
+                        newAttachments.Add(new Attachment
+                        {
+                            AttachmentID = GenerateID(),
+                            RefType = "Allotment",
+                            RefID = allotmentId,
+                            AttachmentType = "Allotment",
+                            FileName = file.FileName,
+                            FilePath = relativePath,
+                            FileSize = file.Length,
+                            FileType = file.ContentType,
+                            Description = null,
+                            UploadedBy = uploadedBy,
+                            UploadedAt = DateTime.Now
+                        });
+                    }
+
+                    _context.Attachments.AddRange(newAttachments);
+                    await _context.SaveChangesAsync();
+                }
+            }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
@@ -375,6 +480,7 @@ namespace PMS.Controllers
         {
             ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
             ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+            ViewBag.SubProjects = new List<string>();
             return View();
         }
 
@@ -427,16 +533,18 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ImportPreview(IFormFile file, int dealerId, string projectId)
+        public async Task<IActionResult> ImportPreview(IFormFile file, int dealerId, string projectId, string subProject)
         {
             ViewBag.SelectedDealerID = dealerId;
             ViewBag.SelectedProjectID = projectId;
+            ViewBag.SelectedSubProject = subProject;
 
             if (file == null || file.Length == 0)
             {
                 TempData["Error"] = "Please select a file to upload.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
                 ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                ViewBag.SubProjects = new List<string>();
                 return View("Import");
             }
 
@@ -445,6 +553,7 @@ namespace PMS.Controllers
                 TempData["Error"] = "Please select a dealer.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
                 ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                ViewBag.SubProjects = new List<string>();
                 return View("Import");
             }
 
@@ -455,6 +564,7 @@ namespace PMS.Controllers
                 TempData["Error"] = "Selected dealer not found.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
                 ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                ViewBag.SubProjects = new List<string>();
                 return View("Import");
             }
 
@@ -463,6 +573,7 @@ namespace PMS.Controllers
                 TempData["Error"] = "Please select a project.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
                 ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                ViewBag.SubProjects = new List<string>();
                 return View("Import");
             }
 
@@ -470,6 +581,40 @@ namespace PMS.Controllers
             if (project == null)
             {
                 TempData["Error"] = "Selected project not found.";
+                ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                ViewBag.SubProjects = new List<string>();
+                return View("Import");
+            }
+
+            var allowedSubProjects = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == projectId)
+                .Select(s => s.SubProjectName)
+                .Distinct()
+                .OrderBy(s => s)
+                .ToListAsync();
+            if (allowedSubProjects.Count == 0)
+            {
+                allowedSubProjects = (project.SubProjects ?? string.Empty)
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(s => s)
+                    .ToList();
+            }
+            ViewBag.SubProjects = allowedSubProjects;
+            if (string.IsNullOrWhiteSpace(subProject))
+            {
+                TempData["Error"] = "Please select a subproject.";
+                ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
+                ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
+                return View("Import");
+            }
+            if (allowedSubProjects.Count > 0 && !allowedSubProjects.Any(s => string.Equals(s, subProject, StringComparison.OrdinalIgnoreCase)))
+            {
+                TempData["Error"] = "Selected subproject is not valid for the chosen project.";
                 ViewBag.Dealers = _context.Dealers.Where(d => d.Status == "Active").OrderBy(d => d.DealershipName).ToList();
                 ViewBag.Projects = _context.Projects.OrderBy(p => p.ProjectName).ToList();
                 return View("Import");
@@ -504,9 +649,8 @@ namespace PMS.Controllers
                 foreach (var property in properties)
                 {
                     property.ProjectID = projectId;
+                    property.SubProject = subProject;
                     var validationErrors = new List<string>();
-                    if (string.IsNullOrWhiteSpace(property.SubProject))
-                        validationErrors.Add("SubProject is required");
                     if (string.IsNullOrWhiteSpace(property.Block))
                         validationErrors.Add("Block is required");
                     if (string.IsNullOrWhiteSpace(property.Size))
@@ -514,7 +658,7 @@ namespace PMS.Controllers
                     if (string.IsNullOrWhiteSpace(property.PlotNo))
                         validationErrors.Add("Unit No is required");
                     if (string.IsNullOrWhiteSpace(property.PlotType))
-                        validationErrors.Add("Category/Type is required");
+                        validationErrors.Add("Unit type (category) is required");
 
                     if (validationErrors.Count > 0)
                     {
@@ -529,11 +673,13 @@ namespace PMS.Controllers
                 ViewBag.FileName = file.FileName;
                 ViewBag.ProjectName = project.ProjectName;
                 ViewBag.ProjectID = project.ProjectID;
+                ViewBag.SubProject = subProject;
 
                 // Store in session for confirmation
                 HttpContext.Session.SetString("ImportData", System.Text.Json.JsonSerializer.Serialize(properties));
                 HttpContext.Session.SetInt32("ImportDealerID", dealerId);
                 HttpContext.Session.SetString("ImportProjectID", projectId);
+                HttpContext.Session.SetString("ImportSubProject", subProject);
                 ViewBag.DealerName = dealer.DealershipName;
 
                 return View(properties);
@@ -552,6 +698,7 @@ namespace PMS.Controllers
             var importDataJson = HttpContext.Session.GetString("ImportData");
             var dealerId = HttpContext.Session.GetInt32("ImportDealerID");
             var projectId = HttpContext.Session.GetString("ImportProjectID");
+            var subProject = HttpContext.Session.GetString("ImportSubProject");
             
             if (string.IsNullOrEmpty(importDataJson))
             {
@@ -568,6 +715,11 @@ namespace PMS.Controllers
             if (string.IsNullOrWhiteSpace(projectId))
             {
                 TempData["Error"] = "Project information not found. Please upload the file again.";
+                return RedirectToAction(nameof(Import));
+            }
+            if (string.IsNullOrWhiteSpace(subProject))
+            {
+                TempData["Error"] = "Subproject information not found. Please upload the file again.";
                 return RedirectToAction(nameof(Import));
             }
 
@@ -616,13 +768,13 @@ namespace PMS.Controllers
                     {
                         PropertyID = GenerateID(),
                         ProjectID = projectId!,
-                        SubProject = prop.SubProject,
+                        SubProject = subProject,
                         PlotNo = prop.PlotNo,
                         Street = prop.Street,
                         PlotType = prop.PlotType,
                         Block = prop.Block,
                         Floor = prop.Floor,
-                        PropertyType = prop.PropertyType,
+                        PropertyType = null,
                         Size = prop.Size,
                         AdditionalInfo = prop.AdditionalInfo,
                         Status = "Available",
@@ -649,6 +801,7 @@ namespace PMS.Controllers
 
             HttpContext.Session.Remove("ImportData");
             HttpContext.Session.Remove("ImportProjectID");
+            HttpContext.Session.Remove("ImportSubProject");
 
             TempData["Success"] = $"Successfully imported {importedCount} properties. {skippedCount} skipped (duplicates or errors).";
             return RedirectToAction(nameof(Index));
@@ -665,6 +818,9 @@ namespace PMS.Controllers
                 var hasProjectColumn = headerColumns.Count > 0 &&
                                        string.Equals(headerColumns[0]?.Trim(), "ProjectID", StringComparison.OrdinalIgnoreCase);
                 var startIndex = hasProjectColumn ? 1 : 0;
+                var hasSubProjectColumn = headerColumns.Count > startIndex &&
+                                          string.Equals((headerColumns[startIndex] ?? string.Empty).Trim(), "SubProject", StringComparison.OrdinalIgnoreCase);
+                var dataStartIndex = hasSubProjectColumn ? startIndex + 1 : startIndex;
 
                 int rowNumber = 2; // Start from row 2 (after header)
                 while (!reader.EndOfStream)
@@ -673,25 +829,21 @@ namespace PMS.Controllers
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     var columns = ParseCsvLine(line);
-                    if (columns.Count >= startIndex + 6) // New format: SubProject, Block, Size, Unit No, Floor, Category/Type, PropertyType, Additional Info, Street
+                    if (columns.Count >= dataStartIndex + 6) // Block, Size, Unit No, Floor, Unit Type (Category), Additional Info, Street
                     {
-                        var subProject = columns[startIndex]?.Trim() ?? string.Empty;
-                        var block = columns.Count > startIndex + 1 ? columns[startIndex + 1]?.Trim() ?? string.Empty : string.Empty;
-                        var size = columns.Count > startIndex + 2 ? columns[startIndex + 2]?.Trim() ?? string.Empty : string.Empty;
-                        var plotNo = columns.Count > startIndex + 3 ? columns[startIndex + 3]?.Trim() ?? string.Empty : string.Empty;
-                        var floor = columns.Count > startIndex + 4 ? columns[startIndex + 4]?.Trim() ?? string.Empty : string.Empty;
-                        var plotType = columns.Count > startIndex + 5 ? columns[startIndex + 5]?.Trim() ?? string.Empty : string.Empty;
-                        var propertyType = columns.Count > startIndex + 6 ? columns[startIndex + 6]?.Trim() ?? string.Empty : string.Empty;
-                        var additionalInfo = columns.Count > startIndex + 7 ? columns[startIndex + 7]?.Trim() ?? string.Empty : string.Empty;
-                        var street = columns.Count > startIndex + 8 ? columns[startIndex + 8]?.Trim() ?? string.Empty : string.Empty;
+                        var block = columns.Count > dataStartIndex ? columns[dataStartIndex]?.Trim() ?? string.Empty : string.Empty;
+                        var size = columns.Count > dataStartIndex + 1 ? columns[dataStartIndex + 1]?.Trim() ?? string.Empty : string.Empty;
+                        var plotNo = columns.Count > dataStartIndex + 2 ? columns[dataStartIndex + 2]?.Trim() ?? string.Empty : string.Empty;
+                        var floor = columns.Count > dataStartIndex + 3 ? columns[dataStartIndex + 3]?.Trim() ?? string.Empty : string.Empty;
+                        var plotType = columns.Count > dataStartIndex + 4 ? columns[dataStartIndex + 4]?.Trim() ?? string.Empty : string.Empty;
+                        var additionalInfo = columns.Count > dataStartIndex + 5 ? columns[dataStartIndex + 5]?.Trim() ?? string.Empty : string.Empty;
+                        var street = columns.Count > dataStartIndex + 6 ? columns[dataStartIndex + 6]?.Trim() ?? string.Empty : string.Empty;
 
-                        if (string.IsNullOrWhiteSpace(subProject) &&
-                            string.IsNullOrWhiteSpace(block) &&
+                        if (string.IsNullOrWhiteSpace(block) &&
                             string.IsNullOrWhiteSpace(size) &&
                             string.IsNullOrWhiteSpace(plotNo) &&
                             string.IsNullOrWhiteSpace(floor) &&
                             string.IsNullOrWhiteSpace(plotType) &&
-                            string.IsNullOrWhiteSpace(propertyType) &&
                             string.IsNullOrWhiteSpace(additionalInfo) &&
                             string.IsNullOrWhiteSpace(street))
                         {
@@ -702,11 +854,11 @@ namespace PMS.Controllers
                         properties.Add(new PropertyImportViewModel
                         {
                             RowNumber = rowNumber,
-                            SubProject = subProject,
+                            SubProject = string.Empty,
                             PlotNo = plotNo,
                             Block = block,
                             Size = size,
-                            PropertyType = propertyType,
+                            PropertyType = string.Empty,
                             Floor = floor,
                             AdditionalInfo = additionalInfo,
                             Street = street,
@@ -764,28 +916,26 @@ namespace PMS.Controllers
                     var headerValue = GetCellValue(worksheet, 1, 1);
                     var hasProjectColumn = string.Equals(headerValue, "ProjectID", StringComparison.OrdinalIgnoreCase);
                     var startColumn = hasProjectColumn ? 2 : 1;
+                    var hasSubProjectColumn = string.Equals(GetCellValue(worksheet, 1, startColumn), "SubProject", StringComparison.OrdinalIgnoreCase);
+                    var dataStartColumn = hasSubProjectColumn ? startColumn + 1 : startColumn;
                     var rows = worksheet.RowsUsed().Skip(1); // Skip header row
                     
                     int rowNumber = 2;
                     foreach (var row in rows)
                     {
-                        var subProject = GetCellValue(worksheet, row.RowNumber(), startColumn) ?? string.Empty;
-                        var block = GetCellValue(worksheet, row.RowNumber(), startColumn + 1) ?? string.Empty;
-                        var size = GetCellValue(worksheet, row.RowNumber(), startColumn + 2) ?? string.Empty;
-                        var plotNo = GetCellValue(worksheet, row.RowNumber(), startColumn + 3) ?? string.Empty;
-                        var floor = GetCellValue(worksheet, row.RowNumber(), startColumn + 4) ?? string.Empty;
-                        var plotType = GetCellValue(worksheet, row.RowNumber(), startColumn + 5) ?? string.Empty;
-                        var propertyType = GetCellValue(worksheet, row.RowNumber(), startColumn + 6) ?? string.Empty;
-                        var additionalInfo = GetCellValue(worksheet, row.RowNumber(), startColumn + 7) ?? string.Empty;
-                        var street = GetCellValue(worksheet, row.RowNumber(), startColumn + 8) ?? string.Empty;
+                        var block = GetCellValue(worksheet, row.RowNumber(), dataStartColumn) ?? string.Empty;
+                        var size = GetCellValue(worksheet, row.RowNumber(), dataStartColumn + 1) ?? string.Empty;
+                        var plotNo = GetCellValue(worksheet, row.RowNumber(), dataStartColumn + 2) ?? string.Empty;
+                        var floor = GetCellValue(worksheet, row.RowNumber(), dataStartColumn + 3) ?? string.Empty;
+                        var plotType = GetCellValue(worksheet, row.RowNumber(), dataStartColumn + 4) ?? string.Empty;
+                        var additionalInfo = GetCellValue(worksheet, row.RowNumber(), dataStartColumn + 5) ?? string.Empty;
+                        var street = GetCellValue(worksheet, row.RowNumber(), dataStartColumn + 6) ?? string.Empty;
 
-                        if (string.IsNullOrWhiteSpace(subProject) &&
-                            string.IsNullOrWhiteSpace(block) &&
+                        if (string.IsNullOrWhiteSpace(block) &&
                             string.IsNullOrWhiteSpace(size) &&
                             string.IsNullOrWhiteSpace(plotNo) &&
                             string.IsNullOrWhiteSpace(floor) &&
                             string.IsNullOrWhiteSpace(plotType) &&
-                            string.IsNullOrWhiteSpace(propertyType) &&
                             string.IsNullOrWhiteSpace(additionalInfo) &&
                             string.IsNullOrWhiteSpace(street))
                         {
@@ -796,11 +946,11 @@ namespace PMS.Controllers
                         properties.Add(new PropertyImportViewModel
                         {
                             RowNumber = rowNumber,
-                            SubProject = subProject,
+                            SubProject = string.Empty,
                             PlotNo = plotNo,
                             Block = block,
                             Size = size,
-                            PropertyType = propertyType,
+                            PropertyType = string.Empty,
                             Floor = floor,
                             AdditionalInfo = additionalInfo,
                             Street = street,

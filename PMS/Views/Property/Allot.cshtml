@@ -14,6 +14,21 @@
             </a>
         </div>
 
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                @TempData["Warning"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
         <!-- Property Info -->
         @if (property != null)
         {
@@ -34,8 +49,12 @@
                             <p class="fw-bold">@property.PlotNo</p>
                         </div>
                         <div class="col-md-3">
-                            <small class="text-muted">Block</small>
+                            <small class="text-muted">Tower</small>
                             <p class="fw-bold">@property.Block</p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Subproject</small>
+                            <p class="fw-bold">@(string.IsNullOrWhiteSpace(property.SubProject) ? "—" : property.SubProject)</p>
                         </div>
                         <div class="col-md-3">
                             <small class="text-muted">Size</small>
@@ -63,12 +82,17 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form asp-action="Allot" method="post">
+                <form asp-action="Allot" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="propertyId" value="@property?.PropertyID" />
 
                     <div class="mb-3">
                         <label for="customerId" class="form-label">Select Customer *</label>
-                        <select name="customerId" id="customerId" class="form-select" required>
+                        <p class="small text-muted mb-2">Only customers with the same <strong>project</strong>, <strong>subproject</strong>, and <strong>registered size</strong> as this unit are listed.</p>
+                        @if (ViewBag.MatchingCustomerCount is int mc && mc == 0)
+                        {
+                            <div class="alert alert-warning py-2 mb-2">No matching customers found. Adjust customer records or this property so Project ID, Subproject, and Size (customer &ldquo;Registered size&rdquo;) align.</div>
+                        }
+                        <select name="customerId" id="customerId" class="form-select" required @(ViewBag.MatchingCustomerCount is int mco && mco == 0 ? "disabled" : null)>
                             <option value="">Select Customer</option>
                             @if (ViewBag.Customers != null)
                             {
@@ -113,6 +137,13 @@
                                   placeholder="Enter any comments or notes about this allotment"></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Attachments <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="file" name="attachmentFiles" id="attachmentFiles" class="form-control" multiple
+                               accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,application/pdf" @(ViewBag.MatchingCustomerCount is int ma && ma == 0 ? "disabled" : null) />
+                        <div class="form-text">Upload supporting documents (images or PDF). Maximum 8 MB per file.</div>
+                    </div>
+
                     <div class="alert alert-success">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Note:</strong> Once allotted, the property status will be changed to "Allotted" and the workflow will be set to "Pending" approval.
@@ -121,7 +152,7 @@
                     <hr>
 
                     <div class="d-flex justify-content-end">
-                        <button type="submit" class="btn btn-success me-2">
+                        <button type="submit" class="btn btn-success me-2" @(ViewBag.MatchingCustomerCount is int ms && ms == 0 ? "disabled" : null)>
                             <i class="fas fa-check me-2"></i>Allot Property
                         </button>
                         <a asp-action="Details" asp-route-id="@property?.PropertyID" class="btn btn-secondary">

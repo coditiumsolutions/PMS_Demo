@@ -60,6 +60,7 @@ namespace PMS.Controllers
                     r.RegID.Contains(searchTerm) ||
                     r.FullName.Contains(searchTerm) ||
                     r.CNIC.Contains(searchTerm) ||
+                    (r.FormNo != null && r.FormNo.Contains(searchTerm)) ||
                     r.Phone.Contains(searchTerm) ||
                     r.Email.Contains(searchTerm)
                 );
@@ -193,6 +194,16 @@ namespace PMS.Controllers
             {
                 return Json(Array.Empty<string>());
             }
+
+            var mapped = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == projectId)
+                .OrderBy(s => s.SubProjectName)
+                .Select(s => s.SubProjectName)
+                .ToArrayAsync();
+            if (mapped.Length > 0)
+                return Json(mapped);
+
             var project = await _context.Projects
                 .AsNoTracking()
                 .Where(p => p.ProjectID == projectId)

@@ -18,11 +18,16 @@ namespace PMS.Controllers
         private const long MaxNdcAttachmentSize = 8 * 1024 * 1024; // 8MB
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
+        private readonly ISurchargeService _surchargeService;
 
-        public NDCController(PMSDbContext context, IModulePermissionService modulePermission)
+        public NDCController(
+            PMSDbContext context,
+            IModulePermissionService modulePermission,
+            ISurchargeService surchargeService)
         {
             _context = context;
             _modulePermission = modulePermission;
+            _surchargeService = surchargeService;
         }
 
         private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
@@ -144,10 +149,10 @@ namespace PMS.Controllers
             return View(model);
         }
 
-        /// <summary>AJAX: Returns customer info, due/paid summary, and computed transfer fee amounts for selected customer/project/subproject.</summary>
+        /// <summary>AJAX: Customer info and due/paid summary. Transfer fee is loaded separately when NDC Type is selected (see GetNdcTransferFee).</summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GetCustomerForNDC(string customerId, string? ndcType = null)
+        public async Task<IActionResult> GetCustomerForNDC(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
                 return Json(new { success = false, message = "Customer ID is required." });
@@ -194,20 +199,8 @@ namespace PMS.Controllers
 
             var projectId = customer.ProjectID ?? customer.PaymentPlan?.ProjectID;
             var subProject = customer.SubProject;
-            var projectName = customer.PaymentPlan?.Project?.ProjectName;
-            var transferPriority = ResolveTransferPriority(ndcType);
-            var transferType = string.IsNullOrWhiteSpace(ndcType) ? null : ndcType.Trim();
-            var transferFee = await FindTransferFeeAsync(projectId, subProject, transferType, transferPriority);
             var propertySize = ParsePropertySizeValue(customer.RegisteredSize);
-            var transferFeeExists = transferFee != null;
-            var amountPerUnit = transferFee?.AmountPerUnit ?? 0m;
-            var transferFeeAmount = Math.Round(amountPerUnit * propertySize, 2, MidpointRounding.AwayFromZero);
             var addTransferFeeUrl = Url.Action("Create", "TransferFee", new { projectId, subProject });
-
-            if (!transferFeeExists)
-            {
-                message = $"Transfer fee does not exist for Project '{projectName ?? projectId ?? "N/A"}' and SubProject '{subProject ?? "N/A"}'. Please add Transfer Fee first.";
-            }
 
             return Json(new
             {
@@ -229,13 +222,70 @@ namespace PMS.Controllers
                 allPaymentClear,
                 hasActiveNDC,
                 message,
-                transferFeeExists,
+                propertySize,
                 addTransferFeeUrl,
+                feePendingNdcType = true
+            });
+        }
+
+        /// <summary>AJAX: Looks up Transfer Fee row where TransferType matches the selected NDC Type (and project / sub-project from customer).</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GetNdcTransferFee(string customerId, string ndcType)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+                return Json(new { success = false, message = "Customer ID is required." });
+            if (string.IsNullOrWhiteSpace(ndcType))
+                return Json(new { success = false, message = "Select NDC Type to load the fee from the Transfer Fee module (Transfer Type must match NDC Type)." });
+
+            var customer = await _context.Customers
+                .Include(c => c.PaymentPlan)
+                    .ThenInclude(pp => pp!.Project)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CustomerID == customerId.Trim());
+
+            if (customer == null)
+                return Json(new { success = false, message = "Customer not found. Search the customer first." });
+
+            var projectId = customer.ProjectID ?? customer.PaymentPlan?.ProjectID;
+            var subProject = customer.SubProject;
+            var projectName = customer.PaymentPlan?.Project?.ProjectName;
+            var transferType = ndcType.Trim();
+            var transferPriority = ResolveTransferPriority(ndcType);
+            var transferFee = await FindTransferFeeAsync(projectId, subProject, transferType, transferPriority);
+            var propertySize = ParsePropertySizeValue(customer.RegisteredSize);
+            var addTransferFeeUrl = Url.Action("Create", "TransferFee", new { projectId, subProject });
+
+            if (transferFee == null)
+            {
+                return Json(new
+                {
+                    success = true,
+                    transferFeeExists = false,
+                    transferType,
+                    transferPriority,
+                    propertySize,
+                    amountPerUnit = 0m,
+                    transferFeeAmount = 0m,
+                    addTransferFeeUrl,
+                    message = $"No Transfer Fee row for Transfer Type '{transferType}' (NDC Type), project '{projectName ?? projectId ?? "N/A"}', sub-project '{subProject ?? "N/A"}', and priority '{transferPriority}'. Add a matching row in Transfer Fee."
+                });
+            }
+
+            var amountPerUnit = transferFee.AmountPerUnit;
+            var transferFeeAmount = Math.Round(amountPerUnit * propertySize, 2, MidpointRounding.AwayFromZero);
+
+            return Json(new
+            {
+                success = true,
+                transferFeeExists = true,
                 transferType,
                 transferPriority,
-                amountPerUnit,
                 propertySize,
-                transferFeeAmount
+                amountPerUnit,
+                transferFeeAmount,
+                addTransferFeeUrl,
+                message = (string?)null
             });
         }
 
@@ -392,11 +442,24 @@ namespace PMS.Controllers
                 .Include(n => n.Customer)
                     .ThenInclude(c => c!.PaymentPlan)
                         .ThenInclude(p => p!.Project)
+                .Include(n => n.Customer)
+                    .ThenInclude(c => c!.JointOwners)
+                .Include(n => n.Customer)
+                    .ThenInclude(c => c!.PaymentPlan)
+                        .ThenInclude(p => p!.PaymentSchedules)
+                            .ThenInclude(ps => ps.Payments.Where(p => p.AuditStatus == "Approved"))
                 .AsNoTracking()
                 .FirstOrDefaultAsync(n => n.NDCID == id);
 
             if (ndc == null)
                 return NotFound();
+
+            var schedules = ndc.Customer?.PaymentPlan?.PaymentSchedules ?? new List<PaymentSchedule>();
+            var surchargeBySchedule = _surchargeService.ComputeBySchedule(
+                schedules,
+                ndc.CustomerID,
+                DateTime.Now.Date);
+            ViewBag.TotalDueSurcharge = surchargeBySchedule.Values.Sum(x => x.Surcharge);
 
             ViewBag.NdcAttachments = await _context.Attachments
                 .AsNoTracking()
@@ -576,7 +639,19 @@ namespace PMS.Controllers
                 string.Equals((t.TransferType ?? string.Empty).Trim(), normalizedType, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals((t.TransferPriority ?? string.Empty).Trim(), normalizedPriority, StringComparison.OrdinalIgnoreCase));
 
-            return exact ?? byProjectAndSub.FirstOrDefault();
+            if (exact != null)
+                return exact;
+
+            // Legacy-safe fallback: match project + subproject + transfer type.
+            var byType = byProjectAndSub.FirstOrDefault(t =>
+                string.Equals((t.TransferType ?? string.Empty).Trim(), normalizedType, StringComparison.OrdinalIgnoreCase));
+            if (byType != null)
+                return byType;
+
+            // Final safe fallback: match project + subproject + transfer priority.
+            var byPriority = byProjectAndSub.FirstOrDefault(t =>
+                string.Equals((t.TransferPriority ?? string.Empty).Trim(), normalizedPriority, StringComparison.OrdinalIgnoreCase));
+            return byPriority;
         }
 
         private static string SanitizePathSegment(string? segment)

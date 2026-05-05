@@ -61,5 +61,7 @@ namespace PMS.Models
 
         [ForeignKey("CreatedBy")]
         public virtual User? CreatedByUser { get; set; }
+
+        public virtual ICollection<RefundCheque> RefundCheques { get; set; } = new List<RefundCheque>();
     }
 }

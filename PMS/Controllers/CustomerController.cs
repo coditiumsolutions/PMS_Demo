@@ -92,6 +92,7 @@ namespace PMS.Controllers
                 searchTerm = searchTerm.ToLower();
                 query = query.Where(c => 
                     (c.CustomerID != null && c.CustomerID.ToLower().Contains(searchTerm)) ||
+                    (c.FormNo != null && c.FormNo.ToLower().Contains(searchTerm)) ||
                     (c.FullName != null && c.FullName.ToLower().Contains(searchTerm)) ||
                     (c.CNIC != null && c.CNIC.ToLower().Contains(searchTerm)) ||
                     (c.Phone != null && c.Phone.ToLower().Contains(searchTerm)) ||
@@ -768,7 +769,18 @@ namespace PMS.Controllers
             if (denied != null) return denied;
             if (string.IsNullOrWhiteSpace(projectId))
             {
-                return Json(Array.Empty<string>());
+                return Json(Array.Empty<object>());
+            }
+
+            var mapped = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == projectId)
+                .OrderBy(s => s.SubProjectName)
+                .Select(s => new { name = s.SubProjectName, prefix = s.Prefix })
+                .ToListAsync();
+            if (mapped.Count > 0)
+            {
+                return Json(mapped);
             }
 
             var projectSubProjects = await _context.Projects
@@ -778,14 +790,129 @@ namespace PMS.Controllers
                 .FirstOrDefaultAsync();
 
             var subProjects = string.IsNullOrWhiteSpace(projectSubProjects)
-                ? Array.Empty<string>()
+                ? Array.Empty<object>()
                 : projectSubProjects
                     .Split(',')
                     .Select(s => s.Trim())
                     .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(name => (object)new { name, prefix = string.Empty })
                     .ToArray();
 
             return Json(subProjects);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetJointOwners(string customerId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+
+            var normalizedCustomerId = NormalizeId(customerId);
+            if (string.IsNullOrEmpty(normalizedCustomerId))
+            {
+                return Json(new { success = false, message = "Customer ID is required." });
+            }
+
+            var resolvedCustomerId = await ResolveCustomerIdAsync(normalizedCustomerId);
+            if (string.IsNullOrEmpty(resolvedCustomerId))
+            {
+                return Json(new { success = false, message = "Customer not found." });
+            }
+
+            var jointOwners = await _context.JointOwners
+                .AsNoTracking()
+                .Where(j => j.CustomerID == resolvedCustomerId)
+                .OrderByDescending(j => j.CreatedAt)
+                .Select(j => new
+                {
+                    id = j.Id,
+                    customerID = j.CustomerID,
+                    jointOwnerName = j.JointOwnerName,
+                    fatherName = j.FatherName,
+                    cnic = j.CNIC,
+                    contact = j.Contact,
+                    address = j.Address,
+                    percentage = j.Percentage,
+                    createdAt = j.CreatedAt.ToString("MMM dd, yyyy hh:mm tt"),
+                    createdBy = j.CreatedBy,
+                    modifiedBy = j.ModifiedBy,
+                    details = j.Details
+                })
+                .ToListAsync();
+
+            return Json(new { success = true, jointOwners });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddJointOwner(string customerId, string jointOwnerName, string? fatherName, string? cnic, string? contact, string? address, decimal? percentage, string? details)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+
+            var normalizedCustomerId = NormalizeId(customerId);
+            var normalizedName = (jointOwnerName ?? string.Empty).Trim();
+
+            if (string.IsNullOrEmpty(normalizedCustomerId))
+            {
+                return Json(new { success = false, message = "Customer ID is required." });
+            }
+            if (string.IsNullOrWhiteSpace(normalizedName))
+            {
+                return Json(new { success = false, message = "Joint owner name is required." });
+            }
+            if (!System.Text.RegularExpressions.Regex.IsMatch(normalizedName, @"^[a-zA-Z\s\.\-]+$"))
+            {
+                return Json(new { success = false, message = "Joint owner name must contain letters only." });
+            }
+            var normalizedCnic = string.IsNullOrWhiteSpace(cnic) ? string.Empty : cnic.Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(normalizedCnic, @"^\d{5}-\d{7}-\d$"))
+            {
+                return Json(new { success = false, message = "CNIC is required in XXXXX-XXXXXXX-X format." });
+            }
+            var normalizedContact = string.IsNullOrWhiteSpace(contact) ? string.Empty : contact.Trim();
+            var normalizedContactDigits = NormalizePhoneDigits(normalizedContact);
+            if (string.IsNullOrEmpty(normalizedContactDigits) || normalizedContactDigits.Length < 11 || normalizedContactDigits.Length > 13)
+            {
+                return Json(new { success = false, message = "Contact number is required and must be between 11 and 13 digits." });
+            }
+            if (percentage.HasValue && (percentage.Value < 0 || percentage.Value > 100))
+            {
+                return Json(new { success = false, message = "Percentage must be between 0 and 100." });
+            }
+
+            var resolvedCustomerId = await ResolveCustomerIdAsync(normalizedCustomerId);
+            if (string.IsNullOrEmpty(resolvedCustomerId))
+            {
+                return Json(new { success = false, message = "Customer not found." });
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var jointOwner = new JointOwner
+            {
+                Id = GenerateID(),
+                CustomerID = resolvedCustomerId,
+                JointOwnerName = normalizedName,
+                FatherName = string.IsNullOrWhiteSpace(fatherName) ? null : fatherName.Trim(),
+                CNIC = normalizedCnic,
+                Contact = normalizedContact,
+                Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim(),
+                Percentage = percentage,
+                CreatedAt = DateTime.Now,
+                CreatedBy = userId,
+                ModifiedBy = userId,
+                Details = string.IsNullOrWhiteSpace(details) ? null : details.Trim()
+            };
+
+            _context.JointOwners.Add(jointOwner);
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, $"Joint owner added: {jointOwner.JointOwnerName}", "JointOwner", jointOwner.Id);
+            }
+
+            return Json(new { success = true, message = "Joint owner added successfully." });
         }
 
         [HttpGet]
@@ -883,9 +1010,13 @@ namespace PMS.Controllers
             }
 
             var customer = await _context.Customers
+                .Include(c => c.Project)
+                .Include(c => c.PaymentPlan)
+                    .ThenInclude(pp => pp.Project)
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(pp => pp.PaymentSchedules)
                         .ThenInclude(ps => ps.Payments.Where(p => p.AuditStatus == "Approved"))
+                .Include(c => c.JointOwners)
                 .Include(c => c.Allotments)
                     .ThenInclude(a => a.Property)
                 .FirstOrDefaultAsync(c => c.CustomerID == id);
@@ -901,14 +1032,19 @@ namespace PMS.Controllers
                 customer.CustomerID,
                 DateTime.Now.Date);
 
-            var otherPayments = await _context.Payments
+            var otherPaymentsRaw = await _context.Payments
                 .AsNoTracking()
                 .Where(p => p.CustomerID == customer.CustomerID
                     && p.ScheduleID == null
-                    && p.Amount < 0
                     && p.AuditStatus == "Approved")
                 .OrderBy(p => p.PaymentDate)
                 .ToListAsync();
+            var otherPayments = otherPaymentsRaw
+                .Where(p =>
+                    p.Amount < 0
+                    || string.Equals((p.AccountHead ?? string.Empty).Trim(), "Surcharge Payment", StringComparison.OrdinalIgnoreCase)
+                    || (p.Remarks ?? string.Empty).Contains("Surcharge payment", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             ViewBag.OtherAccountHeadPayments = otherPayments;
 
             return View(customer);
@@ -984,6 +1120,7 @@ namespace PMS.Controllers
                     regID = registration.RegID,
                     fullName = registration.FullName,
                     cnic = registration.CNIC,
+                    formNo = registration.FormNo,
                     phone = registration.Phone,
                     email = registration.Email,
                     status = registration.Status,
@@ -1050,6 +1187,8 @@ namespace PMS.Controllers
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
+            // New customers are always Pending until activated via Customer list (bulk or workflow).
+            customer.Status = "Pending";
             var nomineeNicValidationError = ValidateKinFile(nomineeNICUpload);
             if (nomineeNicValidationError != null)
             {
@@ -1073,10 +1212,9 @@ namespace PMS.Controllers
 
             if (ModelState.IsValid)
             {
-                // Generate CustomerID based on Project Prefix
-                customer.CustomerID = await GenerateCustomerID(customer.ProjectID);
+                // Generate CustomerID based on selected SubProject Prefix (fallback: legacy project prefix).
+                customer.CustomerID = await GenerateCustomerID(customer.ProjectID, customer.SubProject);
                 customer.CreatedAt = DateTime.Now;
-                customer.Status = "Pending";
 
                 if (nomineeNICUpload != null && nomineeNICUpload.Length > 0)
                 {
@@ -1214,12 +1352,6 @@ namespace PMS.Controllers
                 .FirstOrDefault(c => c.ConfigKey == "sizes");
             ViewBag.Sizes = sizesConfig != null 
                 ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
-                : new List<string>();
-            
-            var subProjectsConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "subprojects");
-            ViewBag.SubProjects = subProjectsConfig != null 
-                ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
 
             var nationalitiesConfig = _context.Configurations
@@ -1368,12 +1500,6 @@ namespace PMS.Controllers
             ViewBag.Sizes = sizesConfig != null 
                 ? sizesConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
                 : new List<string>();
-            
-            var subProjectsConfig = _context.Configurations
-                .FirstOrDefault(c => c.ConfigKey == "subprojects");
-            ViewBag.SubProjects = subProjectsConfig != null 
-                ? subProjectsConfig.ConfigValue.Split(',').Select(s => s.Trim()).ToList()
-                : new List<string>();
 
             var nationalitiesConfig = _context.Configurations
                 .FirstOrDefault(c => c.ConfigKey == "nationalities");
@@ -1458,8 +1584,8 @@ namespace PMS.Controllers
             return Guid.NewGuid().ToString("N")[..10].ToUpper();
         }
 
-        // Generate CustomerID based on Project Prefix: "JSC0001", "JSC0002", etc. (no dash)
-        private async Task<string> GenerateCustomerID(string? projectID)
+        // Generate CustomerID based on selected SubProject Prefix (fallback: legacy project prefix).
+        private async Task<string> GenerateCustomerID(string? projectID, string? subProject)
         {
             if (string.IsNullOrEmpty(projectID))
             {
@@ -1467,17 +1593,17 @@ namespace PMS.Controllers
                 return GenerateID();
             }
 
-            // Get Project directly
-            var project = await _context.Projects
-                .FirstOrDefaultAsync(p => p.ProjectID == projectID);
-
-            if (project == null || string.IsNullOrEmpty(project.Prefix))
+            var projectPrefix = await GetSubProjectPrefixAsync(projectID, subProject);
+            if (string.IsNullOrWhiteSpace(projectPrefix))
             {
-                // Fallback to random if project or prefix not found
+                var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectID == projectID);
+                projectPrefix = project?.Prefix;
+            }
+            if (string.IsNullOrWhiteSpace(projectPrefix))
+            {
                 return GenerateID();
             }
-
-            string projectPrefix = project.Prefix;
+            projectPrefix = projectPrefix.Trim().ToUpperInvariant();
 
             // Get all existing customers with this project prefix (check both with and without dash for backward compatibility)
             var existingCustomers = await _context.Customers
@@ -1539,6 +1665,19 @@ namespace PMS.Controllers
             string customerID = $"{projectPrefix}{numberPart}";
 
             return customerID;
+        }
+
+        private async Task<string?> GetSubProjectPrefixAsync(string? projectId, string? subProject)
+        {
+            if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(subProject))
+                return null;
+
+            var normalizedSubProject = subProject.Trim();
+            return await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == projectId && s.SubProjectName == normalizedSubProject)
+                .Select(s => s.Prefix)
+                .FirstOrDefaultAsync();
         }
 
         private string? ValidateKinFile(IFormFile? file)
@@ -1712,6 +1851,37 @@ namespace PMS.Controllers
         private static string NormalizeId(string? id)
         {
             return (id ?? string.Empty).Trim();
+        }
+
+        private async Task<string?> ResolveCustomerIdAsync(string normalizedCustomerId)
+        {
+            if (string.IsNullOrEmpty(normalizedCustomerId))
+            {
+                return null;
+            }
+
+            var exactMatch = await _context.Customers
+                .AsNoTracking()
+                .Where(c => c.CustomerID == normalizedCustomerId)
+                .Select(c => c.CustomerID)
+                .FirstOrDefaultAsync();
+
+            if (!string.IsNullOrEmpty(exactMatch))
+            {
+                return exactMatch;
+            }
+
+            return await _context.Customers
+                .AsNoTracking()
+                .Where(c => c.CustomerID != null && c.CustomerID.Trim() == normalizedCustomerId)
+                .Select(c => c.CustomerID)
+                .FirstOrDefaultAsync();
+        }
+
+        private static string NormalizePhoneDigits(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            return new string(value.Where(char.IsDigit).ToArray());
         }
 
         private static string SanitizePathSegment(string? segment)

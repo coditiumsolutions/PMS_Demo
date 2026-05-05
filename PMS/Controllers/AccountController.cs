@@ -21,7 +21,7 @@ namespace PMS.Controllers
         {
             "Home", "Registration", "Customer", "Transfer", "TransferFee", "NDC", "Project", "Dealer", "Property", "Payment",
             "Allotment", "Rental", "SalesInquiry", "Reports", "Account", "Settings", "ActivityLog",
-            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "Waiver"
+            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "DuplicateFileTransfer", "Waiver", "PaymentAudit"
         };
 
         private static readonly string[] PermissionOptions = new[] { "NoAccess", "Read", "Edit", "Admin" };
@@ -351,6 +351,9 @@ namespace PMS.Controllers
                         ViewBag.Error = "Email already exists for another user.";
                         ViewBag.Roles = _context.ACLs.ToList();
                         SetUsersConfigViewBag();
+                        ViewBag.ModuleKeys = ModuleKeys;
+                        ViewBag.PermissionOptions = PermissionOptions;
+                        ViewBag.ModulePermissions = await _context.UserModulePermissions.Where(p => p.UserID == user.UserID).ToDictionaryAsync(p => p.ModuleKey, p => p.Permission);
                         return View(user);
                     }
 

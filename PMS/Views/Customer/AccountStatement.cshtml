@@ -4,6 +4,13 @@
 	Layout = null;
     ViewData["Title"] = "Account Statement";
     var plan = Model.PaymentPlan;
+    var jointOwnerNames = (Model.JointOwners ?? new List<PMS.Models.JointOwner>())
+        .Select(j => j.JointOwnerName?.Trim())
+        .Where(n => !string.IsNullOrWhiteSpace(n))
+        .ToList();
+    var customerNameWithJointOwners = jointOwnerNames.Any()
+        ? string.Join(" / ", (new[] { Model.FullName }).Concat(jointOwnerNames.Where(n => !string.Equals(n, Model.FullName, StringComparison.OrdinalIgnoreCase))))
+        : (Model.FullName ?? "-");
     var schedules = plan?.PaymentSchedules?.OrderBy(ps => ps.InstallmentNo ?? int.MaxValue).ToList() ?? new List<PMS.Models.PaymentSchedule>();
     var surchargeBySchedule = ViewBag.SurchargeBySchedule as IReadOnlyDictionary<string, PMS.Services.SurchargeComputationRow>
         ?? new Dictionary<string, PMS.Services.SurchargeComputationRow>(StringComparer.OrdinalIgnoreCase);
@@ -39,14 +46,14 @@
         <!-- Header Section -->
         <div class="a4-header">
             <div class="a4-header-left">
-                <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
+                <img src="~/images/logo.jpeg" alt="ZKB Logo" class="a4-logo" />
             </div>
             <div class="a4-header-center text-center">
                 <div class="a4-title">Account Statement</div>
                 <div class="a4-subtitle">ZKB - Property Management System</div>
             </div>
             <div class="a4-header-right text-end">
-                <div class="a4-subtitle">Date (Generated on: @DateTime.Now.ToString("MMMM, dd; yyyy"))</div>
+                <div class="a4-subtitle">Date (@DateTime.Now.ToString("MMMM, dd; yyyy"))</div>
             </div>
         </div>
         @if (showStatusBanner)
@@ -67,7 +74,7 @@
                     </div>
                     <div class="a4-info-row">
                         <span class="a4-info-label">Customer Name:</span>
-                        <span class="a4-info-value">@Model.FullName</span>
+                        <span class="a4-info-value">@customerNameWithJointOwners</span>
                     </div>
                     <div class="a4-info-row">
                         <span class="a4-info-label">Address:</span>
@@ -95,23 +102,27 @@
                         var property = Model.Allotments?.FirstOrDefault()?.Property;
                     }
                     <div class="a4-info-row">
+                        <span class="a4-info-label">Project Name:</span>
+                        <span class="a4-info-value">@(plan?.Project?.ProjectName ?? Model.Project?.ProjectName ?? "-")</span>
+                    </div>
+                    <div class="a4-info-row">
+                        <span class="a4-info-label">SubProject:</span>
+                        <span class="a4-info-value">@(property?.SubProject ?? Model.SubProject ?? plan?.SubProject ?? "-")</span>
+                    </div>
+                    <div class="a4-info-row">
                         <span class="a4-info-label">Unit:</span>
-                        <span class="a4-info-value">@(property != null ? ($"{property.PlotNo}, Block {property.Block}{(string.IsNullOrWhiteSpace(property.Street) ? string.Empty : ", Street " + property.Street)}") : "-")</span>
+                        <span class="a4-info-value">@(property != null ? ($"{property.PlotNo}, {property.Block}{(string.IsNullOrWhiteSpace(property.Street) ? string.Empty : ", Street " + property.Street)}") : "-")</span>
                     </div>
                     <div class="a4-info-row">
                         <span class="a4-info-label">Registered Size:</span>
                         <span class="a4-info-value">@(property?.Size ?? Model.RegisteredSize ?? "-")</span>
                     </div>
                     <div class="a4-info-row">
-                        <span class="a4-info-label">Project Name:</span>
-                        <span class="a4-info-value">@(plan?.Project?.ProjectName ?? "-")</span>
+                        <span class="a4-info-label">Property Type:</span>
+                        <span class="a4-info-value">@(property?.PropertyType ?? property?.PlotType ?? "-")</span>
                     </div>
                     <div class="a4-info-row">
-                        <span class="a4-info-label">SubProject Name:</span>
-                        <span class="a4-info-value">@(property?.SubProject ?? "-")</span>
-                    </div>
-                    <div class="a4-info-row">
-                        <span class="a4-info-label">Plan:</span>
+                        <span class="a4-info-label">Payment Plan ID:</span>
                         <span class="a4-info-value">@(plan?.PlanName ?? "-")</span>
                     </div>
                 </div>
@@ -148,25 +159,17 @@
                 }
                 @foreach (var sch in schedules)
                 {
+                    var accountHeadLabel = string.IsNullOrWhiteSpace(sch.PaymentDescription)
+                        ? "Installment"
+                        : sch.PaymentDescription.Trim();
                     var currentCustomerId = Model.CustomerID?.Trim();
                     var payments = (sch.Payments ?? new List<PMS.Models.Payment>())
                         .Where(p => string.Equals(p.AuditStatus, "Approved", StringComparison.OrdinalIgnoreCase)
                             && string.Equals(p.CustomerID?.Trim(), currentCustomerId, StringComparison.OrdinalIgnoreCase)
                             && !string.Equals(p.Status, "Pending", StringComparison.OrdinalIgnoreCase))
                         .OrderBy(p => p.PaymentDate)
+                        .ThenBy(p => p.PaymentID)
                         .ToList();
-                    var lastPayment = payments
-                        .OrderByDescending(p => p.PaymentDate)
-                        .ThenByDescending(p => p.PaymentID)
-                        .FirstOrDefault();
-                    var distinctStatuses = payments
-                        .Select(p => p.Status?.Trim())
-                        .Where(s => !string.IsNullOrWhiteSpace(s))
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-                    var paymentStatusForDisplay = !string.IsNullOrWhiteSpace(lastPayment?.Status)
-                        ? lastPayment.Status!.Trim()
-                        : (distinctStatuses.Count == 1 ? distinctStatuses[0] : null);
                     var amountPaid = payments.Sum(p => p.Amount);
                     var amountDue = Math.Max(0m, sch.Amount - amountPaid);
                     var surchargeData = !string.IsNullOrWhiteSpace(sch.ScheduleID) && surchargeBySchedule.TryGetValue(sch.ScheduleID, out var mapped)
@@ -178,38 +181,56 @@
                     totalAmountDue += amountDue;
                     totalAmountPaid += amountPaid;
                     totalSurcharge += surcharge;
-                    var daysOverdueDisplay = surchargeData?.DaysOverdue ?? 0;
 
-                    <tr>
-                        <td class="text-start">Installment</td>
-                        <td>@((sch.InstallmentNo ?? 0) == 0 ? "" : sch.InstallmentNo?.ToString())</td>
-                        <td class="text-end">@($"{sch.Amount:N0}")</td>
-                        <td>
-                            @sch.DueDate.ToString("MMM dd, yyyy")
-                        </td>
-                        <td class="text-end">@($"{amountPaid:N0}")</td>
-                        <td>@(lastPayment?.PaymentDate.ToString("MMM dd, yyyy") ?? "-")</td>
-                        <td class="text-start">
-                            @{
-                                var referenceNo = lastPayment?.ReferenceNo;
-                                var showStatusWithReference = !string.IsNullOrWhiteSpace(paymentStatusForDisplay)
-                                    && !string.Equals(paymentStatusForDisplay, "Paid", StringComparison.OrdinalIgnoreCase)
-                                    && !string.Equals(paymentStatusForDisplay, "Partially Paid", StringComparison.OrdinalIgnoreCase);
-                            }
-                            @if (!string.IsNullOrWhiteSpace(referenceNo))
-                            {
-                                @(showStatusWithReference ? $"{referenceNo} ({paymentStatusForDisplay})" : referenceNo)
-                            }
-                            else
-                            {
-                                @("-")
-                            }
-                        </td>
-                        <td class="text-end">@($"{amountDue:N0}")</td>
-                        <td class="text-end">
-                            @($"{surcharge:N0}")
-                        </td>
-                    </tr>
+                    if (payments.Any())
+                    {
+                        decimal runningPaid = 0m;
+                        for (var idx = 0; idx < payments.Count; idx++)
+                        {
+                            var payment = payments[idx];
+                            runningPaid += payment.Amount;
+                            var runningOutstanding = Math.Max(0m, sch.Amount - runningPaid);
+                            var paymentStatus = payment.Status?.Trim();
+                            var showStatusWithReference = !string.IsNullOrWhiteSpace(paymentStatus)
+                                && !string.Equals(paymentStatus, "Paid", StringComparison.OrdinalIgnoreCase)
+                                && !string.Equals(paymentStatus, "Partially Paid", StringComparison.OrdinalIgnoreCase);
+
+                            <tr>
+                                <td class="text-start">@accountHeadLabel</td>
+                                <td>@((sch.InstallmentNo ?? 0) == 0 ? "" : sch.InstallmentNo?.ToString())</td>
+                                <td class="text-end">@(idx == 0 ? $"{sch.Amount:N0}" : "-")</td>
+                                <td>@(idx == 0 ? sch.DueDate.ToString("MMM dd, yyyy") : "-")</td>
+                                <td class="text-end">@($"{payment.Amount:N0}")</td>
+                                <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
+                                <td class="text-start">
+                                    @if (!string.IsNullOrWhiteSpace(payment.ReferenceNo))
+                                    {
+                                        @(showStatusWithReference ? $"{payment.ReferenceNo} ({paymentStatus})" : payment.ReferenceNo)
+                                    }
+                                    else
+                                    {
+                                        @("-")
+                                    }
+                                </td>
+                                <td class="text-end">@($"{runningOutstanding:N0}")</td>
+                                <td class="text-end">@(idx == 0 ? $"{surcharge:N0}" : "-")</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td class="text-start">@accountHeadLabel</td>
+                            <td>@((sch.InstallmentNo ?? 0) == 0 ? "" : sch.InstallmentNo?.ToString())</td>
+                            <td class="text-end">@($"{sch.Amount:N0}")</td>
+                            <td>@sch.DueDate.ToString("MMM dd, yyyy")</td>
+                            <td class="text-end">0</td>
+                            <td>-</td>
+                            <td class="text-start">-</td>
+                            <td class="text-end">@($"{sch.Amount:N0}")</td>
+                            <td class="text-end">@($"{surcharge:N0}")</td>
+                        </tr>
+                    }
                 }
                 @foreach (var other in otherAccountHeadPayments)
                 {
@@ -231,11 +252,18 @@
                         string.Equals(accountHead, "Surcharge Waived Off", StringComparison.OrdinalIgnoreCase)
                         || (string.Equals(other.Method, "Waiver", StringComparison.OrdinalIgnoreCase)
                             && string.Equals(accountHead, "Waived Off", StringComparison.OrdinalIgnoreCase));
-                    var amountPaidDisplay = isSurchargeWaiverLine ? "-" : other.Amount.ToString("N0");
-                    var surchargeDisplay = isSurchargeWaiverLine ? other.Amount.ToString("N0") : "-";
-                    if (isSurchargeWaiverLine)
+                    var isSurchargePaymentLine =
+                        string.Equals(accountHead, "Surcharge Payment", StringComparison.OrdinalIgnoreCase)
+                        || (other.Remarks ?? string.Empty).Contains("Surcharge payment", StringComparison.OrdinalIgnoreCase);
+                    var isSurchargeAdjustmentLine = isSurchargeWaiverLine || isSurchargePaymentLine;
+                    var surchargeAdjustmentAmount = isSurchargeWaiverLine
+                        ? other.Amount
+                        : (isSurchargePaymentLine ? -other.Amount : 0m);
+                    var amountPaidDisplay = isSurchargeAdjustmentLine ? "-" : other.Amount.ToString("N0");
+                    var surchargeDisplay = isSurchargeAdjustmentLine ? surchargeAdjustmentAmount.ToString("N0") : "-";
+                    if (isSurchargeAdjustmentLine)
                     {
-                        totalSurcharge += other.Amount;
+                        totalSurcharge += surchargeAdjustmentAmount;
                     }
                     <tr>
                         <td class="text-start">@accountHead</td>
@@ -267,11 +295,12 @@
 
         <!-- Footer -->
         <div class="a4-footer">
-            <div>This is a system generated report and does not require a signature.</div>
-            <div style="margin-top: 10px;">
-                <strong>ZKB - Property Management System</strong><br>
-                Generated on: @DateTime.Now.ToString("MMMM dd, yyyy at hh:mm tt")
-            </div>
+            <div>This is a system-generated document and does not require a signature.</div>
+            <div>Payments made after blocking or cancellation due to non-payment will not be entertained.</div>
+            <div>Errors and omissions are subject to correction.</div>
+            <div>Please clear your outstanding dues promptly to avoid surcharge or cancellation.</div>
+            <div>Processing fee and discount(s), if any, are non-refundable.</div>
+            <div>For queries or feedback, please email: care@zkbeclipse.com</div>
         </div>
     </div>
 </div>
@@ -379,6 +408,22 @@
 
     .a4-info-value {
         color: #333;
+    }
+
+    /* Customer Information + Project / Plan Information: emphasize data values */
+    .a4-info-block .a4-info-value {
+        font-weight: 700;
+        font-size: 12px;
+        color: #1a1a1a;
+        line-height: 1.35;
+    }
+
+    .a4-info-block .a4-info-value code {
+        font-weight: 700;
+        font-size: 12px;
+        color: #1a1a1a;
+        background: transparent;
+        padding: 0;
     }
 
     .a4-table {
@@ -492,6 +537,12 @@
         /* Prevent page breaks */
         .a4-info-grid {
             page-break-inside: avoid;
+        }
+
+        .a4-info-block .a4-info-value,
+        .a4-info-block .a4-info-value code {
+            font-weight: 700;
+            font-size: 11px;
         }
     }
 

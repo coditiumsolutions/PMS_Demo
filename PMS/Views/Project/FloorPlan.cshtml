@@ -189,15 +189,15 @@
                             "Blocked" => "bg-secondary",
                             _ => "bg-light text-dark"
                         };
-                        <a asp-controller="Property" asp-action="Details" asp-route-id="@prop.PropertyID" class="floor-unit @statusClass" title="@prop.PropertyID | @prop.PlotNo | @(prop.Size ?? "—") | @(prop.PropertyType ?? "—") | @prop.Status">
+                        <a asp-controller="Property" asp-action="Details" asp-route-id="@prop.PropertyID" class="floor-unit @statusClass" title="@prop.PropertyID | @prop.PlotNo | @(prop.Size ?? "—") | @(prop.PlotType ?? "—") | @prop.Status">
                             <span class="floor-unit-plot">@(prop.PlotNo ?? prop.PropertyID)</span>
                             @if (!string.IsNullOrWhiteSpace(prop.Size))
                             {
                                 <span class="floor-unit-meta">@prop.Size</span>
                             }
-                            @if (!string.IsNullOrWhiteSpace(prop.PropertyType))
+                            @if (!string.IsNullOrWhiteSpace(prop.PlotType))
                             {
-                                <span class="floor-unit-meta">@prop.PropertyType</span>
+                                <span class="floor-unit-meta">@prop.PlotType</span>
                             }
                             <span class="floor-unit-status">@prop.Status</span>
                         </a>

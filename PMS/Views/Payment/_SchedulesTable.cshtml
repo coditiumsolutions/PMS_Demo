@@ -51,7 +51,7 @@
                         </td>
                         <td>
                             <i class="far fa-calendar-alt me-1"></i>
-                            @schedule.DueDate.ToString("MMM dd, yyyy")
+                            @schedule.DueDate.ToString("dd-MM-yyyy")
                             @if (isOverdue)
                             {
                                 <br>
@@ -175,7 +175,7 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Due Date</small>
-                                            <p>@schedule.DueDate.ToString("MMM dd, yyyy")</p>
+                                            <p>@schedule.DueDate.ToString("dd-MM-yyyy")</p>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted">Amount</small>
@@ -203,7 +203,7 @@
                                                         <div>
                                                             <strong>@payment.Amount.ToString("N0", EnUs) PKR</strong>
                                                             <br>
-                                                            <small class="text-muted">@payment.PaymentDate.ToString("MMM dd, yyyy")</small>
+                                                            <small class="text-muted">@payment.PaymentDate.ToString("dd-MM-yyyy")</small>
                                                         </div>
                                                         <div class="text-end">
                                                             <span class="badge @(payment.Status == "Completed" ? "bg-success" : "bg-warning")">

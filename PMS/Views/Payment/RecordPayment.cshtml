@@ -51,7 +51,7 @@
                         <div class="col-md-3">
                             <small class="text-muted">Due Date</small>
                             <p class="fw-bold mb-0 @(schedule.DueDate < DateTime.Now ? "text-danger" : "text-success")">
-                                @schedule.DueDate.ToString("MMM dd, yyyy")
+                                @schedule.DueDate.ToString("dd-MM-yyyy")
                             </p>
                             @if (schedule.DueDate < DateTime.Now)
                             {
@@ -382,15 +382,8 @@
                 }
 
                 $('#btnSearchCustomer').prop('disabled', true);
-                // #region agent log
-                var _logPayload = function(hid, msg, d) {
-                    var pl = { hypothesisId: hid, location: 'RecordPayment.cshtml:Search', message: msg, data: d || {}, timestamp: Date.now(), runId: 'run1' };
-                    fetch('http://127.0.0.1:7242/ingest/cc130dc8-453b-402a-adc9-30e483adfe54', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pl) }).catch(function() {});
-                };
-                // #endregion
                 $.get('@Url.Action("GetCustomerPaymentInfo", "Payment")', { customerId: input })
                     .done(function(data) {
-                        _logPayload('H5', 'done', { found: data.found, message: data.message });
                         if (data.found) {
                             $('#customerId').val(data.customerId);
                             $('#customerIdInput').val(data.customerId);
@@ -403,6 +396,22 @@
                                 $scheduleSelect.find('option:first').text('No due installments');
                             } else {
                                 $scheduleSelect.find('option:first').text('Select Installment');
+                                var totalDueSurcharge = parseFloat(data.totalDueSurcharge) || 0;
+                                if (totalDueSurcharge > 0) {
+                                    var surchargeOpt = $('<option></option>')
+                                        .val('SURCHARGE_PAYMENT')
+                                        .text('Surcharge Payment - PKR ' + formatCurrency(totalDueSurcharge))
+                                        .data('amount', totalDueSurcharge)
+                                        .data('total', totalDueSurcharge)
+                                        .data('paid', 0)
+                                        .data('description', 'Surcharge Payment')
+                                        .data('duedate', '-')
+                                        .data('surchargeApplied', false)
+                                        .data('surchargeRate', 0)
+                                        .data('isOverdue', false)
+                                        .data('isSurchargePayment', true);
+                                    $scheduleSelect.append(surchargeOpt);
+                                }
                                 schedulesData.forEach(function(s) {
                                     var outstandingLabel = (s.isOverdue ? ' (Outstanding)' : '');
                                     var optText = '[' + (s.planName || '') + '] Installment #' + (s.installmentNo != null ? s.installmentNo : 'N/A') + ' - Due ' + (s.dueDate || '') + ' - PKR ' + formatCurrency(s.outstanding) + outstandingLabel;
@@ -416,7 +425,8 @@
                                         .data('duedate', s.dueDate)
                                         .data('surchargeApplied', s.surchargeApplied)
                                         .data('surchargeRate', s.surchargeRate)
-                                        .data('isOverdue', s.isOverdue);
+                                        .data('isOverdue', s.isOverdue)
+                                        .data('isSurchargePayment', false);
                                     $scheduleSelect.append(opt);
                                 });
                                 var preSel = $('#preSelectedScheduleId').val();
@@ -430,8 +440,6 @@
                         }
                     })
                     .fail(function(jqXHR, textStatus, errorThrown) {
-                        var rt = (jqXHR && jqXHR.responseText) ? String(jqXHR.responseText).substring(0, 500) : '';
-                        _logPayload('H2', 'fail', { status: jqXHR && jqXHR.status, statusText: jqXHR && jqXHR.statusText, textStatus: textStatus, errorThrown: errorThrown, responsePreview: rt });
                         $msg.addClass('text-danger').text('Search failed. Please try again.');
                     })
                     .always(function() {
@@ -464,6 +472,7 @@
                 var surchargeApplied = selected.data('surchargeApplied');
                 var surchargeRate = selected.data('surchargeRate');
                 var isOverdue = selected.data('isOverdue');
+                var isSurchargePayment = selected.data('isSurchargePayment') === true;
 
                 $('#scheduleInfo').show();
                 $('#infoDescription').text(description || '-');
@@ -472,7 +481,7 @@
                 $('#infoTotal').text('PKR ' + formatCurrency(total));
                 $('#infoPaid').text('PKR ' + formatCurrency(paid));
 
-                if (surchargeApplied && isOverdue && surchargeRate > 0) {
+                if (!isSurchargePayment && surchargeApplied && isOverdue && surchargeRate > 0) {
                     var surchargeAmount = total * surchargeRate;
                     var totalWithSurcharge = total + surchargeAmount;
                     $('#surchargeWarning').show();
@@ -485,7 +494,7 @@
                 $('#amountValidationError').hide().removeClass('text-danger').text('');
                 if (amount > 0) {
                     $('#amount').val(Math.round(amount));
-                    $('#amountHint').text('Total Due: PKR ' + formatCurrency(amount) + '. You can enter a partial amount; must not exceed this.');
+                    $('#amountHint').text((isSurchargePayment ? 'Total Due Surcharge: PKR ' : 'Total Due: PKR ') + formatCurrency(amount) + '. You can enter a partial amount; must not exceed this.');
                 }
                 updateStatusOptions();
                 setSubmitState();
@@ -494,8 +503,15 @@
             function updateStatusOptions() {
                 var maxDue = parseFloat($('#scheduleId').find('option:selected').data('amount')) || 0;
                 var amount = parseWhole($('#amount').val());
+                var isSurchargePayment = $('#scheduleId').val() === 'SURCHARGE_PAYMENT';
                 var $status = $('#status');
                 $status.find('option').prop('disabled', false).end().removeClass('is-invalid');
+                if (isSurchargePayment) {
+                    $status.val('Surcharge Paid');
+                    $status.find('option:not([value="Surcharge Paid"])').prop('disabled', true);
+                    $('#statusHint').text('Surcharge payment always uses status: Surcharge Paid.');
+                    return;
+                }
                 if (maxDue <= 0) return;
                 var isFullPayment = (amount >= maxDue);
                 if (isFullPayment) {
@@ -548,10 +564,11 @@
                 var amount = parseWhole($('#amount').val());
                 var addExtraPayment = $('#addExtraPayment').is(':checked');
                 var extraAmount = parseWhole($('#extraAmount').val());
+                var isSurchargePayment = $('#scheduleId').val() === 'SURCHARGE_PAYMENT';
                 if (maxDue > 0 && amount > maxDue) {
                     e.preventDefault();
                     $('#amountValidationError').css('display', 'block').addClass('text-danger')
-                        .text('Amount must not exceed Total Due (PKR ' + formatCurrency(maxDue) + ').');
+                        .text((isSurchargePayment ? 'Amount must not exceed Total Due Surcharge (PKR ' : 'Amount must not exceed Total Due (PKR ') + formatCurrency(maxDue) + ').');
                     $('#amount').addClass('is-invalid').focus();
                     return false;
                 }

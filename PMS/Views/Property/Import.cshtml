@@ -33,17 +33,15 @@
                             <li>Data starts from row 2</li>
                         </ul>
 
-                        <h6 class="text-primary mt-3">Columns Sequence (A to I):</h6>
+                        <h6 class="text-primary mt-3">Columns sequence (A to G, optional ProjectID in column A):</h6>
                         <ol>
-                            <li><strong>SubProject</strong> - Sub project name (required)</li>
-                            <li><strong>Block</strong> - Block identifier (required)</li>
+                            <li><strong>Tower</strong> - Tower identifier (required)</li>
                             <li><strong>Size</strong> - Property size (required)</li>
                             <li><strong>Unit No</strong> - Unit number (required)</li>
                             <li><strong>Floor</strong> - Floor (optional, e.g. G, 1, 2, Basement)</li>
-                            <li><strong>Category/Type</strong> - Category/type (required)</li>
-                            <li><strong>PropertyType</strong> - Type of property (optional)</li>
+                            <li><strong>Unit Type (Category)</strong> - Unit type / category (required)</li>
                             <li><strong>Additional Info</strong> - Additional notes (optional)</li>
-                            <li><strong>Street</strong> - Street name (optional)</li>
+                            <li><strong>Street</strong> - Street (optional)</li>
                         </ol>
                     </div>
                     <div class="col-md-6">
@@ -52,28 +50,24 @@
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>SubProject</th>
-                                        <th>Block</th>
+                                        <th>Tower</th>
                                         <th>Size</th>
                                         <th>Unit No</th>
                                         <th>Floor</th>
-                                        <th>Category/Type</th>
-                                        <th>PropertyType</th>
+                                        <th>Unit Type (Category)</th>
                                         <th>Additional Info</th>
                                         <th>Street</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>Phase 1</td>
                                         <td>A</td>
                                         <td>10 Marla</td>
                                         <td>1</td>
                                         <td>G</td>
                                         <td>Corner</td>
-                                        <td>Plot</td>
                                         <td>Main Street Plot</td>
-                                        <td>Main Street</td>
+                                        <td></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -90,8 +84,8 @@
                                 <li>Dealer must be selected before upload</li>
                                 <li>All imported properties will be assigned to the selected dealer</li>
                                 <li>CreatedAt will be set automatically</li>
-                                <li>Duplicate properties (same selected project + Unit No + Block) will be skipped</li>
-                                <li>SubProject from file is stored with Additional Info for traceability</li>
+                                <li>Duplicate properties (same selected project + Unit No + Tower) will be skipped</li>
+                                <li>SubProject is selected on this page and applied to all imported rows</li>
                             </ul>
                         </div>
                     </div>
@@ -113,7 +107,7 @@
                     @Html.AntiForgeryToken()
                     
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label for="projectId" class="form-label">Project *</label>
                                 <select class="form-select" id="projectId" name="projectId" required>
@@ -132,7 +126,24 @@
                                 <span class="text-danger field-validation-valid" data-valmsg-for="projectId" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="subProject" class="form-label">SubProject *</label>
+                                <select class="form-select" id="subProject" name="subProject" required disabled>
+                                    @if (!string.IsNullOrWhiteSpace((string?)ViewBag.SelectedSubProject))
+                                    {
+                                        <option value="@ViewBag.SelectedSubProject" selected>@ViewBag.SelectedSubProject</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="">Select project first</option>
+                                    }
+                                </select>
+                                <small class="form-text text-muted">Selected subproject will be applied to all imported properties</small>
+                                <span class="text-danger field-validation-valid" data-valmsg-for="subProject" data-valmsg-replace="true"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label for="dealerId" class="form-label">Dealer *</label>
                                 <select class="form-select" id="dealerId" name="dealerId" required>
@@ -151,7 +162,7 @@
                                 <span class="text-danger field-validation-valid" data-valmsg-for="dealerId" data-valmsg-replace="true"></span>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label for="file" class="form-label">Select File (CSV or Excel) *</label>
                                 <input type="file" class="form-control" id="file" name="file" accept=".csv,.xlsx,.xls" required />
@@ -173,6 +184,55 @@
 
 @section Scripts {
     <script>
+        function loadSubProjectsForImport(projectId, selectedSubProject) {
+            var $subProject = $('#subProject');
+            $subProject.html('<option value="">Select SubProject</option>').prop('disabled', !projectId);
+            if (!projectId) {
+                $subProject.html('<option value="">Select project first</option>').prop('disabled', true);
+                return;
+            }
+
+            $.get('@Url.Action("GetProjectDetails", "Property")', { projectId: projectId })
+                .done(function(resp) {
+                    var subProjects = (resp && resp.subProjects) ? resp.subProjects : [];
+                    if (!subProjects.length) {
+                        $subProject.html('<option value="">No subprojects found for project</option>').prop('disabled', true);
+                        return;
+                    }
+
+                    var selectedNormalized = (selectedSubProject || '').toString().trim().toLowerCase();
+                    var matched = false;
+                    subProjects.forEach(function(sp) {
+                        var value = (sp || '').toString();
+                        var opt = $('<option></option>').val(value).text(value);
+                        if (!matched && value.trim().toLowerCase() === selectedNormalized) {
+                            opt.prop('selected', true);
+                            matched = true;
+                        }
+                        $subProject.append(opt);
+                    });
+                    if (!matched && selectedSubProject) {
+                        $subProject.append($('<option></option>').val(selectedSubProject).text(selectedSubProject + ' (current)').prop('selected', true));
+                    }
+                    $subProject.prop('disabled', false);
+                })
+                .fail(function() {
+                    $subProject.html('<option value="">Could not load subprojects</option>').prop('disabled', true);
+                });
+        }
+
+        $('#projectId').on('change', function() {
+            loadSubProjectsForImport($(this).val(), '');
+        });
+
+        $(function() {
+            var initialProjectId = $('#projectId').val();
+            var initialSubProject = '@(ViewBag.SelectedSubProject ?? "")';
+            if (initialProjectId) {
+                loadSubProjectsForImport(initialProjectId, initialSubProject);
+            }
+        });
+
         // File size validation
         document.getElementById('file').addEventListener('change', function(e) {
             var file = e.target.files[0];

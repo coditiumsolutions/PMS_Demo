@@ -82,6 +82,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="jointowners-tab" data-bs-toggle="tab" data-bs-target="#jointowners" type="button" role="tab" aria-controls="jointowners" aria-selected="false">
+                            <i class="fas fa-users me-2"></i>JointOwners
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab" aria-controls="attachments" aria-selected="false">
                             <i class="fas fa-paperclip me-2"></i>Attachments
                         </button>
@@ -136,7 +141,7 @@
                     <div class="col-md-6 mb-2">
                         <div class="detail-field">
                             <label><i class="fas fa-birthday-cake me-2"></i>Date of Birth</label>
-                            <p>@(Model.DOB?.ToString("MMMM dd, yyyy") ?? "N/A")</p>
+                            <p>@(Model.DOB?.ToString("dd-MM-yyyy") ?? "N/A")</p>
                         </div>
                     </div>
                     <div class="col-md-6 mb-2">
@@ -649,6 +654,68 @@
                         }
                     </div>
 
+                    <!-- Joint Owners Tab -->
+                    <div class="tab-pane fade" id="jointowners" role="tabpanel" aria-labelledby="jointowners-tab">
+                        @Html.AntiForgeryToken()
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Joint Owner Name *</label>
+                                <input type="text" id="jointOwnerName" class="form-control" placeholder="Enter joint owner name" />
+                                <small class="text-muted">Letters, spaces, dots and hyphens only.</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Son /D/W/o</label>
+                                <input type="text" id="jointOwnerFatherName" class="form-control" placeholder="Enter father name" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">CNIC *</label>
+                                <input type="text" id="jointOwnerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Contact *</label>
+                                <input type="text" id="jointOwnerContact" class="form-control" placeholder="03XXXXXXXXX" />
+                                <small class="text-muted">Must be 11 to 13 digits.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Address</label>
+                                <input type="text" id="jointOwnerAddress" class="form-control" placeholder="Address" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Percentage</label>
+                                <input type="number" id="jointOwnerPercentage" class="form-control" min="0" max="100" step="0.01" placeholder="e.g. 50" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Details</label>
+                                <textarea id="jointOwnerDetails" class="form-control" rows="2" placeholder="Any additional details"></textarea>
+                            </div>
+                            <div class="col-md-12">
+                                <button type="button" class="btn btn-primary" onclick="addJointOwnerFromDetails()">
+                                    <i class="fas fa-plus me-2"></i>Add Joint Owner
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover" id="jointOwnersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Son /D/W/o</th>
+                                        <th>CNIC</th>
+                                        <th>Contact</th>
+                                        <th>Percentage</th>
+                                        <th>Address</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" class="text-muted text-center">Loading joint owners...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- Attachments Tab -->
                     <div class="tab-pane fade" id="attachments" role="tabpanel" aria-labelledby="attachments-tab">
                         <div class="row">
@@ -909,10 +976,16 @@
             $('#attachments-tab').on('shown.bs.tab', function() {
                 loadAttachments();
             });
+            $('#jointowners-tab').on('shown.bs.tab', function() {
+                loadJointOwners();
+            });
 
             // Load attachments on page load if tab is active
             if ($('#attachments-tab').hasClass('active')) {
                 loadAttachments();
+            }
+            if ($('#jointowners-tab').hasClass('active')) {
+                loadJointOwners();
             }
 
             // Handle form submission
@@ -998,6 +1071,119 @@
         }
 
         var customerId = '@Model.CustomerID';
+        function normalizeDigits(value) {
+            return (value || '').replace(/\D/g, '');
+        }
+        function formatCnicValue(value) {
+            var raw = normalizeDigits(value);
+            if (raw.length <= 5) return raw;
+            if (raw.length <= 12) return raw.slice(0, 5) + '-' + raw.slice(5);
+            return raw.slice(0, 5) + '-' + raw.slice(5, 12) + '-' + raw.slice(12, 13);
+        }
+        function validateJointOwnerInputs() {
+            var name = ($('#jointOwnerName').val() || '').trim();
+            var cnic = ($('#jointOwnerCNIC').val() || '').trim();
+            var contact = ($('#jointOwnerContact').val() || '').trim();
+            var nameOk = /^[a-zA-Z\s\.\-]+$/.test(name);
+            var cnicOk = /^\d{5}-\d{7}-\d$/.test(cnic);
+            var contactDigits = normalizeDigits(contact);
+            var contactOk = contactDigits.length >= 11 && contactDigits.length <= 13;
+            $('#jointOwnerName, #jointOwnerCNIC, #jointOwnerContact').removeClass('is-invalid');
+            if (!name || !nameOk) {
+                $('#jointOwnerName').addClass('is-invalid');
+                return { isValid: false, message: 'Joint owner name is required and must contain letters only.' };
+            }
+            if (!cnicOk) {
+                $('#jointOwnerCNIC').addClass('is-invalid');
+                return { isValid: false, message: 'CNIC is required in XXXXX-XXXXXXX-X format.' };
+            }
+            if (!contactOk) {
+                $('#jointOwnerContact').addClass('is-invalid');
+                return { isValid: false, message: 'Contact number is required and must be between 11 and 13 digits.' };
+            }
+            return { isValid: true };
+        }
+
+        function loadJointOwners() {
+            $.ajax({
+                url: '@Url.Action("GetJointOwners", "Customer")',
+                method: 'GET',
+                data: { customerId: customerId },
+                success: function(response) {
+                    var tbody = $('#jointOwnersTable tbody');
+                    tbody.empty();
+                    if (!response.success) {
+                        tbody.html('<tr><td colspan="7" class="text-danger text-center">' + (response.message || 'Failed to load joint owners.') + '</td></tr>');
+                        return;
+                    }
+                    if (!response.jointOwners || response.jointOwners.length === 0) {
+                        tbody.html('<tr><td colspan="7" class="text-muted text-center">No joint owners added yet.</td></tr>');
+                        return;
+                    }
+                    response.jointOwners.forEach(function(item) {
+                        tbody.append('<tr>' +
+                            '<td>' + (item.jointOwnerName || '—') + '</td>' +
+                            '<td>' + (item.fatherName || '—') + '</td>' +
+                            '<td>' + (item.cnic || '—') + '</td>' +
+                            '<td>' + (item.contact || '—') + '</td>' +
+                            '<td>' + (item.percentage != null ? item.percentage : '—') + '</td>' +
+                            '<td>' + (item.address || '—') + '</td>' +
+                            '<td>' + (item.createdAt || '—') + '</td>' +
+                        '</tr>');
+                    });
+                },
+                error: function() {
+                    $('#jointOwnersTable tbody').html('<tr><td colspan="7" class="text-danger text-center">Error loading joint owners.</td></tr>');
+                }
+            });
+        }
+
+        function addJointOwnerFromDetails() {
+            var jointOwnerValidation = validateJointOwnerInputs();
+            if (!jointOwnerValidation.isValid) {
+                alert(jointOwnerValidation.message);
+                return;
+            }
+            var token = $('#jointowners input[name="__RequestVerificationToken"]').val();
+            $.ajax({
+                url: '@Url.Action("AddJointOwner", "Customer")',
+                method: 'POST',
+                data: {
+                    __RequestVerificationToken: token,
+                    customerId: customerId,
+                    jointOwnerName: $('#jointOwnerName').val(),
+                    fatherName: $('#jointOwnerFatherName').val(),
+                    cnic: $('#jointOwnerCNIC').val(),
+                    contact: $('#jointOwnerContact').val(),
+                    address: $('#jointOwnerAddress').val(),
+                    percentage: $('#jointOwnerPercentage').val(),
+                    details: $('#jointOwnerDetails').val()
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert(response.message || 'Unable to add joint owner.');
+                        return;
+                    }
+                    $('#jointOwnerName, #jointOwnerFatherName, #jointOwnerCNIC, #jointOwnerContact, #jointOwnerAddress, #jointOwnerPercentage, #jointOwnerDetails').val('');
+                    loadJointOwners();
+                },
+                error: function() {
+                    alert('Error while adding joint owner.');
+                }
+            });
+        }
+        $('#jointOwnerName').on('input', function() {
+            this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+        });
+        $('#jointOwnerFatherName').on('input', function() {
+            this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+        });
+        $('#jointOwnerContact').on('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        $('#jointOwnerCNIC').on('input', function() {
+            this.value = formatCnicValue(this.value);
+        });
 
         // Load attachments
         function loadAttachments() {

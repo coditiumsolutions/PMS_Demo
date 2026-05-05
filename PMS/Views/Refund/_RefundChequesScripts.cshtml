@@ -1,0 +1,178 @@
+<script>
+(function () {
+    var root = document.querySelector('.refund-cheques-panel');
+    if (!root) return;
+    var refundId = root.getAttribute('data-refund-id') || '';
+    var cap = parseFloat(root.getAttribute('data-cap') || '0', 10) || 0;
+    var canManage = root.getAttribute('data-can-manage') === 'true';
+    var tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+    function getToken() { return tokenEl ? tokenEl.value : ''; }
+    var urlList = '@Url.Action("GetRefundCheques", "Refund")';
+    var urlAdd = '@Url.Action("AddRefundCheque", "Refund")';
+    var urlUpd = '@Url.Action("UpdateRefundCheque", "Refund")';
+    var urlDel = '@Url.Action("DeleteRefundCheque", "Refund")';
+
+    function showRcAlert(kind, msg) {
+        var a = document.getElementById('rcAlert');
+        if (!a) return;
+        a.className = 'alert mb-3 py-2 small ' + (kind === 'danger' ? 'alert-danger' : 'alert-success');
+        a.textContent = msg;
+        a.classList.remove('d-none');
+        if (kind === 'success') setTimeout(function () { a.classList.add('d-none'); }, 3500);
+    }
+
+    function fmtMoney(n) {
+        if (typeof n !== 'number' || isNaN(n)) n = 0;
+        return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderTotals(total, serverCap) {
+        var el = document.getElementById('rcTotals');
+        if (!el) return;
+        var c = typeof serverCap === 'number' ? serverCap : cap;
+        var ok = total <= c + 0.000001;
+        el.innerHTML = '<span class="' + (ok ? 'text-success' : 'text-danger') + '">Cheques total: PKR ' + fmtMoney(total) + '</span>' +
+            ' <span class="text-muted">/ max PKR ' + fmtMoney(c) + '</span>';
+    }
+
+    function loadCheques() {
+        var tbody = document.getElementById('rcChequesTbody');
+        if (!tbody || !refundId) return;
+        tbody.innerHTML = '<tr><td colspan="' + (canManage ? 7 : 6) + '" class="text-muted small">Loading…</td></tr>';
+        $.getJSON(urlList, { refundId: refundId })
+            .done(function (res) {
+                if (!res.success) {
+                    tbody.innerHTML = '<tr><td colspan="' + (canManage ? 7 : 6) + '" class="text-danger small">' + (res.message || 'Failed to load') + '</td></tr>';
+                    return;
+                }
+                cap = typeof res.cap === 'number' ? res.cap : cap;
+                var items = res.items || [];
+                var total = typeof res.total === 'number' ? res.total : 0;
+                renderTotals(total, cap);
+                tbody.innerHTML = '';
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="' + (canManage ? 7 : 6) + '" class="text-muted small">No cheques recorded.</td></tr>';
+                    return;
+                }
+                items.forEach(function (row, idx) {
+                    var tr = document.createElement('tr');
+                    var amt = typeof row.amount === 'number' ? row.amount : parseFloat(row.amount);
+                    var actions = '';
+                    if (canManage) {
+                        actions = '<td class="text-nowrap">' +
+                            '<button type="button" class="btn btn-sm btn-outline-primary me-1 rc-edit" data-id="' + row.id + '">Edit</button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger rc-del" data-id="' + row.id + '">Delete</button></td>';
+                    }
+                    tr.innerHTML = '<td>' + (idx + 1) + '</td>' +
+                        '<td>' + escapeHtml(row.chequeNo || '') + '</td>' +
+                        '<td>' + escapeHtml(row.chequeDate || '') + '</td>' +
+                        '<td class="text-end">' + fmtMoney(amt) + '</td>' +
+                        '<td>' + escapeHtml(row.bank || '—') + '</td>' +
+                        '<td class="small">' + escapeHtml(row.details || '—') + '</td>' + actions;
+                    tbody.appendChild(tr);
+                });
+                $(tbody).find('.rc-edit').on('click', function () {
+                    var id = $(this).data('id');
+                    var row = items.find(function (x) { return x.id == id; });
+                    if (!row) return;
+                    openModalEdit(row);
+                });
+                $(tbody).find('.rc-del').on('click', function () {
+                    var id = $(this).data('id');
+                    if (!confirm('Remove this cheque?')) return;
+                    $.post(urlDel, { __RequestVerificationToken: getToken(), id: id })
+                        .done(function (r) {
+                            if (r.success) { showRcAlert('success', r.message || 'Removed.'); loadCheques(); }
+                            else { showRcAlert('danger', r.message || 'Delete failed'); }
+                        })
+                        .fail(function () { showRcAlert('danger', 'Delete failed.'); });
+                });
+            })
+            .fail(function () {
+                tbody.innerHTML = '<tr><td colspan="' + (canManage ? 7 : 6) + '" class="text-danger small">Could not load cheques.</td></tr>';
+            });
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function openModalAdd() {
+        document.getElementById('rcChequeModalTitle').textContent = 'Add cheque';
+        document.getElementById('rcFieldId').value = '0';
+        document.getElementById('rcFieldChequeNo').value = '';
+        document.getElementById('rcFieldChequeDate').value = '';
+        document.getElementById('rcFieldAmount').value = '';
+        document.getElementById('rcFieldBank').value = '';
+        document.getElementById('rcFieldDetails').value = '';
+    }
+
+    function openModalEdit(row) {
+        document.getElementById('rcChequeModalTitle').textContent = 'Edit cheque';
+        document.getElementById('rcFieldId').value = String(row.id);
+        document.getElementById('rcFieldChequeNo').value = row.chequeNo || '';
+        document.getElementById('rcFieldChequeDate').value = row.chequeDate || '';
+        var amt = typeof row.amount === 'number' ? row.amount : parseFloat(row.amount, 10);
+        document.getElementById('rcFieldAmount').value = isNaN(amt) ? '' : amt.toFixed(2);
+        document.getElementById('rcFieldBank').value = row.bank || '';
+        document.getElementById('rcFieldDetails').value = row.details || '';
+        var m = document.getElementById('rcChequeModal');
+        if (m && window.bootstrap && bootstrap.Modal) bootstrap.Modal.getOrCreateInstance(m).show();
+    }
+
+    function saveCheque() {
+        var id = parseInt(document.getElementById('rcFieldId').value, 10) || 0;
+        var chequeNo = document.getElementById('rcFieldChequeNo').value.trim();
+        var chequeDate = document.getElementById('rcFieldChequeDate').value;
+        var amount = parseFloat(document.getElementById('rcFieldAmount').value, 10);
+        var bank = document.getElementById('rcFieldBank').value;
+        var details = document.getElementById('rcFieldDetails').value;
+        if (!chequeNo) { showRcAlert('danger', 'Cheque number is required.'); return; }
+        if (!chequeDate) { showRcAlert('danger', 'Cheque date is required.'); return; }
+        if (!(amount > 0)) { showRcAlert('danger', 'Enter a valid amount greater than zero.'); return; }
+
+        var payload = {
+            __RequestVerificationToken: getToken(),
+            chequeNo: chequeNo,
+            chequeDate: chequeDate,
+            amount: amount,
+            bank: bank,
+            details: details
+        };
+        var url = urlAdd;
+        if (id > 0) {
+            url = urlUpd;
+            payload.id = id;
+        } else {
+            payload.refundId = refundId;
+        }
+        $('#rcModalSave').prop('disabled', true);
+        $.post(url, payload)
+            .done(function (r) {
+                if (r.success) {
+                    showRcAlert('success', r.message || 'Saved.');
+                    var m = document.getElementById('rcChequeModal');
+                    if (m && window.bootstrap && bootstrap.Modal) bootstrap.Modal.getOrCreateInstance(m).hide();
+                    loadCheques();
+                } else {
+                    showRcAlert('danger', r.message || 'Save failed');
+                }
+            })
+            .fail(function (xhr) {
+                var msg = 'Save failed.';
+                if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                showRcAlert('danger', msg);
+            })
+            .always(function () { $('#rcModalSave').prop('disabled', false); });
+    }
+
+    $('#rcChequeModal').on('show.bs.modal', function (e) {
+        if (e.relatedTarget && e.relatedTarget.id === 'rcBtnAdd') openModalAdd();
+    });
+    document.getElementById('rcModalSave').addEventListener('click', saveCheque);
+    loadCheques();
+})();
+</script>

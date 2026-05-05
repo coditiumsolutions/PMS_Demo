@@ -57,13 +57,13 @@
                 <thead class="table-dark">
                     <tr>
                         <th>Property ID</th>
-                        <th>Unit No</th>
                         <th>Project</th>
                         <th>SubProject</th>
-                        <th>Block</th>
+                        <th>Tower</th>
                         <th>Floor</th>
-                        <th>Type</th>
+                        <th>Unit No</th>
                         <th>Size</th>
+                        <th>Unit Type (Category)</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -74,13 +74,6 @@
                         <tr>
                             <td>
                                 <span class="badge bg-secondary">@property.PropertyID</span>
-                            </td>
-                            <td>
-                                <strong>@property.PlotNo</strong>
-                                @if (!string.IsNullOrEmpty(property.Street))
-                                {
-                                    <br><small class="text-muted">@property.Street</small>
-                                }
                             </td>
                             <td>
                                 @if (property.Project != null)
@@ -96,9 +89,10 @@
                             <td>@property.Block</td>
                             <td>@(property.Floor ?? "—")</td>
                             <td>
-                                <span class="badge bg-primary">@property.PropertyType</span>
+                                <strong>@property.PlotNo</strong>
                             </td>
                             <td>@property.Size</td>
+                            <td>@(string.IsNullOrWhiteSpace(property.PlotType) ? "—" : property.PlotType)</td>
                             <td>
                                 <span class="badge @(property.Status == "Available" ? "bg-success" : property.Status == "Allotted" ? "bg-warning" : "bg-danger")">
                                     @property.Status
@@ -138,7 +132,7 @@
         $(document).ready(function() {
             $('#propertiesTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 1, "asc" ]],
+                "order": [[ 5, "asc" ]],
                 "columnDefs": [
                     { "orderable": false, "targets": 9 }
                 ]

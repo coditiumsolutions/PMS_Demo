@@ -57,6 +57,9 @@ namespace PMS.Models
         [StringLength(150)]
         public string? Email { get; set; }
 
+        [StringLength(100)]
+        public string? FormNo { get; set; }
+
         [Required(ErrorMessage = "Mailing Address is required.")]
         [StringLength(255)]
         public string? MailingAddress { get; set; }
@@ -137,6 +140,9 @@ namespace PMS.Models
         public virtual ICollection<Refund> Refunds { get; set; } = new List<Refund>();
         public virtual ICollection<Transfer> Transfers { get; set; } = new List<Transfer>();
         public virtual ICollection<NDC> NDCs { get; set; } = new List<NDC>();
+        public virtual ICollection<JointOwner> JointOwners { get; set; } = new List<JointOwner>();
+        public virtual ICollection<TransferJointOwner> TransferJointOwners { get; set; } = new List<TransferJointOwner>();
+        public virtual ICollection<DuplicateFileTransfer> DuplicateFileTransfers { get; set; } = new List<DuplicateFileTransfer>();
 
         /// <summary>Either CNIC format 5-7-1 (e.g. 11111-1111111-1) or Passport No with at least 5 characters.</summary>
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -172,13 +178,6 @@ namespace PMS.Models
             var cnicValid = Regex.IsMatch(cnicTrimmed, @"^\d{5}-\d{7}-\d$");
             if (!cnicValid)
                 yield return new ValidationResult("National ID (CNIC) is required and must be in format XXXXX-XXXXXXX-X (5 digits, hyphen, 7 digits, hyphen, 1 digit).", new[] { nameof(CNIC) });
-            // Date of Birth: must be at least 16 years ago
-            if (DOB.HasValue)
-            {
-                var minDob = DateTime.Today.AddYears(-16);
-                if (DOB.Value.Date > minDob)
-                    yield return new ValidationResult("Date of Birth must be at least 16 years ago (customer must be 16 or older).", new[] { nameof(DOB) });
-            }
             // Dealer: if IsDealerRegistered=1 then DealerID required; if 0 then DealerName required
             if (IsDealerRegistered == 1)
             {

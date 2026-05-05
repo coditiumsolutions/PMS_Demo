@@ -596,6 +596,11 @@ namespace PMS.Controllers
                 return NotFound();
             }
 
+            ViewBag.Attachments = await _context.Attachments.AsNoTracking()
+                .Where(a => a.RefType == "Allotment" && a.RefID == id)
+                .OrderByDescending(a => a.UploadedAt)
+                .ToListAsync();
+
             return View(allotment);
         }
 

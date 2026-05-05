@@ -97,13 +97,13 @@
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <div class="detail-field">
-                                            <label><i class="fas fa-road me-2"></i>Street</label>
-                                            <p>@(Model.Street ?? "N/A")</p>
+                                            <label><i class="fas fa-sitemap me-2"></i>Subproject</label>
+                                            <p>@(string.IsNullOrWhiteSpace(Model.SubProject) ? "—" : Model.SubProject)</p>
                                         </div>
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <div class="detail-field">
-                                            <label><i class="fas fa-th-large me-2"></i>Block</label>
+                                            <label><i class="fas fa-th-large me-2"></i>Tower</label>
                                             <p>@Model.Block</p>
                                         </div>
                                     </div>
@@ -115,14 +115,8 @@
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <div class="detail-field">
-                                            <label><i class="fas fa-tag me-2"></i>Plot Type</label>
+                                            <label><i class="fas fa-tag me-2"></i>Unit Type (Category)</label>
                                             <p>@Model.PlotType</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mb-2">
-                                        <div class="detail-field">
-                                            <label><i class="fas fa-home me-2"></i>Property Type</label>
-                                            <p>@Model.PropertyType</p>
                                         </div>
                                     </div>
                                     <div class="col-md-4 mb-2">

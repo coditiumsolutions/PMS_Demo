@@ -52,6 +52,14 @@
         <div class="tile-label">Transfer Fee</div>
     </a>
 
+    <!-- Duplicate file transfer (fee requests) — next to Transfer / Transfer Fee -->
+    <a href="@Url.Action("Index", "DuplicateFileTransfer")" class="workspace-tile" style="border: 2px solid #0d6efd;">
+        <div class="tile-icon" style="color:#0d6efd;">
+            <i class="fas fa-copy"></i>
+        </div>
+        <div class="tile-label">Duplicate file transfer</div>
+    </a>
+
     <!-- NDC Tile -->
     <a href="@Url.Action("Index", "NDC")" class="workspace-tile">
         <div class="tile-icon">
@@ -130,6 +138,14 @@
             <i class="fas fa-undo-alt"></i>
         </div>
         <div class="tile-label">Refunds</div>
+    </a>
+
+    <!-- Waiver Tile -->
+    <a href="@Url.Action("Index", "Waiver")" class="workspace-tile" style="border: 2px solid #f59e0b;">
+        <div class="tile-icon" style="color:#f59e0b;">
+            <i class="fas fa-percent"></i>
+        </div>
+        <div class="tile-label">Waiver</div>
     </a>
 
     <!-- Payment Audit Tile -->

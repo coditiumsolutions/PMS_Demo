@@ -22,11 +22,13 @@ namespace PMS.Data
         public DbSet<PaymentPlan> PaymentPlans { get; set; }
         public DbSet<PaymentSchedule> PaymentSchedules { get; set; }
         public DbSet<Customer> Customers { get; set; }
+        public DbSet<JointOwner> JointOwners { get; set; }
         public DbSet<CustomerLog> CustomerLogs { get; set; }
         public DbSet<BlockingLog> BlockingLogs { get; set; }
 
         // Projects & Properties
         public DbSet<Project> Projects { get; set; }
+        public DbSet<ProjectSubProject> ProjectSubProjects { get; set; }
         public DbSet<Property> Properties { get; set; }
         public DbSet<Allotment> Allotments { get; set; }
         public DbSet<Balloting> Ballotings { get; set; }
@@ -37,6 +39,8 @@ namespace PMS.Data
         public DbSet<Penalty> Penalties { get; set; }
         public DbSet<Waiver> Waivers { get; set; }
         public DbSet<Refund> Refunds { get; set; }
+        public DbSet<RefundCheque> RefundCheques { get; set; }
+        public DbSet<DuplicateFileTransfer> DuplicateFileTransfers { get; set; }
 
         // Transfer & NDC
         public DbSet<Transfer> Transfers { get; set; }
@@ -67,6 +71,7 @@ namespace PMS.Data
         // Rentals (Organization-owned inventory rentals)
         public DbSet<Rental> Rentals { get; set; }
         public DbSet<RentalPayment> RentalPayments { get; set; }
+        public DbSet<TransferJointOwner> TransferJointOwners { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -135,6 +140,7 @@ namespace PMS.Data
                 entity.Property(e => e.CNIC).HasMaxLength(50).IsRequired(false);
                 entity.Property(e => e.Phone).HasMaxLength(50).IsRequired(false);
                 entity.Property(e => e.Email).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.FormNo).HasMaxLength(100).IsRequired(false);
                 entity.Property(e => e.ProjectID).HasMaxLength(10).IsRequired(false);
                 entity.Property(e => e.Size).HasMaxLength(100).IsRequired(false);
                 entity.Property(e => e.SubProject).HasMaxLength(100).IsRequired(false);
@@ -195,6 +201,7 @@ namespace PMS.Data
                 entity.Property(e => e.Gender).HasMaxLength(20);
                 entity.Property(e => e.Phone).HasMaxLength(50);
                 entity.Property(e => e.Email).HasMaxLength(150);
+                entity.Property(e => e.FormNo).HasMaxLength(100).IsRequired(false);
                 entity.Property(e => e.MailingAddress).HasMaxLength(255);
                 entity.Property(e => e.PermanentAddress).HasMaxLength(255);
                 entity.Property(e => e.City).HasMaxLength(100);
@@ -239,6 +246,54 @@ namespace PMS.Data
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
+            modelBuilder.Entity<JointOwner>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(10);
+                entity.Property(e => e.CustomerID).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.JointOwnerName).HasMaxLength(150).IsRequired();
+                entity.Property(e => e.FatherName).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.CNIC).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Contact).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Address).HasMaxLength(255).IsRequired(false);
+                entity.Property(e => e.Percentage).HasColumnType("decimal(5,2)").IsRequired(false);
+                entity.Property(e => e.CreatedBy).HasMaxLength(10).IsRequired(false);
+                entity.Property(e => e.ModifiedBy).HasMaxLength(10).IsRequired(false);
+                entity.Property(e => e.Details).HasColumnType("nvarchar(max)").IsRequired(false);
+
+                entity.HasOne(e => e.Customer)
+                      .WithMany(c => c.JointOwners)
+                      .HasForeignKey(e => e.CustomerID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TransferJointOwner>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(10);
+                entity.Property(e => e.TransferID).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.CustomerID).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.JointOwnerName).HasMaxLength(150).IsRequired();
+                entity.Property(e => e.FatherName).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.CNIC).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Contact).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Address).HasMaxLength(255).IsRequired(false);
+                entity.Property(e => e.Percentage).HasColumnType("decimal(5,2)").IsRequired(false);
+                entity.Property(e => e.CreatedBy).HasMaxLength(10).IsRequired(false);
+                entity.Property(e => e.ModifiedBy).HasMaxLength(10).IsRequired(false);
+                entity.Property(e => e.Details).HasColumnType("nvarchar(max)").IsRequired(false);
+
+                entity.HasOne(e => e.Transfer)
+                      .WithMany(t => t.TransferJointOwners)
+                      .HasForeignKey(e => e.TransferID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Customer)
+                      .WithMany(c => c.TransferJointOwners)
+                      .HasForeignKey(e => e.CustomerID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
             modelBuilder.Entity<BlockingLog>(entity =>
             {
                 entity.HasKey(e => e.BlockingLogID);
@@ -263,12 +318,29 @@ namespace PMS.Data
                 entity.HasKey(e => e.ProjectID);
                 entity.Property(e => e.ProjectID).HasMaxLength(10);
                 entity.Property(e => e.ProjectName).HasMaxLength(150);
-                entity.Property(e => e.Prefix).HasMaxLength(4);
+                entity.Property(e => e.Prefix).HasMaxLength(7);
                 entity.Property(e => e.Type).HasMaxLength(50);
                 entity.Property(e => e.Location).HasMaxLength(150);
                 entity.Property(e => e.Sizes).HasMaxLength(1000);
                 entity.Property(e => e.SubProjects).HasMaxLength(1000);
                 entity.Property(e => e.PropertyTypes).HasMaxLength(500);
+            });
+
+            modelBuilder.Entity<ProjectSubProject>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(10);
+                entity.Property(e => e.ProjectID).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.SubProjectName).HasMaxLength(150).IsRequired();
+                entity.Property(e => e.Prefix).HasMaxLength(7).IsRequired();
+
+                entity.HasIndex(e => new { e.ProjectID, e.SubProjectName }).IsUnique();
+                entity.HasIndex(e => new { e.ProjectID, e.Prefix }).IsUnique();
+
+                entity.HasOne(e => e.Project)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProjectID)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure Property
@@ -368,6 +440,7 @@ namespace PMS.Data
             // Configure Payment
             modelBuilder.Entity<Payment>(entity =>
             {
+                entity.ToTable(tb => tb.HasTrigger("TR_Payments_Metadata"));
                 entity.HasKey(e => e.PaymentID);
                 entity.Property(e => e.PaymentID).HasMaxLength(10);
                 entity.Property(e => e.ScheduleID).HasMaxLength(10);
@@ -481,6 +554,53 @@ namespace PMS.Data
                       .WithMany()
                       .HasForeignKey(e => e.CreatedBy)
                       .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasMany(e => e.RefundCheques)
+                      .WithOne(c => c.Refund)
+                      .HasForeignKey(c => c.RefundID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<RefundCheque>(entity =>
+            {
+                entity.ToTable("RefundCheques");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.RefundID).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.ChequeNo).HasMaxLength(100);
+                entity.Property(e => e.ChequeDate).HasColumnType("date");
+                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Bank).HasMaxLength(200).IsRequired(false);
+                entity.Property(e => e.Details).HasColumnType("nvarchar(max)").IsRequired(false);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.CreatedBy).HasColumnName("created_by").HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.ModifiedBy).HasColumnName("modified_by").HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+            });
+
+            modelBuilder.Entity<DuplicateFileTransfer>(entity =>
+            {
+                entity.ToTable("DuplicateFileTransfer");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.CustomerID).HasMaxLength(10).HasColumnType("char(10)").IsRequired();
+                entity.Property(e => e.CustomerName).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.CustomerCNIC).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.CreatedAt).HasColumnName("Created_at").IsRequired();
+                entity.Property(e => e.CreatedBy).HasColumnName("Created_by").HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.ModifiedBy).HasColumnName("Modified_by").HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.Status).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Comments).HasColumnType("nvarchar(max)").IsRequired(false);
+                entity.Property(e => e.FeeDue).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Property(e => e.FeePaid).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Property(e => e.ChallanID).HasMaxLength(100).IsRequired(false);
+                entity.Property(e => e.BankName).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.InstrumentNo).HasMaxLength(100).IsRequired(false);
+                entity.Property(e => e.DepositDate).HasColumnType("date").IsRequired(false);
+                entity.Property(e => e.PaymentMethod).HasMaxLength(100).IsRequired(false);
+
+                entity.HasOne(e => e.Customer)
+                      .WithMany(c => c.DuplicateFileTransfers)
+                      .HasForeignKey(e => e.CustomerID)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configure Transfer (customer file / ownership transfer)
@@ -501,6 +621,10 @@ namespace PMS.Data
                 entity.Property(e => e.BuyerDOB).HasColumnType("date");
                 entity.Property(e => e.SellerBiometric).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.BuyerBiometric).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.PaymentMethod).HasMaxLength(200).IsRequired(false);
+                entity.Property(e => e.BankName).HasMaxLength(200).IsRequired(false);
+                entity.Property(e => e.PaymentDetails).HasColumnType("nvarchar(max)").IsRequired(false);
+                entity.Property(e => e.PaymentDate).HasColumnType("date").IsRequired(false);
 
                 entity.HasOne(e => e.Customer)
                       .WithMany(c => c.Transfers)

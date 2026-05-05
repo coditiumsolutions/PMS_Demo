@@ -85,6 +85,12 @@
                     </div>
 
                     <div class="mb-3">
+                        <label asp-for="FormNo" class="form-label">Form No</label>
+                        <input asp-for="FormNo" class="form-control" placeholder="Enter form number (optional)" />
+                        <span asp-validation-for="FormNo" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
                         <label asp-for="ProjectID" class="form-label">Project</label>
                         <select asp-for="ProjectID" class="form-select" id="projectSelect">
                             <option value="">-- Select Project --</option>

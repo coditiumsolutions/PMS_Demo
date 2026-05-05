@@ -1253,7 +1253,7 @@
                             var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
                             var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
                             var isCustomersSectionActive = currentController == "Registration" || currentController == "Customer";
-                            var isOperationsSectionActive = currentController == "Transfer" || currentController == "TransferFee" || currentController == "NDC" || currentController == "Refund" || currentController == "Waiver" || currentController == "Rental";
+                            var isOperationsSectionActive = currentController == "Transfer" || currentController == "TransferFee" || currentController == "NDC" || currentController == "Refund" || currentController == "DuplicateFileTransfer" || currentController == "Waiver" || currentController == "Rental";
                             var isPropertySectionActive = currentController == "Property" || currentController == "Project";
                             var isPaymentsSectionActive = currentController == "Payment" && (currentAction == "CustomerPayments" || currentAction == "PaymentPlans" || currentAction == "CreatePaymentPlan");
                             var isSalesSectionActive = currentController == "SalesInquiry" || currentController == "Ticket";
@@ -1318,6 +1318,12 @@
                                     <a class="nav-link @(currentController == "Refund" ? "active" : "")"
                                        asp-controller="Refund" asp-action="Index">
                                         <i class="fas fa-undo-alt me-2"></i>Refund
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "DuplicateFileTransfer" ? "active" : "")"
+                                       asp-controller="DuplicateFileTransfer" asp-action="Index">
+                                        <i class="fas fa-copy me-2"></i>Duplicate File
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -1541,24 +1547,34 @@
 
                         }
                         
+                        @{
+                            var isUserSectionActive = ViewContext.RouteData.Values["Controller"]?.ToString() == "Account"
+                                && ViewContext.RouteData.Values["Action"]?.ToString() == "Profile";
+                        }
                         <li class="nav-item mt-4">
-                            <div class="px-3">
-                                <div class="dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                        <i class="fas fa-user-circle"></i>
-                                        @User.Identity?.Name
+                            <a class="nav-link submenu-toggle @(isUserSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#userSubmenu"
+                               role="button"
+                               aria-expanded="@(isUserSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="userSubmenu">
+                                <i class="fas fa-user-circle"></i>
+                                @User.Identity?.Name
+                                <i class="fas fa-chevron-down submenu-caret"></i>
+                            </a>
+                            <ul class="collapse sidebar-submenu @(isUserSectionActive ? "show" : "")" id="userSubmenu">
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Account" && ViewContext.RouteData.Values["Action"]?.ToString() == "Profile" ? "active" : "")"
+                                       asp-controller="Account" asp-action="Profile">
+                                        <i class="fas fa-user me-2"></i>Profile
                                     </a>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile">
-                                            <i class="fas fa-user me-2"></i>Profile
-                                        </a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" asp-controller="Account" asp-action="Logout">
-                                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                                        </a></li>
-                                    </ul>
-                                </div>
-                            </div>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-danger" asp-controller="Account" asp-action="Logout">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     </ul>
                 </div>

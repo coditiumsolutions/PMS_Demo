@@ -18,6 +18,7 @@
                 <form asp-action="Edit" method="post">
                     <input type="hidden" asp-for="ProjectID" />
                     <input type="hidden" asp-for="CreatedAt" />
+                    <input type="hidden" asp-for="Prefix" />
 
                     <div class="row">
                         <div class="col-md-6">
@@ -25,13 +26,6 @@
                                 <label asp-for="ProjectName" class="form-label">Project Name *</label>
                                 <input asp-for="ProjectName" class="form-control" required />
                                 <span asp-validation-for="ProjectName" class="text-danger"></span>
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="Prefix" class="form-label">Prefix *</label>
-                                <input asp-for="Prefix" class="form-control" placeholder="Enter project prefix (e.g., JSC, JSC1)" maxlength="4" required />
-                                <small class="text-muted">Project prefix for identification (max 4 characters)</small>
-                                <span asp-validation-for="Prefix" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
@@ -72,19 +66,31 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Sub Projects</label>
-                                <div class="d-flex gap-2 flex-wrap align-items-center">
-                                    <input type="text" id="subProjectInput" class="form-control" placeholder="e.g. Phase 1" style="max-width: 200px;" />
-                                    <button type="button" id="btnAddSubProject" class="btn btn-outline-primary btn-sm">
-                                        <i class="fas fa-plus me-1"></i>Add
-                                    </button>
-                                    <button type="button" id="btnAddMoreSubProject" class="btn btn-outline-secondary btn-sm">
-                                        <i class="fas fa-plus-circle me-1"></i>Add more
+                                <label class="form-label">Sub Projects with Prefixes</label>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">Manage entries in popup. Prefixes must be unique per project.</small>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#subProjectModalEdit">
+                                        <i class="fas fa-plus me-1"></i>Add SubProject
                                     </button>
                                 </div>
                                 <input type="hidden" asp-for="SubProjects" id="subProjectsValue" />
-                                <div id="subProjectsList" class="mt-2 d-flex flex-wrap gap-1"></div>
-                                <small class="text-muted">Add sub projects one by one; stored as comma-separated in database.</small>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-0" id="subProjectsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>SubProject</th>
+                                                <th>Prefix</th>
+                                                <th style="width:90px;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr id="subProjectsEmptyRow">
+                                                <td colspan="3" class="text-muted text-center">No subprojects added.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <span asp-validation-for="SubProjects" class="text-danger"></span>
                             </div>
                         </div>
 
@@ -111,6 +117,32 @@
                         </div>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="subProjectModalEdit" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title mb-0">Add SubProject</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">SubProject</label>
+                    <input type="text" id="subProjectNameInput" class="form-control form-control-sm" placeholder="e.g. Phase 1" />
+                </div>
+                <div class="mb-1">
+                    <label class="form-label">Prefix</label>
+                    <input type="text" id="subProjectPrefixInput" class="form-control form-control-sm" placeholder="e.g. P1" maxlength="7" />
+                </div>
+                <small id="subProjectModalError" class="text-danger d-none"></small>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnSaveSubProject">Add</button>
             </div>
         </div>
     </div>
@@ -183,13 +215,70 @@
                 addMoreButtonId: 'btnAddMoreSize'
             });
 
-            initChipInput({
-                inputId: 'subProjectInput',
-                hiddenId: 'subProjectsValue',
-                listId: 'subProjectsList',
-                addButtonId: 'btnAddSubProject',
-                addMoreButtonId: 'btnAddMoreSubProject'
-            });
+            (function initSubProjectTable() {
+                var hidden = document.getElementById('subProjectsValue');
+                var tbody = document.querySelector('#subProjectsTable tbody');
+                var emptyRow = document.getElementById('subProjectsEmptyRow');
+                var nameInput = document.getElementById('subProjectNameInput');
+                var prefixInput = document.getElementById('subProjectPrefixInput');
+                var addBtn = document.getElementById('btnSaveSubProject');
+                var errorEl = document.getElementById('subProjectModalError');
+                var modalEl = document.getElementById('subProjectModalEdit');
+                var modal = new bootstrap.Modal(modalEl, { backdrop: false });
+                var rows = [];
+
+                function showError(msg) {
+                    errorEl.textContent = msg || '';
+                    errorEl.classList.toggle('d-none', !msg);
+                }
+
+                function syncHidden() {
+                    hidden.value = rows.map(function (r) { return r.name + '|' + r.prefix; }).join(',');
+                }
+
+                function render() {
+                    tbody.querySelectorAll('tr[data-row="1"]').forEach(function (r) { r.remove(); });
+                    emptyRow.classList.toggle('d-none', rows.length > 0);
+                    rows.forEach(function (r, idx) {
+                        var tr = document.createElement('tr');
+                        tr.setAttribute('data-row', '1');
+                        tr.innerHTML = '<td>' + r.name + '</td><td>' + r.prefix + '</td><td><button type="button" class="btn btn-sm btn-outline-danger" data-idx="' + idx + '">Remove</button></td>';
+                        tr.querySelector('button').addEventListener('click', function () {
+                            rows.splice(parseInt(this.getAttribute('data-idx'), 10), 1);
+                            render();
+                            syncHidden();
+                        });
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                (hidden.value || '').split(',').map(function (s) { return (s || '').trim(); }).filter(Boolean).forEach(function (item) {
+                    var parts = item.split('|');
+                    if (parts.length >= 2) {
+                        rows.push({ name: parts[0].trim(), prefix: parts.slice(1).join('|').trim().toUpperCase() });
+                    }
+                });
+                render();
+                syncHidden();
+
+                addBtn.addEventListener('click', function () {
+                    var name = (nameInput.value || '').trim();
+                    var prefix = (prefixInput.value || '').trim().toUpperCase();
+                    if (!name || !prefix) { showError('SubProject and Prefix are required.'); return; }
+                    if (prefix.length > 7) { showError('Prefix max length is 7.'); return; }
+                    if (rows.some(function (r) { return r.name.toLowerCase() === name.toLowerCase(); })) { showError('SubProject already exists.'); return; }
+                    if (rows.some(function (r) { return r.prefix.toLowerCase() === prefix.toLowerCase(); })) { showError('Prefix already exists.'); return; }
+                    rows.push({ name: name, prefix: prefix });
+                    render();
+                    syncHidden();
+                    nameInput.value = '';
+                    prefixInput.value = '';
+                    showError('');
+                    modal.hide();
+                });
+
+                modalEl.addEventListener('shown.bs.modal', function () { nameInput.focus(); });
+            })();
         })();
     </script>
 }

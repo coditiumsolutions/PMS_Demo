@@ -118,8 +118,18 @@ namespace PMS.Models
         [StringLength(200)]
         public string? PaymentMode { get; set; }
 
+        /// <summary>Instrument or channel detail (e.g. cheque, online ref); distinct from PaymentMode when needed.</summary>
+        [StringLength(200)]
+        public string? PaymentMethod { get; set; }
+
         [StringLength(200)]
         public string? PaymentChallanNo { get; set; }
+
+        [StringLength(200)]
+        public string? BankName { get; set; }
+
+        /// <summary>Free-text payment notes for this transfer fee payment.</summary>
+        public string? PaymentDetails { get; set; }
 
         public string? Details { get; set; }
         public string? CROComments { get; set; }
@@ -129,5 +139,6 @@ namespace PMS.Models
         // Navigation
         [ForeignKey("CustomerID")]
         public virtual Customer? Customer { get; set; }
+        public virtual ICollection<TransferJointOwner> TransferJointOwners { get; set; } = new List<TransferJointOwner>();
     }
 }

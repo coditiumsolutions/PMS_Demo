@@ -73,6 +73,9 @@
                 <button class="nav-link" id="comments-tab" data-bs-toggle="tab" data-bs-target="#comments" type="button" role="tab">Details & Comments</button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="newjointowners-tab" data-bs-toggle="tab" data-bs-target="#newjointowners" type="button" role="tab">New Joint Owners</button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab"><i class="fas fa-paperclip me-1"></i>Attachments</button>
             </li>
         </ul>
@@ -116,7 +119,7 @@
             <div class="tab-pane fade" id="seller" role="tabpanel">
                 <div class="row">
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Seller Name</label><p>@(Model.SellerName ?? "—")</p></div></div>
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Father Name</label><p>@(Model.SellerFatherName ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Son/D/W/o</label><p>@(Model.SellerFatherName ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>CNIC</label><p>@(Model.SellerCNIC ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Contact</label><p>@(Model.SellerContact ?? "—")</p></div></div>
                     <div class="col-12 mb-2"><div class="detail-field"><label>Address</label><p>@(Model.SellerAddress ?? "—")</p></div></div>
@@ -125,10 +128,10 @@
             <div class="tab-pane fade" id="buyer" role="tabpanel">
                 <div class="row">
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Full Name</label><p>@(Model.BuyerName ?? "—")</p></div></div>
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Father's Name</label><p>@(Model.BuyerFatherName ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Son/D/W/o</label><p>@(Model.BuyerFatherName ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>National ID (CNIC)</label><p>@(Model.BuyerCNIC ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Passport Number</label><p>@(Model.BuyerPassportNo ?? "—")</p></div></div>
-                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Date of Birth</label><p>@(Model.BuyerDOB?.ToString("MMM dd, yyyy") ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Date of Birth</label><p>@(Model.BuyerDOB?.ToString("dd-MM-yyyy") ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Gender</label><p>@(Model.BuyerGender ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Nationality</label><p>@(Model.BuyerNationality ?? "—")</p></div></div>
                     <div class="col-12 mb-2"><div class="detail-field"><label>Email Address</label><p>@(Model.BuyerEmail ?? "—")</p></div></div>
@@ -148,6 +151,8 @@
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Payment Date</label><p>@(Model.PaymentDate?.ToString("MMM dd, yyyy") ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Payment Mode</label><p>@(Model.PaymentMode ?? "—")</p></div></div>
                     <div class="col-md-6 mb-2"><div class="detail-field"><label>Challan No</label><p>@(Model.PaymentChallanNo ?? "—")</p></div></div>
+                    <div class="col-md-6 mb-2"><div class="detail-field"><label>Bank name</label><p>@(Model.BankName ?? "—")</p></div></div>
+                    <div class="col-12 mb-2"><div class="detail-field"><label>Payment details</label><p>@(Model.PaymentDetails ?? "—")</p></div></div>
                 </div>
             </div>
             <div class="tab-pane fade" id="comments" role="tabpanel">
@@ -155,6 +160,26 @@
                 <div class="mb-2"><div class="detail-field"><label>CRO Comments</label><p>@(Model.CROComments ?? "—")</p></div></div>
                 <div class="mb-2"><div class="detail-field"><label>Accounts Comments</label><p>@(Model.AccountsComments ?? "—")</p></div></div>
                 <div class="mb-2"><div class="detail-field"><label>Transfer Comments</label><p>@(Model.TransferComments ?? "—")</p></div></div>
+            </div>
+            <div class="tab-pane fade" id="newjointowners" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="transferJointOwnersViewTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Son/D/W/o</th>
+                                <th>CNIC</th>
+                                <th>Contact</th>
+                                <th>Percentage</th>
+                                <th>Address</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" class="text-muted text-center">Open this tab to load transfer joint owners.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="tab-pane fade" id="attachments" role="tabpanel">
                 <p class="text-muted small mb-3">Upload documents. Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file. Multiple files are allowed in all categories.</p>
@@ -210,6 +235,78 @@
                                     </button>
                                 </div>
                                 <div id="bookingFormAttachmentsList" class="transfer-att-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                            <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <h6 class="mb-0"><i class="fas fa-user me-2"></i>Buyer photo</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload file</label>
+                                    <input type="file" id="buyerPhotoFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="buyerPhotoDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBuyerPhotoBtn">
+                                        <i class="fas fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                                <div id="buyerPhotoAttachmentsList" class="transfer-att-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                            <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <h6 class="mb-0"><i class="fas fa-user-tie me-2"></i>Seller photo</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload file</label>
+                                    <input type="file" id="sellerPhotoFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="sellerPhotoDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadSellerPhotoBtn">
+                                        <i class="fas fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                                <div id="sellerPhotoAttachmentsList" class="transfer-att-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                            <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Buyer CNIC</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload file</label>
+                                    <input type="file" id="buyerCnicFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="buyerCnicDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBuyerCnicBtn">
+                                        <i class="fas fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                                <div id="buyerCnicAttachmentsList" class="transfer-att-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                            <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Seller CNIC</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Upload file</label>
+                                    <input type="file" id="sellerCnicFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                    <input type="text" id="sellerCnicDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                    <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadSellerCnicBtn">
+                                        <i class="fas fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                                <div id="sellerCnicAttachmentsList" class="transfer-att-list"></div>
                             </div>
                         </div>
                     </div>
@@ -282,6 +379,10 @@
                     renderList('powerOfAttorneyAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'PowerOfAttorney'; }));
                     renderList('paymentReceiptsAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'PaymentReceipts'; }));
                     renderList('bookingFormAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BookingForm'; }));
+                    renderList('buyerPhotoAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BuyerPhoto'; }));
+                    renderList('sellerPhotoAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'SellerPhoto'; }));
+                    renderList('buyerCnicAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BuyerCNIC'; }));
+                    renderList('sellerCnicAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'SellerCNIC'; }));
                     renderList('otherAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Other'; }));
                 }
             }
@@ -360,12 +461,51 @@
     }
 
     $('#attachments-tab').on('shown.bs.tab', function() { loadAttachments(); });
+    $('#newjointowners-tab').on('shown.bs.tab', function() { loadTransferJointOwners(); });
     if ($('#attachments-tab').hasClass('active')) loadAttachments();
 
     $('#uploadPowerOfAttorneyBtn').on('click', function() { upload('PowerOfAttorney', 'powerOfAttorneyFile', 'powerOfAttorneyDescription', 'uploadPowerOfAttorneyBtn', false); });
     $('#uploadPaymentReceiptsBtn').on('click', function() { upload('PaymentReceipts', 'paymentReceiptsFile', 'paymentReceiptsDescription', 'uploadPaymentReceiptsBtn', false); });
     $('#uploadBookingFormBtn').on('click', function() { upload('BookingForm', 'bookingFormFile', 'bookingFormDescription', 'uploadBookingFormBtn', false); });
+    $('#uploadBuyerPhotoBtn').on('click', function() { upload('BuyerPhoto', 'buyerPhotoFile', 'buyerPhotoDescription', 'uploadBuyerPhotoBtn', false); });
+    $('#uploadSellerPhotoBtn').on('click', function() { upload('SellerPhoto', 'sellerPhotoFile', 'sellerPhotoDescription', 'uploadSellerPhotoBtn', false); });
+    $('#uploadBuyerCnicBtn').on('click', function() { upload('BuyerCNIC', 'buyerCnicFile', 'buyerCnicDescription', 'uploadBuyerCnicBtn', false); });
+    $('#uploadSellerCnicBtn').on('click', function() { upload('SellerCNIC', 'sellerCnicFile', 'sellerCnicDescription', 'uploadSellerCnicBtn', false); });
     $('#uploadOtherAttachmentsBtn').on('click', function() { upload('Other', 'otherAttachmentsFile', 'otherAttachmentsTitle', 'uploadOtherAttachmentsBtn', true); });
+
+    function loadTransferJointOwners() {
+        $.ajax({
+            url: '@Url.Action("GetTransferJointOwners", "Transfer")',
+            method: 'GET',
+            data: { transferId: transferId, customerId: '@Model.CustomerID' },
+            success: function(res) {
+                var $tb = $('#transferJointOwnersViewTable tbody');
+                $tb.empty();
+                if (!res.success) {
+                    $tb.html('<tr><td colspan="7" class="text-danger text-center">' + (res.message || 'Failed to load transfer joint owners.') + '</td></tr>');
+                    return;
+                }
+                if (!res.transferJointOwners || res.transferJointOwners.length === 0) {
+                    $tb.html('<tr><td colspan="7" class="text-muted text-center">No transfer joint owners recorded.</td></tr>');
+                    return;
+                }
+                res.transferJointOwners.forEach(function(item) {
+                    $tb.append('<tr>'
+                        + '<td>' + (item.jointOwnerName || '—') + '</td>'
+                        + '<td>' + (item.fatherName || '—') + '</td>'
+                        + '<td>' + (item.cnic || '—') + '</td>'
+                        + '<td>' + (item.contact || '—') + '</td>'
+                        + '<td>' + (item.percentage != null ? item.percentage : '—') + '</td>'
+                        + '<td>' + (item.address || '—') + '</td>'
+                        + '<td>' + (item.createdAt || '—') + '</td>'
+                        + '</tr>');
+                });
+            },
+            error: function() {
+                $('#transferJointOwnersViewTable tbody').html('<tr><td colspan="7" class="text-danger text-center">Error loading transfer joint owners.</td></tr>');
+            }
+        });
+    }
 })();
 </script>
 }

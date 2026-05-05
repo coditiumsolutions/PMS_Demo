@@ -37,6 +37,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="jointowners-tab" data-bs-toggle="tab" data-bs-target="#jointowners" type="button" role="tab" aria-controls="jointowners" aria-selected="false">
+                            <i class="fas fa-users me-2"></i>JointOwners
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab" aria-controls="attachments" aria-selected="false">
                             <i class="fas fa-paperclip me-2"></i>Attachments
                         </button>
@@ -73,13 +78,13 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="FatherName" class="form-label">Father's Name</label>
+                                        <label asp-for="FatherName" class="form-label">S/D/W/O</label>
                                         <input asp-for="FatherName" class="form-control" />
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="CNIC" class="form-label">National ID (CNIC)</label>
-                                        <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
+                                        <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
                                         <small class="text-muted">Format: 5 digits, hyphen, 7 digits, hyphen, 1 digit. Required if no Passport.</small>
                                         <span id="cnicValidationError" class="text-danger small d-none"></span>
                                     </div>
@@ -96,11 +101,9 @@
 
                                     <div class="mb-3">
                                         <label asp-for="DOB" class="form-label">Date of Birth</label>
-                                        <input asp-for="DOB" type="date" id="DOB" class="form-control"
-                                               value="@(Model.DOB?.ToString("yyyy-MM-dd") ?? "1990-01-01")"
-                                               max="@(DateTime.Today.AddYears(-16).ToString("yyyy-MM-dd"))"
-                                               title="Must be at least 16 years ago" />
-                                        <small class="text-muted">Default: 01/01/1990. Must be at least 16 years old.</small>
+                                        <input type="text" id="DOBDisplay" class="form-control" value="@(Model.DOB?.ToString("dd-MM-yyyy") ?? "01-01-1990")" placeholder="DD-MM-YYYY" />
+                                        <input asp-for="DOB" type="hidden" id="DOB" value="@(Model.DOB?.ToString("yyyy-MM-dd") ?? "")" />
+                                        <small class="text-muted">Format: DD-MM-YYYY (e.g. 31-12-1990).</small>
                                         <span id="dobValidationError" class="text-danger small d-none"></span>
                                         <span asp-validation-for="DOB" class="text-danger"></span>
                                     </div>
@@ -117,27 +120,33 @@
 
                                     <div class="mb-3">
                                         <label asp-for="Nationality" class="form-label">Nationality</label>
-                                        <select asp-for="Nationality" class="form-select">
-                                            <option value="">Select Nationality</option>
+                                        <input asp-for="Nationality" class="form-control" list="nationalityList-customer-edit" autocomplete="off" placeholder="Select from list or type a value" />
+                                        <datalist id="nationalityList-customer-edit">
                                             @if (ViewBag.Nationalities != null)
                                             {
                                                 foreach (var nationality in ViewBag.Nationalities)
                                                 {
-                                                    <option value="@nationality">@nationality</option>
+                                                    <option value="@nationality"></option>
                                                 }
                                             }
-                                        </select>
+                                        </datalist>
+                                        <small class="text-muted">Suggestions from configuration; you may enter any nationality.</small>
                                         <span asp-validation-for="Nationality" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="Status" class="form-label">Status</label>
                                         <select asp-for="Status" class="form-select">
+                                            <option value="Pending">Pending</option>
                                             <option value="Active">Active</option>
                                             <option value="Inactive">Inactive</option>
+                                            <option value="Blocked">Blocked</option>
+                                            <option value="Marked for Deletion">Marked for Deletion</option>
                                             <option value="Suspended">Suspended</option>
                                             <option value="Cancelled">Cancelled</option>
+                                            <option value="Refunded">Refunded</option>
                                         </select>
+                                        <small class="text-muted">New customers start as Pending; use the customer list to activate when ready.</small>
                                     </div>
                                 </div>
 
@@ -171,31 +180,31 @@
 
                                     <div class="mb-3">
                                         <label asp-for="City" class="form-label">City *</label>
-                                        <select asp-for="City" class="form-select" required>
-                                            <option value="">Select City</option>
+                                        <input asp-for="City" class="form-control" list="cityOptions" placeholder="Select or type city" required />
+                                        <datalist id="cityOptions">
                                             @if (ViewBag.Cities != null)
                                             {
                                                 @foreach (var city in ViewBag.Cities)
                                                 {
-                                                    <option value="@city">@city</option>
+                                                    <option value="@city"></option>
                                                 }
                                             }
-                                        </select>
+                                        </datalist>
                                         <span asp-validation-for="City" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="Country" class="form-label">Country *</label>
-                                        <select asp-for="Country" class="form-select" required>
-                                            <option value="">Select Country</option>
+                                        <input asp-for="Country" class="form-control" list="countryOptions" placeholder="Select or type country" required />
+                                        <datalist id="countryOptions">
                                             @if (ViewBag.Countries != null)
                                             {
                                                 @foreach (var country in ViewBag.Countries)
                                                 {
-                                                    <option value="@country">@country</option>
+                                                    <option value="@country"></option>
                                                 }
                                             }
-                                        </select>
+                                        </datalist>
                                         <span asp-validation-for="Country" class="text-danger"></span>
                                     </div>
 
@@ -303,17 +312,9 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
-                                    <select asp-for="RegisteredSize" id="RegisteredSize" class="form-select">
-                                        @if (!string.IsNullOrWhiteSpace(Model.RegisteredSize))
-                                        {
-                                            <option value="@Model.RegisteredSize" selected>@Model.RegisteredSize</option>
-                                        }
-                                        else
-                                        {
-                                            <option value="">Select Project first</option>
-                                        }
-                                    </select>
-                                    <small class="text-muted">Sizes are loaded from the selected project.</small>
+                                    <input asp-for="RegisteredSize" id="RegisteredSize" class="form-control" list="RegisteredSizeOptions" placeholder="Select or type size" />
+                                    <datalist id="RegisteredSizeOptions"></datalist>
+                                    <small class="text-muted">Sizes are suggested from selected project, or type your own value.</small>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Is Dealer Registered?</label>
@@ -365,16 +366,17 @@
                                     </div>
                                 <div class="col-md-4">
                                         <label asp-for="SubProject" class="form-label">Sub Project</label>
-                                        <select asp-for="SubProject" class="form-select">
-                                            <option value="">Select Sub Project</option>
-                                            @if (ViewBag.SubProjects != null)
+                                        <select asp-for="SubProject" id="SubProject" class="form-select">
+                                            @if (!string.IsNullOrWhiteSpace(Model.SubProject))
                                             {
-                                                @foreach (var subProject in ViewBag.SubProjects)
-                                                {
-                                                    <option value="@subProject">@subProject</option>
-                                                }
+                                                <option value="@Model.SubProject" selected>@Model.SubProject</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="">@(string.IsNullOrEmpty(Model.ProjectID) ? "Select Project first" : "Select Sub Project")</option>
                                             }
                                         </select>
+                                        <small class="text-muted">Sub projects are loaded from the selected project (same as Create).</small>
                                     </div>
                                 <div class="col-md-4">
                                     <label for="selectedPropertyEdit" class="form-label">Available Properties</label>
@@ -465,6 +467,68 @@
                                     <strong>No allotment found.</strong> Select a matching property above and click <em>Save Changes</em> to create one automatically.
                                 </div>
                             }
+                        </div>
+
+                        <!-- Joint Owners Tab -->
+                        <div class="tab-pane fade" id="jointowners" role="tabpanel" aria-labelledby="jointowners-tab">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Joint Owner Name *</label>
+                                    <input type="text" id="jointOwnerName" class="form-control" placeholder="Enter joint owner name" />
+                                    <small class="text-muted">Letters, spaces, dots and hyphens only.</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Son /D/W/o</label>
+                                    <input type="text" id="jointOwnerFatherName" class="form-control" placeholder="Enter father name" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">CNIC *</label>
+                                    <input type="text" id="jointOwnerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Contact *</label>
+                                    <input type="text" id="jointOwnerContact" class="form-control" placeholder="03XXXXXXXXX" />
+                                    <small class="text-muted">Must be 11 to 13 digits.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Address</label>
+                                    <input type="text" id="jointOwnerAddress" class="form-control" placeholder="Address" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Percentage</label>
+                                    <input type="number" id="jointOwnerPercentage" class="form-control" min="0" max="100" step="0.01" placeholder="e.g. 50" />
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Details</label>
+                                    <textarea id="jointOwnerDetails" class="form-control" rows="2" placeholder="Any additional details"></textarea>
+                                </div>
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-primary" onclick="addJointOwnerFromTab()">
+                                        <i class="fas fa-plus me-2"></i>Add Joint Owner
+                                    </button>
+                                </div>
+                            </div>
+                            <hr />
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover" id="jointOwnersTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Son /D/W/o</th>
+                                            <th>CNIC</th>
+                                            <th>Contact</th>
+                                            <th>Percentage</th>
+                                            <th>Address</th>
+                                            <th>Created</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="text-muted text-center">Loading joint owners...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Attachments Tab -->
@@ -690,44 +754,82 @@
                 return (value || '').toString().trim().toLowerCase();
             }
 
+            function normalizeDropdownValue(value) {
+                return (value || '').toString().trim().toLowerCase();
+            }
+
+            function loadSubProjects(projectId, selectedValue) {
+                var $subProjectSelect = $('#SubProject');
+                var desiredValue = (selectedValue || $subProjectSelect.val() || '').toString().trim();
+                $subProjectSelect.html('<option value="">Select Sub Project</option>').prop('disabled', !projectId);
+                if (!projectId) {
+                    $subProjectSelect.html('<option value="">Select Project first</option>');
+                    return;
+                }
+
+                $.get('@Url.Action("GetProjectSubProjects", "Customer")', { projectId: projectId })
+                    .done(function(arr) {
+                        var desiredValueNormalized = normalizeDropdownValue(desiredValue);
+                        var matched = false;
+
+                        $(arr).each(function() {
+                            var itemValue = (this && this.name) ? this.name.toString() : (this || '').toString();
+                            var itemPrefix = (this && this.prefix) ? this.prefix.toString() : '';
+                            var opt = $('<option></option>').val(itemValue).text(itemPrefix ? (itemValue + ' (' + itemPrefix + ')') : itemValue);
+                            if (!matched && normalizeDropdownValue(itemValue) === desiredValueNormalized) {
+                                opt.prop('selected', true);
+                                matched = true;
+                            }
+                            $subProjectSelect.append(opt);
+                        });
+
+                        if (!matched && desiredValue) {
+                            $subProjectSelect.append(
+                                $('<option></option>')
+                                    .val(desiredValue)
+                                    .text(desiredValue + ' (current)')
+                                    .prop('selected', true)
+                            );
+                        }
+                    })
+                    .fail(function() {
+                        $subProjectSelect.html('<option value="">Could not load sub projects</option>');
+                    });
+            }
+
             function loadSizesForProject(projectId, selectValue) {
-                var $sizeSelect = $('#RegisteredSize');
-                var desiredValue = (selectValue || $sizeSelect.val() || '').toString().trim();
-                $sizeSelect.html('<option value="">Select Size</option>').prop('disabled', !projectId);
+                var $sizeInput = $('#RegisteredSize');
+                var $sizeOptions = $('#RegisteredSizeOptions');
+                var desiredValue = (selectValue || $sizeInput.val() || '').toString().trim();
+                $sizeInput.prop('disabled', !projectId);
+                $sizeOptions.empty();
                 if (projectId) {
                     $.get('@Url.Action("GetProjectSizes", "Customer")', { projectId: projectId })
                         .done(function(arr) {
-                            var desiredValueNormalized = normalizeSizeValue(desiredValue);
-                            var matched = false;
                             $(arr).each(function() {
                                 var itemValue = (this || '').toString();
-                                var opt = $('<option></option>').val(itemValue).text(itemValue);
-                                if (!matched && normalizeSizeValue(itemValue) === desiredValueNormalized) {
-                                    opt.prop('selected', true);
-                                    matched = true;
-                                }
-                                $sizeSelect.append(opt);
+                                $sizeOptions.append($('<option></option>').val(itemValue));
                             });
-
-                            // Keep previous/saved value visible even if not found in project size list.
-                            if (!matched && desiredValue) {
-                                $sizeSelect.append(
-                                    $('<option></option>')
-                                        .val(desiredValue)
-                                        .text(desiredValue + ' (current)')
-                                        .prop('selected', true)
-                                );
-                            }
+                            if (desiredValue) $sizeInput.val(desiredValue);
                         });
+                } else {
+                    $sizeInput.val('');
                 }
             }
             var currentSize = '@(Model.RegisteredSize ?? "")';
+            var currentSubProject = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SubProject ?? ""));
             var currentProjectId = $('#ProjectID').val();
-            if (currentProjectId) loadSizesForProject(currentProjectId, currentSize);
-            else $('#RegisteredSize').prop('disabled', true);
+            if (currentProjectId) {
+                loadSizesForProject(currentProjectId, currentSize);
+                loadSubProjects(currentProjectId, currentSubProject);
+            } else {
+                $('#RegisteredSize').prop('disabled', true);
+                $('#SubProject').html('<option value="">Select Project first</option>').prop('disabled', true);
+            }
 
             $('#ProjectID').on('change', function() {
                 loadSizesForProject($(this).val(), '');
+                loadSubProjects($(this).val(), '');
                 loadProperties();
             });
 
@@ -787,6 +889,9 @@
                 }
                 return false;
             }
+            $('#CNIC').on('input blur', function() {
+                this.value = formatCnicValue(this.value);
+            });
             $('#CNIC, #PassportNo').on('input blur', function() {
                 var cnic = ($('#CNIC').val() || '').trim();
                 var passport = ($('#PassportNo').val() || '').trim();
@@ -806,29 +911,51 @@
                     $('html, body').animate({ scrollTop: $('#CNIC').offset().top - 20 }, 300);
                     return false;
                 }
-                var dobVal = $('#DOB').val();
-                if (dobVal) {
-                    var maxDob = new Date(); maxDob.setFullYear(maxDob.getFullYear() - 16);
-                    if (new Date(dobVal) > maxDob) {
-                        e.preventDefault();
-                        $('#DOB').addClass('is-invalid');
-                        $('#dobValidationError').text('Date of Birth must be at least 16 years ago.').removeClass('d-none');
-                        $('#personal-tab').tab('show');
-                        $('html, body').animate({ scrollTop: $('#DOB').offset().top - 20 }, 300);
-                        return false;
-                    }
+                if (!syncDobForSubmit(true)) {
+                    e.preventDefault();
+                    $('#personal-tab').tab('show');
+                    $('html, body').animate({ scrollTop: $('#DOBDisplay').offset().top - 20 }, 300);
+                    return false;
                 }
             });
-            $('#DOB').on('change input', function() {
-                var d = $(this).val();
-                if (d) {
-                    var maxDob = new Date(); maxDob.setFullYear(maxDob.getFullYear() - 16);
-                    if (new Date(d) <= maxDob) {
-                        $(this).removeClass('is-invalid');
-                        $('#dobValidationError').addClass('d-none').text('');
-                    }
+            function parseDobDisplay(value) {
+                var parts = (value || '').trim().split('-');
+                if (parts.length !== 3) return null;
+                var dd = parseInt(parts[0], 10);
+                var mm = parseInt(parts[1], 10);
+                var yyyy = parseInt(parts[2], 10);
+                if (!dd || !mm || !yyyy || yyyy < 1900 || mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+                var dt = new Date(yyyy, mm - 1, dd);
+                if (dt.getFullYear() !== yyyy || dt.getMonth() !== (mm - 1) || dt.getDate() !== dd) return null;
+                return { dd: dd, mm: mm, yyyy: yyyy };
+            }
+            function formatIsoDate(parts) {
+                var dd = String(parts.dd).padStart(2, '0');
+                var mm = String(parts.mm).padStart(2, '0');
+                return String(parts.yyyy) + '-' + mm + '-' + dd;
+            }
+            function syncDobForSubmit(showError) {
+                var display = ($('#DOBDisplay').val() || '').trim();
+                if (!display) {
+                    $('#DOB').val('');
+                    $('#DOBDisplay').removeClass('is-invalid');
+                    $('#dobValidationError').addClass('d-none').text('');
+                    return true;
                 }
-            });
+                var parsed = parseDobDisplay(display);
+                if (!parsed) {
+                    if (showError !== false) {
+                        $('#DOBDisplay').addClass('is-invalid');
+                        $('#dobValidationError').text('Please enter Date of Birth in DD-MM-YYYY format.').removeClass('d-none');
+                    }
+                    return false;
+                }
+                $('#DOB').val(formatIsoDate(parsed));
+                $('#DOBDisplay').removeClass('is-invalid');
+                $('#dobValidationError').addClass('d-none').text('');
+                return true;
+            }
+            $('#DOBDisplay').on('change blur', function() { syncDobForSubmit(true); });
 
             $('#selectedPropertyEdit').on('change', function() {
                 $(this).data('selected', $(this).val());
@@ -839,6 +966,9 @@
             // Load attachments when attachments tab is shown
             $('#attachments-tab').on('shown.bs.tab', function() {
                 loadAttachments();
+            });
+            $('#jointowners-tab').on('shown.bs.tab', function() {
+                loadJointOwners();
             });
 
             // Open requested initial tab once (used by post-create redirect to Edit).
@@ -859,9 +989,125 @@
             if ($('#attachments-tab').hasClass('active')) {
                 loadAttachments();
             }
+            if ($('#jointowners-tab').hasClass('active')) {
+                loadJointOwners();
+            }
         });
 
         var customerId = '@Model.CustomerID';
+        function normalizeDigits(value) {
+            return (value || '').replace(/\D/g, '');
+        }
+        function formatCnicValue(value) {
+            var raw = normalizeDigits(value);
+            if (raw.length <= 5) return raw;
+            if (raw.length <= 12) return raw.slice(0, 5) + '-' + raw.slice(5);
+            return raw.slice(0, 5) + '-' + raw.slice(5, 12) + '-' + raw.slice(12, 13);
+        }
+        function validateJointOwnerInputs() {
+            var name = ($('#jointOwnerName').val() || '').trim();
+            var cnic = ($('#jointOwnerCNIC').val() || '').trim();
+            var contact = ($('#jointOwnerContact').val() || '').trim();
+            var nameOk = /^[a-zA-Z\s\.\-]+$/.test(name);
+            var cnicOk = /^\d{5}-\d{7}-\d$/.test(cnic);
+            var contactDigits = normalizeDigits(contact);
+            var contactOk = contactDigits.length >= 11 && contactDigits.length <= 13;
+            $('#jointOwnerName, #jointOwnerCNIC, #jointOwnerContact').removeClass('is-invalid');
+            if (!name || !nameOk) {
+                $('#jointOwnerName').addClass('is-invalid');
+                return { isValid: false, message: 'Joint owner name is required and must contain letters only.' };
+            }
+            if (!cnicOk) {
+                $('#jointOwnerCNIC').addClass('is-invalid');
+                return { isValid: false, message: 'CNIC is required in XXXXX-XXXXXXX-X format.' };
+            }
+            if (!contactOk) {
+                $('#jointOwnerContact').addClass('is-invalid');
+                return { isValid: false, message: 'Contact number is required and must be between 11 and 13 digits.' };
+            }
+            return { isValid: true };
+        }
+
+        function loadJointOwners() {
+            $.ajax({
+                url: '@Url.Action("GetJointOwners", "Customer")',
+                method: 'GET',
+                data: { customerId: customerId },
+                success: function(response) {
+                    var tbody = $('#jointOwnersTable tbody');
+                    tbody.empty();
+                    if (!response.success) {
+                        tbody.html('<tr><td colspan="7" class="text-danger text-center">' + (response.message || 'Failed to load joint owners.') + '</td></tr>');
+                        return;
+                    }
+                    if (!response.jointOwners || response.jointOwners.length === 0) {
+                        tbody.html('<tr><td colspan="7" class="text-muted text-center">No joint owners added yet.</td></tr>');
+                        return;
+                    }
+                    response.jointOwners.forEach(function(item) {
+                        tbody.append('<tr>' +
+                            '<td>' + (item.jointOwnerName || '—') + '</td>' +
+                            '<td>' + (item.fatherName || '—') + '</td>' +
+                            '<td>' + (item.cnic || '—') + '</td>' +
+                            '<td>' + (item.contact || '—') + '</td>' +
+                            '<td>' + (item.percentage != null ? item.percentage : '—') + '</td>' +
+                            '<td>' + (item.address || '—') + '</td>' +
+                            '<td>' + (item.createdAt || '—') + '</td>' +
+                        '</tr>');
+                    });
+                },
+                error: function() {
+                    $('#jointOwnersTable tbody').html('<tr><td colspan="7" class="text-danger text-center">Error loading joint owners.</td></tr>');
+                }
+            });
+        }
+
+        function addJointOwnerFromTab() {
+            var jointOwnerValidation = validateJointOwnerInputs();
+            if (!jointOwnerValidation.isValid) {
+                alert(jointOwnerValidation.message);
+                return;
+            }
+            var token = $('#customerEditForm input[name="__RequestVerificationToken"]').val();
+            $.ajax({
+                url: '@Url.Action("AddJointOwner", "Customer")',
+                method: 'POST',
+                data: {
+                    __RequestVerificationToken: token,
+                    customerId: customerId,
+                    jointOwnerName: $('#jointOwnerName').val(),
+                    fatherName: $('#jointOwnerFatherName').val(),
+                    cnic: $('#jointOwnerCNIC').val(),
+                    contact: $('#jointOwnerContact').val(),
+                    address: $('#jointOwnerAddress').val(),
+                    percentage: $('#jointOwnerPercentage').val(),
+                    details: $('#jointOwnerDetails').val()
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert(response.message || 'Unable to add joint owner.');
+                        return;
+                    }
+                    $('#jointOwnerName, #jointOwnerFatherName, #jointOwnerCNIC, #jointOwnerContact, #jointOwnerAddress, #jointOwnerPercentage, #jointOwnerDetails').val('');
+                    loadJointOwners();
+                },
+                error: function() {
+                    alert('Error while adding joint owner.');
+                }
+            });
+        }
+        $('#jointOwnerName').on('input', function() {
+            this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+        });
+        $('#jointOwnerFatherName').on('input', function() {
+            this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+        });
+        $('#jointOwnerContact').on('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        $('#jointOwnerCNIC').on('input', function() {
+            this.value = formatCnicValue(this.value);
+        });
 
         // Load attachments
         function loadAttachments() {

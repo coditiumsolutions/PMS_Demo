@@ -132,7 +132,7 @@
                                 </td>
                                 <td>
                                     <i class="far fa-calendar-alt me-1"></i>
-                                    @schedule.DueDate.ToString("MMM dd, yyyy")
+                                    @schedule.DueDate.ToString("dd-MM-yyyy")
                                     @if (isOverdue)
                                     {
                                         <br><small class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Overdue</small>
@@ -248,7 +248,7 @@
                                     </div>
                                     <div class="col-6">
                                         <label class="text-muted small">Due Date</label>
-                                        <p>@schedule.DueDate.ToString("MMMM dd, yyyy")</p>
+                                        <p>@schedule.DueDate.ToString("dd-MM-yyyy")</p>
                                     </div>
                                     <div class="col-6">
                                         <label class="text-muted small">Amount (PKR)</label>
@@ -284,7 +284,7 @@
                                                 @foreach (var payment in schedule.Payments.OrderByDescending(p => p.PaymentDate))
                                                 {
                                                     <tr>
-                                                        <td>@payment.PaymentDate.ToString("MMM dd, yyyy")</td>
+                                                        <td>@payment.PaymentDate.ToString("dd-MM-yyyy")</td>
                                                         <td><strong>@payment.Amount.ToString("N0", EnUs) PKR</strong></td>
                                                         <td>@payment.Method</td>
                                                         <td><small>@payment.ReferenceNo</small></td>

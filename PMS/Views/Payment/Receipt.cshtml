@@ -32,7 +32,7 @@
         <img src="~/images/logo.jpeg" alt="Logo" class="a4-logo" />
         <div class="a4-title">Payment Receipt</div>
         <div class="a4-subtitle">Property Management System</div>
-        <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("MMMM dd, yyyy HH:mm")</div>
+        <div class="a4-subtitle">Generated on: @DateTime.Now.ToString("dd-MM-yyyy HH:mm")</div>
     </div>
 
     <!-- Customer -->
@@ -52,7 +52,7 @@
                 <div class="a4-info-row"><span class="a4-info-label">Project:</span><span class="a4-info-value">@(project?.ProjectName ?? "—")</span></div>
                 <div class="a4-info-row"><span class="a4-info-label">Schedule ID:</span><span class="a4-info-value"><code>@(schedule?.ScheduleID ?? "—")</code></span></div>
                 <div class="a4-info-row"><span class="a4-info-label">Installment:</span><span class="a4-info-value">@(schedule?.InstallmentNo?.ToString() ?? "—")</span></div>
-                <div class="a4-info-row"><span class="a4-info-label">Due Date:</span><span class="a4-info-value">@(schedule?.DueDate.ToString("MMMM dd, yyyy") ?? "—")</span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Due Date:</span><span class="a4-info-value">@(schedule?.DueDate.ToString("dd-MM-yyyy") ?? "—")</span></div>
             </div>
         </div>
     </div>
@@ -63,7 +63,7 @@
         <div class="a4-info-grid">
             <div class="a4-info-block">
                 <div class="a4-info-row"><span class="a4-info-label">Payment ID:</span><span class="a4-info-value"><strong>@Model.PaymentID</strong></span></div>
-                <div class="a4-info-row"><span class="a4-info-label">Payment Date:</span><span class="a4-info-value">@Model.PaymentDate.ToString("MMMM dd, yyyy")</span></div>
+                <div class="a4-info-row"><span class="a4-info-label">Payment Date:</span><span class="a4-info-value">@Model.PaymentDate.ToString("dd-MM-yyyy")</span></div>
                 <div class="a4-info-row"><span class="a4-info-label">Amount:</span><span class="a4-info-value"><strong>@Model.Amount.ToString("N0") @(plan?.Currency ?? "PKR")</strong></span></div>
             </div>
             <div class="a4-info-block">
@@ -92,7 +92,7 @@
 
     <div class="a4-footer">
         This is a system-generated payment receipt.<br />
-        Payment ID: @Model.PaymentID | Customer: @(customer?.CustomerID ?? "—") | Generated @DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+        Payment ID: @Model.PaymentID | Customer: @(customer?.CustomerID ?? "—") | Generated @DateTime.Now.ToString("dd-MM-yyyy HH:mm")
     </div>
 </div>
 

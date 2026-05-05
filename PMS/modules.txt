@@ -24,3 +24,4 @@ TesSQL | Test SQL / ad-hoc query execution (admin/dev).
 InquiryApi | API endpoint(s) for external inquiry submission.
 PaymentAudit | Audit module for reviewing and approving/declining payments.
 Refund | Customer payment refund workflow (initiate, approve/decline, payment deletion).
+DuplicateFileTransfer | Duplicate file transfer fee requests (initiated / approved / declined; no customer or payment changes on decision).

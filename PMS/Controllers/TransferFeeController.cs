@@ -300,6 +300,15 @@ namespace PMS.Controllers
             if (string.IsNullOrWhiteSpace(projectId))
                 return new List<string>();
 
+            var mapped = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == projectId)
+                .OrderBy(s => s.SubProjectName)
+                .Select(s => s.SubProjectName)
+                .ToListAsync();
+            if (mapped.Count > 0)
+                return mapped;
+
             var csv = await _context.Projects
                 .AsNoTracking()
                 .Where(p => p.ProjectID == projectId)
@@ -327,6 +336,10 @@ namespace PMS.Controllers
                 .Where(t => !string.IsNullOrWhiteSpace(t))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            const string duplicateFile = "Duplicate File Transfer";
+            if (!types.Any(t => string.Equals(t, duplicateFile, StringComparison.OrdinalIgnoreCase)))
+                types.Add(duplicateFile);
 
             return types;
         }

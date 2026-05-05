@@ -25,6 +25,8 @@
                 <form asp-action="Edit" method="post">
                     <input type="hidden" asp-for="PropertyID" />
                     <input type="hidden" asp-for="CreatedAt" />
+                    <input type="hidden" asp-for="Street" />
+                    <input type="hidden" asp-for="PropertyType" />
 
                     <div class="row">
                         <!-- Property Basic Information -->
@@ -49,19 +51,22 @@
                             </div>
 
                             <div class="mb-3">
+                                <label asp-for="SubProject" class="form-label">Subproject *</label>
+                                <select asp-for="SubProject" class="form-select" required id="subProject">
+                                    <option value="">Select Project first</option>
+                                </select>
+                                <span asp-validation-for="SubProject" class="text-danger"></span>
+                                <small class="text-muted">Options come from the selected project SubProjects list.</small>
+                            </div>
+
+                            <div class="mb-3">
                                 <label asp-for="PlotNo" class="form-label">Unit No *</label>
                                 <input asp-for="PlotNo" class="form-control" required />
                                 <span asp-validation-for="PlotNo" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="Street" class="form-label">Street</label>
-                                <input asp-for="Street" class="form-control" />
-                                <span asp-validation-for="Street" class="text-danger"></span>
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="Block" class="form-label">Block *</label>
+                                <label asp-for="Block" class="form-label">Tower *</label>
                                 <input asp-for="Block" class="form-control" required />
                                 <span asp-validation-for="Block" class="text-danger"></span>
                             </div>
@@ -80,37 +85,17 @@
                             </h5>
 
                             <div class="mb-3">
-                                <label asp-for="PlotType" class="form-label">Plot Type</label>
-                                <select asp-for="PlotType" class="form-select">
-                                    <option value="">Select Plot Type</option>
-                                    <option value="Residential">Residential</option>
-                                    <option value="Commercial">Commercial</option>
-                                    <option value="Industrial">Industrial</option>
-                                    <option value="Agricultural">Agricultural</option>
-                                </select>
+                                <label asp-for="PlotType" class="form-label">Unit Type (Category)</label>
+                                <input asp-for="PlotType" class="form-control" id="plotType" placeholder="Enter Unit Type (Category)" />
+                                <small class="text-muted">Free text value, not restricted to predefined options.</small>
                                 <span asp-validation-for="PlotType" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="PropertyType" class="form-label">Property Type</label>
-                                <select asp-for="PropertyType" class="form-select">
-                                    <option value="">Select Property Type</option>
-                                    <option value="Plot">Plot</option>
-                                    <option value="House">House</option>
-                                    <option value="Apartment">Apartment</option>
-                                    <option value="Villa">Villa</option>
-                                    <option value="Shop">Shop</option>
-                                    <option value="Office">Office</option>
-                                    <option value="Warehouse">Warehouse</option>
-                                </select>
-                                <span asp-validation-for="PropertyType" class="text-danger"></span>
-                            </div>
-
-                            <div class="mb-3">
                                 <label asp-for="Size" class="form-label">Size *</label>
-                                <select asp-for="Size" class="form-select" required id="size">
-                                    <option value="">Select Size</option>
-                                </select>
+                                <input asp-for="Size" class="form-control" required id="size" list="sizeOptions" placeholder="Select or type size" />
+                                <datalist id="sizeOptions"></datalist>
+                                <small class="text-muted">Choose from list or type custom size.</small>
                                 <span asp-validation-for="Size" class="text-danger"></span>
                             </div>
 
@@ -181,51 +166,75 @@
     <script>
         (function () {
             var projectSelect = document.getElementById('ProjectID');
-            var sizeSelect = document.getElementById('size');
+            var subProjectSelect = document.getElementById('subProject');
+            var sizeInput = document.getElementById('size');
+            var sizeOptions = document.getElementById('sizeOptions');
             var getProjectDetailsUrl = '@Url.Action("GetProjectDetails", "Property")';
-            var savedSize = '@Html.Raw(Model?.Size ?? "")';
+            var savedSubProject = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.SubProject ?? ""));
+            var savedSize = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.Size ?? ""));
 
-            function fillSizeOptions(sizes) {
-                var current = sizeSelect.value || savedSize;
-                sizeSelect.innerHTML = '<option value="">Select Size</option>';
-                (sizes || []).forEach(function (v) {
+            function fillSelectFromProject(values, select, saved, emptyLabel) {
+                var list = values || [];
+                var current = (select.value || saved || '').trim();
+                select.innerHTML = '';
+                var emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = emptyLabel;
+                select.appendChild(emptyOpt);
+                list.forEach(function (v) {
                     var opt = document.createElement('option');
                     opt.value = v;
                     opt.textContent = v;
                     if (v === current) opt.selected = true;
-                    sizeSelect.appendChild(opt);
+                    select.appendChild(opt);
                 });
-                // If the saved value wasn't in the list, still keep it visible
-                if (current && !sizes.includes(current)) {
+                if (current && list.indexOf(current) < 0) {
                     var opt = document.createElement('option');
                     opt.value = current;
                     opt.textContent = current;
                     opt.selected = true;
-                    sizeSelect.appendChild(opt);
+                    select.appendChild(opt);
                 }
             }
 
-            function loadProjectSizes() {
+            function fillDatalist(listEl, values) {
+                if (!listEl) return;
+                listEl.innerHTML = '';
+                (values || []).forEach(function (v) {
+                    var opt = document.createElement('option');
+                    opt.value = v;
+                    listEl.appendChild(opt);
+                });
+            }
+
+            function loadProjectDetails() {
                 var projectId = projectSelect && projectSelect.value;
                 if (!projectId) {
-                    sizeSelect.innerHTML = '<option value="">Select Project first</option>';
+                    subProjectSelect.innerHTML = '<option value="">Select Project first</option>';
+                    fillDatalist(sizeOptions, []);
+                    if (sizeInput) sizeInput.value = '';
                     return;
                 }
                 fetch(getProjectDetailsUrl + '?projectId=' + encodeURIComponent(projectId))
                     .then(function (r) { return r.json(); })
-                    .then(function (data) { fillSizeOptions(data.sizes || []); })
+                    .then(function (data) {
+                        fillSelectFromProject(data.subProjects || [], subProjectSelect, savedSubProject, 'Select Subproject');
+                        fillDatalist(sizeOptions, data.sizes || []);
+                        if (sizeInput && savedSize) sizeInput.value = savedSize;
+                    })
                     .catch(function () {
-                        sizeSelect.innerHTML = '<option value="">Select Project first</option>';
+                        subProjectSelect.innerHTML = '<option value="">Select Project first</option>';
+                        fillDatalist(sizeOptions, []);
                     });
             }
 
             if (projectSelect) {
                 projectSelect.addEventListener('change', function () {
-                    savedSize = '';   // clear saved value when project changes
-                    loadProjectSizes();
+                    savedSubProject = '';
+                    savedSize = '';
+                    loadProjectDetails();
                 });
-                // On page load, populate sizes for the already-selected project
-                if (projectSelect.value) loadProjectSizes();
+                if (projectSelect.value) loadProjectDetails();
             }
         })();
     </script>

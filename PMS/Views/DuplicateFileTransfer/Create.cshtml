@@ -1,0 +1,121 @@
+@{
+    ViewData["Title"] = "New Duplicate File Transfer";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="mb-0"><i class="fas fa-copy me-2"></i>New Request</h2>
+    <div class="d-flex gap-2">
+        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info btn-sm">
+            <i class="fas fa-tags me-1"></i>Transfer Fee Module
+        </a>
+        <a asp-action="Index" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    </div>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white fw-semibold"><i class="fas fa-search me-2"></i>Customer</div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Customer ID <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input type="text" id="customerIdInput" class="form-control" placeholder="Customer ID" />
+                    <button type="button" class="btn btn-primary" id="searchBtn"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+        </div>
+        <div id="customerPanel" class="mt-3" style="display:none;">
+            <div class="row g-2 small">
+                <div class="col-md-3"><span class="fw-semibold">Name:</span> <span id="custName"></span></div>
+                <div class="col-md-3"><span class="fw-semibold">CNIC:</span> <span id="custCnic"></span></div>
+                <div class="col-md-3"><span class="fw-semibold">Project:</span> <span id="custProject"></span></div>
+                <div class="col-md-3"><span class="fw-semibold">Sub-project:</span> <span id="custSub"></span></div>
+                <div class="col-12">
+                    <span class="fw-semibold">Fee (from Transfer Fee, type &quot;Duplicate File Transfer&quot;):</span>
+                    <span id="feeLine" class="text-primary fw-bold"></span>
+                    <div id="transferFeeMissingActions" class="mt-2" style="display:none;">
+                        <span class="text-muted small d-block mb-2">No matching fee row for this customer's project and sub-project. Add one in Transfer Fee with type <strong>Duplicate File Transfer</strong>.</span>
+                        <a id="addTransferFeeBtn" href="@Url.Action("Create", "TransferFee")" class="btn btn-sm btn-warning" target="_blank" rel="noopener">
+                            <i class="fas fa-plus me-1"></i>Add Transfer Fee
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="searchErr" class="text-danger mt-2" style="display:none;"></div>
+    </div>
+</div>
+
+<div id="formSection" style="display:none;">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="customerId" id="hiddenCustomerId" />
+        <div class="card mb-4">
+            <div class="card-header fw-semibold"><i class="fas fa-file-alt me-2"></i>Details</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Comments</label>
+                    <textarea name="comments" class="form-control" rows="2" maxlength="4000" placeholder="Optional"></textarea>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Attachment (optional)</label>
+                        <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Attachment description</label>
+                        <input type="text" name="attachmentDescription" class="form-control" maxlength="500" placeholder="Optional" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Submit</button>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    $(function () {
+        $('#searchBtn').on('click', function () {
+            var id = ($('#customerIdInput').val() || '').trim();
+            $('#searchErr').hide().text('');
+            if (!id) { $('#searchErr').text('Enter Customer ID.').show(); return; }
+            $.post('@Url.Action("SearchCustomer", "DuplicateFileTransfer")', { customerId: id })
+                .done(function (res) {
+                    if (!res.success) {
+                        $('#searchErr').text(res.message || 'Not found').show();
+                        $('#customerPanel').hide();
+                        $('#formSection').hide();
+                        return;
+                    }
+                    $('#custName').text(res.fullName);
+                    $('#custCnic').text(res.cnic);
+                    $('#custProject').text(res.project);
+                    $('#custSub').text(res.subProject || '—');
+                    if (res.feeConfigured) {
+                        $('#feeLine').text('PKR ' + Number(res.feeDue).toLocaleString());
+                        $('#transferFeeMissingActions').hide();
+                    } else {
+                        $('#feeLine').html('<span class="text-muted">Not configured</span>');
+                        if (res.addTransferFeeUrl) {
+                            $('#addTransferFeeBtn').attr('href', res.addTransferFeeUrl);
+                        }
+                        $('#transferFeeMissingActions').show();
+                    }
+                    $('#hiddenCustomerId').val(res.customerID);
+                    $('#customerPanel').show();
+                    $('#formSection').show();
+                })
+                .fail(function () { $('#searchErr').text('Search failed.').show(); });
+        });
+    });
+</script>
+}

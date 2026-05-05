@@ -138,7 +138,7 @@
                             </td>
                             <td>
                                 <i class="fas fa-calendar-alt me-1 text-muted"></i>
-                                @payment.PaymentDate.ToString("MMM dd, yyyy")
+                                @payment.PaymentDate.ToString("dd-MM-yyyy")
                                 <br>
                                 <small class="text-muted">@payment.PaymentDate.ToString("hh:mm tt")</small>
                             </td>
@@ -257,7 +257,7 @@
                                             </div>
                                             <div class="col-6 mb-3">
                                                 <label class="text-muted small">Payment Date</label>
-                                                <p>@payment.PaymentDate.ToString("MMM dd, yyyy hh:mm tt")</p>
+                                                <p>@payment.PaymentDate.ToString("dd-MM-yyyy hh:mm tt")</p>
                                             </div>
                                             <div class="col-6 mb-3">
                                                 <label class="text-muted small">Method</label>

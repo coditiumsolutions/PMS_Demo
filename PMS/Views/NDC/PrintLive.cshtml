@@ -8,9 +8,19 @@
     var appNo = Model.NDCID;
     var regNo = Model.CustomerID ?? "—";
     var ndcType = string.IsNullOrWhiteSpace(Model.NDCType) ? "NDC" : Model.NDCType;
+    var jointOwnerNames = (Model.Customer?.JointOwners ?? new List<PMS.Models.JointOwner>())
+        .Select(j => j.JointOwnerName?.Trim())
+        .Where(n => !string.IsNullOrWhiteSpace(n))
+        .ToList();
+    var customerNameWithJointOwners = jointOwnerNames.Any()
+        ? string.Join(" / ", (new[] { Model.Customer?.FullName ?? "—" }).Concat(jointOwnerNames.Where(n => !string.Equals(n, Model.Customer?.FullName, StringComparison.OrdinalIgnoreCase))))
+        : (Model.Customer?.FullName ?? "—");
     var remainingDues = Math.Max(Model.RemainingDues ?? 0m, 0m);
     var transferFeeDue = Math.Max(Model.TransferFeeAmount ?? 0m, 0m);
-    var totalOutstanding = remainingDues + transferFeeDue;
+    var amountPerUnit = Math.Max(Model.AmountPerUnit ?? 0m, 0m);
+    var propertySize = Math.Max(Model.PropertySize ?? 0m, 0m);
+    var dueSurcharge = Math.Max(ViewBag.TotalDueSurcharge as decimal? ?? 0m, 0m);
+    var totalOutstanding = remainingDues + transferFeeDue + dueSurcharge;
     var hasAnyDue = totalOutstanding > 0m;
 }
 
@@ -64,18 +74,27 @@
         <div class="a4-section">
             <p class="certificate-paragraph">
                 The details of dues till date against registration no. <strong>@(Model.CustomerID ?? "—")</strong>
-                for customer/applicant <strong>@(Model.Customer?.FullName ?? "—")</strong> under plan
+                for customer/applicant <strong>@customerNameWithJointOwners</strong> under plan
                 <strong>@(Model.Customer?.PaymentPlan?.PlanName ?? "—")</strong> in project
                 <strong>@(Model.Customer?.PaymentPlan?.Project?.ProjectName ?? "—")</strong> are as follows:
             </p>
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(Model.Title))
+        @if (!string.IsNullOrWhiteSpace(Model.Title) || amountPerUnit > 0m || propertySize > 0m || transferFeeDue > 0m)
         {
             <div class="a4-section">
                 <div class="a4-section-title">Title / Reference</div>
                 <div class="a4-info-block" style="margin-bottom: 0;">
-                    <div class="a4-info-value">@Model.Title</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Title))
+                    {
+                        <div class="a4-info-value"><strong>@Model.Title</strong></div>
+                    }
+                    @if (amountPerUnit > 0m || propertySize > 0m || transferFeeDue > 0m)
+                    {
+                        <div class="a4-info-value mt-1">
+                            Amount/Unit: @amountPerUnit.ToString("N2") | Size: @propertySize.ToString("N2") | Transfer Fee: @transferFeeDue.ToString("N2")
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -102,6 +121,10 @@
                         <tr>
                             <td class="text-start">Transfer Fee (Due)</td>
                             <td class="text-end">@transferFeeDue.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-start">Due Surcharge</td>
+                            <td class="text-end">@dueSurcharge.ToString("N0")</td>
                         </tr>
                         <tr>
                             <td class="text-start"><strong>Total Dues Payable</strong></td>

@@ -421,6 +421,15 @@ namespace PMS.Controllers
             existing.RefundedAmount = existing.PaidAmount - existing.DeductionAmount;
             if (existing.RefundedAmount < 0) existing.RefundedAmount = 0;
 
+            var chequeSum = await _context.RefundCheques
+                .Where(c => c.RefundID == id)
+                .SumAsync(c => (decimal?)c.Amount) ?? 0m;
+            if (chequeSum > existing.RefundedAmount)
+            {
+                ModelState.AddModelError(nameof(model.DeductionAmount),
+                    $"Total cheque amounts (PKR {chequeSum:N2}) exceed the new refunded amount (PKR {existing.RefundedAmount:N2}). Reduce or remove cheques on the Refund cheques tab before increasing the deduction.");
+            }
+
             if (!ModelState.IsValid)
             {
                 var selectedPaymentsInvalid = await GetSelectedPaymentsAsync(existing.SelectedPaymentIDs);
@@ -926,6 +935,148 @@ namespace PMS.Controllers
             {
                 return new List<Payment>();
             }
+        }
+
+        private static string? TruncateUserId(string? userId) =>
+            string.IsNullOrEmpty(userId) ? null : (userId.Length <= 10 ? userId : userId[..10]);
+
+        private async Task<IActionResult?> EnsureRefundChequeManageAsync(string refundId)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+
+            var workflowStatuses = await GetWorkflowStatusesAsync();
+            var approvedStatus = ResolveWorkflowStatus(workflowStatuses, "Approved");
+            var refund = await _context.Refunds.AsNoTracking().FirstOrDefaultAsync(r => r.RefundID == refundId);
+            if (refund == null)
+                return Json(new { success = false, message = "Refund not found." });
+            if (string.Equals(refund.WorkflowStatus, approvedStatus, StringComparison.OrdinalIgnoreCase))
+                return Json(new { success = false, message = "Cheques cannot be changed after the refund is approved." });
+            return null;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetRefundCheques(string refundId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+
+            var id = NormalizeId(refundId);
+            if (string.IsNullOrEmpty(id))
+                return Json(new { success = false, message = "Refund ID is required." });
+
+            var refund = await _context.Refunds.AsNoTracking().FirstOrDefaultAsync(r => r.RefundID == id);
+            if (refund == null)
+                return Json(new { success = false, message = "Refund not found." });
+
+            var items = await _context.RefundCheques
+                .Where(c => c.RefundID == id)
+                .OrderBy(c => c.Id)
+                .Select(c => new
+                {
+                    id = c.Id,
+                    chequeNo = c.ChequeNo,
+                    chequeDate = c.ChequeDate.ToString("yyyy-MM-dd"),
+                    amount = c.Amount,
+                    bank = c.Bank,
+                    details = c.Details,
+                    createdAt = c.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                })
+                .ToListAsync();
+
+            var total = await _context.RefundCheques.Where(c => c.RefundID == id).SumAsync(c => (decimal?)c.Amount) ?? 0m;
+            return Json(new { success = true, items, cap = refund.RefundedAmount, total });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddRefundCheque(string refundId, string chequeNo, DateTime chequeDate, decimal amount, string? bank, string? details)
+        {
+            var id = NormalizeId(refundId);
+            var gate = await EnsureRefundChequeManageAsync(id);
+            if (gate != null) return gate;
+
+            chequeNo = (chequeNo ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(chequeNo))
+                return Json(new { success = false, message = "Cheque number is required." });
+            if (amount <= 0)
+                return Json(new { success = false, message = "Amount must be greater than zero." });
+
+            var refund = await _context.Refunds.FirstOrDefaultAsync(r => r.RefundID == id);
+            if (refund == null)
+                return Json(new { success = false, message = "Refund not found." });
+
+            var sumExisting = await _context.RefundCheques.Where(c => c.RefundID == id).SumAsync(c => (decimal?)c.Amount) ?? 0m;
+            if (sumExisting + amount > refund.RefundedAmount)
+                return Json(new { success = false, message = $"Total cheque amounts cannot exceed refunded amount (PKR {refund.RefundedAmount:N2}). Current cheques: PKR {sumExisting:N2}." });
+
+            var userId = TruncateUserId(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            _context.RefundCheques.Add(new RefundCheque
+            {
+                RefundID = id,
+                ChequeNo = chequeNo,
+                ChequeDate = chequeDate.Date,
+                Amount = amount,
+                Bank = string.IsNullOrWhiteSpace(bank) ? null : bank.Trim(),
+                Details = string.IsNullOrWhiteSpace(details) ? null : details.Trim(),
+                CreatedAt = DateTime.Now,
+                CreatedBy = userId
+            });
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, message = "Cheque added." });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateRefundCheque(int id, string chequeNo, DateTime chequeDate, decimal amount, string? bank, string? details)
+        {
+            chequeNo = (chequeNo ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(chequeNo))
+                return Json(new { success = false, message = "Cheque number is required." });
+            if (amount <= 0)
+                return Json(new { success = false, message = "Amount must be greater than zero." });
+
+            var row = await _context.RefundCheques.FirstOrDefaultAsync(c => c.Id == id);
+            if (row == null)
+                return Json(new { success = false, message = "Cheque not found." });
+
+            var gate = await EnsureRefundChequeManageAsync(row.RefundID);
+            if (gate != null) return gate;
+
+            var refund = await _context.Refunds.FirstOrDefaultAsync(r => r.RefundID == row.RefundID);
+            if (refund == null)
+                return Json(new { success = false, message = "Refund not found." });
+
+            var sumOthers = await _context.RefundCheques
+                .Where(c => c.RefundID == row.RefundID && c.Id != id)
+                .SumAsync(c => (decimal?)c.Amount) ?? 0m;
+            if (sumOthers + amount > refund.RefundedAmount)
+                return Json(new { success = false, message = $"Total cheque amounts cannot exceed refunded amount (PKR {refund.RefundedAmount:N2}). Other cheques: PKR {sumOthers:N2}." });
+
+            row.ChequeNo = chequeNo;
+            row.ChequeDate = chequeDate.Date;
+            row.Amount = amount;
+            row.Bank = string.IsNullOrWhiteSpace(bank) ? null : bank.Trim();
+            row.Details = string.IsNullOrWhiteSpace(details) ? null : details.Trim();
+            row.ModifiedBy = TruncateUserId(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, message = "Cheque updated." });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteRefundCheque(int id)
+        {
+            var row = await _context.RefundCheques.FirstOrDefaultAsync(c => c.Id == id);
+            if (row == null)
+                return Json(new { success = false, message = "Cheque not found." });
+
+            var gate = await EnsureRefundChequeManageAsync(row.RefundID);
+            if (gate != null) return gate;
+
+            _context.RefundCheques.Remove(row);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, message = "Cheque removed." });
         }
     }
 }

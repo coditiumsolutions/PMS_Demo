@@ -41,19 +41,22 @@
                             </div>
 
                             <div class="mb-3">
+                                <label asp-for="SubProject" class="form-label">Subproject *</label>
+                                <select asp-for="SubProject" class="form-select" required id="subProject">
+                                    <option value="">Select Project first</option>
+                                </select>
+                                <span asp-validation-for="SubProject" class="text-danger"></span>
+                                <small class="text-muted">Options come from the selected project SubProjects list.</small>
+                            </div>
+
+                            <div class="mb-3">
                                 <label asp-for="PlotNo" class="form-label">Unit No *</label>
                                 <input asp-for="PlotNo" class="form-control" required />
                                 <span asp-validation-for="PlotNo" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="Street" class="form-label">Street</label>
-                                <input asp-for="Street" class="form-control" />
-                                <span asp-validation-for="Street" class="text-danger"></span>
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="Block" class="form-label">Block *</label>
+                                <label asp-for="Block" class="form-label">Tower *</label>
                                 <input asp-for="Block" class="form-control" required />
                                 <span asp-validation-for="Block" class="text-danger"></span>
                             </div>
@@ -72,37 +75,17 @@
                             </h5> -->
 
                             <div class="mb-3">
-                                <label asp-for="PlotType" class="form-label">Plot Type</label>
-                                <select asp-for="PlotType" class="form-select" id="plotType">
-                                    <option value="">Select Plot Type</option>
-                                    @if (ViewBag.PlotTypes != null)
-                                    {
-                                        @foreach (var item in (IEnumerable<string>)ViewBag.PlotTypes)
-                                        {
-                                            <option value="@item">@item</option>
-                                        }
-                                    }
-                                </select>
+                                <label asp-for="PlotType" class="form-label">Unit Type (Category)</label>
+                                <input asp-for="PlotType" class="form-control" id="plotType" placeholder="Enter Unit Type (Category)" />
+                                <small class="text-muted">Free text value, not restricted to predefined options.</small>
                                 <span asp-validation-for="PlotType" class="text-danger"></span>
                             </div>
 
                             <div class="mb-3">
-                                <label asp-for="PropertyType" class="form-label">Property Type</label>
-                                <select asp-for="PropertyType" class="form-select" id="propertyType">
-                                    <option value="">Select Property Type</option>
-                                    @foreach (var pt in (ViewBag.PropertyTypes as List<string> ?? new List<string>()))
-                                    {
-                                        <option value="@pt">@pt</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="PropertyType" class="text-danger"></span>
-                            </div>
-
-                            <div class="mb-3">
                                 <label asp-for="Size" class="form-label">Size *</label>
-                                <select asp-for="Size" class="form-select" required id="size">
-                                    <option value="">Select Project first</option>
-                                </select>
+                                <input asp-for="Size" class="form-control" required id="size" list="sizeOptions" placeholder="Select or type size" />
+                                <datalist id="sizeOptions"></datalist>
+                                <small class="text-muted">Choose from list or type custom size.</small>
                                 <span asp-validation-for="Size" class="text-danger"></span>
                             </div>
 
@@ -164,11 +147,13 @@
     <script>
         (function() {
             var projectSelect = document.getElementById('ProjectID');
-            var sizeSelect = document.getElementById('size');
-            var propertyTypeSelect = document.getElementById('propertyType');
+            var subProjectSelect = document.getElementById('subProject');
+            var sizeInput = document.getElementById('size');
+            var sizeOptions = document.getElementById('sizeOptions');
             var getProjectDetailsUrl = '@Url.Action("GetProjectDetails", "Property")';
 
             function fillOptions(select, options, placeholder) {
+                if (!select) return;
                 var first = select.options[0];
                 select.innerHTML = '';
                 select.appendChild(first);
@@ -182,20 +167,33 @@
                 });
             }
 
+            function fillDatalist(listEl, options) {
+                if (!listEl) return;
+                listEl.innerHTML = '';
+                (options || []).forEach(function(v) {
+                    var opt = document.createElement('option');
+                    opt.value = v;
+                    listEl.appendChild(opt);
+                });
+            }
+
             function loadProjectDetails() {
                 var projectId = projectSelect && projectSelect.value;
                 if (!projectId) {
-                    fillOptions(sizeSelect, [], 'Select Project first');
-                    fillOptions(propertyTypeSelect, [], 'Select Project first');
+                    fillOptions(subProjectSelect, [], 'Select Project first');
+                    fillDatalist(sizeOptions, []);
+                    if (sizeInput) sizeInput.value = '';
                     return;
                 }
                 fetch(getProjectDetailsUrl + '?projectId=' + encodeURIComponent(projectId))
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
-                        fillOptions(sizeSelect, data.sizes || [], 'Select Size');
+                        fillOptions(subProjectSelect, data.subProjects || [], 'Select Subproject');
+                        fillDatalist(sizeOptions, data.sizes || []);
                     })
                     .catch(function() {
-                        fillOptions(sizeSelect, [], 'Select Project first');
+                        fillOptions(subProjectSelect, [], 'Select Project first');
+                        fillDatalist(sizeOptions, []);
                     });
             }
 
@@ -203,11 +201,11 @@
                 projectSelect.addEventListener('change', loadProjectDetails);
                 if (projectSelect.value) {
                     loadProjectDetails();
-                    var preserveSize = '@(Model?.Size ?? "")';
-                    var preservePropertyType = '@(Model?.PropertyType ?? "")';
+                    var preserveSubProject = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.SubProject ?? ""));
+                    var preserveSize = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model?.Size ?? ""));
                     setTimeout(function() {
-                        if (preserveSize && sizeSelect) sizeSelect.value = preserveSize;
-                        if (preservePropertyType && propertyTypeSelect) propertyTypeSelect.value = preservePropertyType;
+                        if (preserveSubProject && subProjectSelect) subProjectSelect.value = preserveSubProject;
+                        if (preserveSize && sizeInput) sizeInput.value = preserveSize;
                     }, 100);
                 }
             }

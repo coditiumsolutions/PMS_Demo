@@ -51,6 +51,7 @@
                 <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#buyer" role="tab">Buyer</button></li>
                 <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#payment" role="tab">Payment & Fee</button></li>
                 <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#comments" role="tab">Comments</button></li>
+                <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#newJointOwners" role="tab">New Joint Owners</button></li>
                 <li class="nav-item"><button class="nav-link @(openAttachmentsTab ? "active" : "")" type="button" data-bs-toggle="tab" data-bs-target="#attachments" role="tab"><i class="fas fa-paperclip me-1"></i>Attachments</button></li>
             </ul>
             <div class="tab-content border border-top-0 p-3" id="editTabContent">
@@ -62,7 +63,7 @@
                             <span asp-validation-for="SellerName" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Father Name</label>
+                            <label class="form-label">Son/D/W/o</label>
                             <input asp-for="SellerFatherName" id="SellerFatherName" class="form-control" placeholder="Letters only" />
                             <span asp-validation-for="SellerFatherName" class="text-danger small"></span>
                         </div>
@@ -88,7 +89,7 @@
                             <span asp-validation-for="BuyerName" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Father's Name</label>
+                            <label class="form-label">Son/D/W/o</label>
                             <input asp-for="BuyerFatherName" id="BuyerFatherName" class="form-control" placeholder="Letters only" />
                             <span asp-validation-for="BuyerFatherName" class="text-danger small"></span>
                         </div>
@@ -111,8 +112,8 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Date of Birth</label>
-                            <input asp-for="BuyerDOB" id="BuyerDOB" type="date" class="form-control" value="@(Model.BuyerDOB?.ToString("yyyy-MM-dd") ?? "1990-01-01")" max="@(DateTime.Today.AddYears(-16).ToString("yyyy-MM-dd"))" />
-                            <small class="text-muted">Must be at least 16 years old.</small>
+                            <input asp-for="BuyerDOB" id="BuyerDOB" type="date" class="form-control" lang="en-GB" value="@(Model.BuyerDOB?.ToString("yyyy-MM-dd") ?? "1990-01-01")" />
+                            <small class="text-muted">Use calendar selection (DD-MM-YYYY).</small>
                             <span asp-validation-for="BuyerDOB" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
@@ -127,16 +128,17 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Nationality</label>
-                            <select asp-for="BuyerNationality" class="form-select">
-                                <option value="">Select Nationality</option>
+                            <input asp-for="BuyerNationality" class="form-control" list="nationalityList-transfer-edit" autocomplete="off" placeholder="Select from list or type a value" />
+                            <datalist id="nationalityList-transfer-edit">
                                 @if (ViewBag.Nationalities != null)
                                 {
                                     foreach (var nationality in (IEnumerable<string>)ViewBag.Nationalities)
                                     {
-                                        <option value="@nationality">@nationality</option>
+                                        <option value="@nationality"></option>
                                     }
                                 }
-                            </select>
+                            </datalist>
+                            <small class="text-muted d-block">Suggestions from configuration; you may enter any nationality.</small>
                             <span asp-validation-for="BuyerNationality" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
@@ -219,6 +221,33 @@
                             </select>
                         </div>
                         <div class="col-md-6"><label class="form-label">Challan No</label><input asp-for="PaymentChallanNo" class="form-control" /></div>
+                        <div class="col-md-6">
+                            <label class="form-label">Bank name</label>
+                            <select asp-for="BankName" class="form-select">
+                                <option value="">Select bank</option>
+                                @{
+                                    var bankNamesEdit = ViewBag.BankNames as IEnumerable<string> ?? Array.Empty<string>();
+                                    var currentBankEdit = Model.BankName?.Trim() ?? "";
+                                }
+                                @if (!string.IsNullOrEmpty(currentBankEdit) && !bankNamesEdit.Any(b => string.Equals(b, currentBankEdit, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    <option value="@currentBankEdit" selected>@currentBankEdit</option>
+                                }
+                                @foreach (var bank in bankNamesEdit)
+                                {
+                                    if (string.Equals(bank, currentBankEdit, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="@bank" selected>@bank</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@bank">@bank</option>
+                                    }
+                                }
+                            </select>
+                            <small class="text-muted">From configuration <code>banks</code>.</small>
+                        </div>
+                        <div class="col-12"><label class="form-label">Payment details</label><textarea asp-for="PaymentDetails" class="form-control" rows="2"></textarea></div>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="comments" role="tabpanel">
@@ -226,6 +255,66 @@
                     <div class="mb-2"><label class="form-label">CRO Comments</label><textarea asp-for="CROComments" class="form-control" rows="2"></textarea></div>
                     <div class="mb-2"><label class="form-label">Accounts Comments</label><textarea asp-for="AccountsComments" class="form-control" rows="2"></textarea></div>
                     <div class="mb-2"><label class="form-label">Transfer Comments</label><textarea asp-for="TransferComments" class="form-control" rows="2"></textarea></div>
+                </div>
+                <div class="tab-pane fade" id="newJointOwners" role="tabpanel">
+                    <div class="alert alert-info py-2">
+                        These joint owners will replace customer joint owners when this transfer is approved.
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Joint Owner Name *</label>
+                            <input type="text" id="transferJointOwnerName" class="form-control" />
+                            <small class="text-muted">Letters, spaces, dots and hyphens only.</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Son/D/W/o</label>
+                            <input type="text" id="transferJointOwnerFatherName" class="form-control" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">CNIC *</label>
+                            <input type="text" id="transferJointOwnerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Contact *</label>
+                            <input type="text" id="transferJointOwnerContact" class="form-control" />
+                            <small class="text-muted">Must be 11 to 13 digits.</small>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">Percentage</label>
+                            <input type="number" id="transferJointOwnerPercentage" class="form-control" min="0" max="100" step="0.01" />
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Address</label>
+                            <input type="text" id="transferJointOwnerAddress" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Details</label>
+                            <input type="text" id="transferJointOwnerDetails" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary btn-sm" id="addTransferJointOwnerBtn">
+                                <i class="fas fa-plus me-1"></i>Add New Joint Owner
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="transferJointOwnersTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Son/D/W/o</th>
+                                    <th>CNIC</th>
+                                    <th>Contact</th>
+                                    <th>Percentage</th>
+                                    <th>Address</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="7" class="text-muted text-center">Loading transfer joint owners...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="tab-pane fade @(openAttachmentsTab ? "show active" : "")" id="attachments" role="tabpanel">
                     <p class="text-muted small mb-3">Upload documents. Accepted: JPG, PNG, GIF, BMP, PDF. Max 8MB per file. Multiple files are allowed in all categories.</p>
@@ -281,6 +370,88 @@
                                         </button>
                                     </div>
                                     <div id="bookingFormAttachmentsList" class="transfer-att-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <h6 class="mb-0"><i class="fas fa-user me-2"></i>Buyer photo</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Choose file</label>
+                                        <input type="file" id="buyerPhotoFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                        <input type="text" id="buyerPhotoDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                                            <button type="button" class="btn btn-sm text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBuyerPhotoBtn">
+                                                <i class="fas fa-upload me-1"></i>Upload
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="openBuyerPhotoCameraBtn" title="Capture with device camera">
+                                                <i class="fas fa-camera me-1"></i>Live camera
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="buyerPhotoAttachmentsList" class="transfer-att-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <h6 class="mb-0"><i class="fas fa-user-tie me-2"></i>Seller photo</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Choose file</label>
+                                        <input type="file" id="sellerPhotoFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                        <input type="text" id="sellerPhotoDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                                            <button type="button" class="btn btn-sm text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadSellerPhotoBtn">
+                                                <i class="fas fa-upload me-1"></i>Upload
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="openSellerPhotoCameraBtn" title="Capture with device camera">
+                                                <i class="fas fa-camera me-1"></i>Live camera
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="sellerPhotoAttachmentsList" class="transfer-att-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Buyer CNIC</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Upload file</label>
+                                        <input type="file" id="buyerCnicFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                        <input type="text" id="buyerCnicDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                        <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadBuyerCnicBtn">
+                                            <i class="fas fa-upload me-1"></i>Upload
+                                        </button>
+                                    </div>
+                                    <div id="buyerCnicAttachmentsList" class="transfer-att-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100" style="border-color: rgb(104, 167, 226);">
+                                <div class="card-header text-white" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);">
+                                    <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Seller CNIC</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Upload file</label>
+                                        <input type="file" id="sellerCnicFile" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.bmp,.pdf" multiple />
+                                        <input type="text" id="sellerCnicDescription" class="form-control form-control-sm mt-1" placeholder="Description (optional)" />
+                                        <button type="button" class="btn btn-sm text-white mt-2" style="background: linear-gradient(135deg, rgb(104, 167, 226) 0%, rgb(72, 123, 165) 100%);" id="uploadSellerCnicBtn">
+                                            <i class="fas fa-upload me-1"></i>Upload
+                                        </button>
+                                    </div>
+                                    <div id="sellerCnicAttachmentsList" class="transfer-att-list"></div>
                                 </div>
                             </div>
                         </div>
@@ -346,6 +517,31 @@
     </div>
 </div>
 
+<!-- Live camera for Buyer / Seller photo attachments (Transfer Edit) -->
+<div class="modal fade" id="transferPhotoCameraModal" tabindex="-1" aria-labelledby="transferPhotoCameraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="transferPhotoCameraModalLabel"><i class="fas fa-camera me-2"></i>Capture photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-2">
+                <p class="text-muted small mb-2" id="transferPhotoCameraHint">Allow camera access when prompted. Optional description can be filled in the Buyer/Seller photo card before upload. Capture uploads immediately.</p>
+                <div class="ratio ratio-4x3 bg-dark rounded overflow-hidden position-relative">
+                    <video id="transferPhotoCameraVideo" class="w-100 h-100" style="object-fit:contain;" playsinline muted autoplay></video>
+                </div>
+                <canvas id="transferPhotoCameraCanvas" class="d-none"></canvas>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" id="transferPhotoCameraCaptureBtn">
+                    <i class="fas fa-camera me-1"></i>Capture &amp; upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .customer-tabs { border-bottom: 2px solid rgb(72, 123, 165); background: linear-gradient(135deg, #f8f9fa 0%, #e8eef5 100%); padding: 0.5rem 1rem 0; }
     .customer-tabs .nav-link { border: none; color: var(--text-secondary); font-weight: 500; }
@@ -360,6 +556,39 @@
     var token = document.querySelector('input[name="__RequestVerificationToken"]');
     function getToken() { return token ? token.value : ''; }
 
+    var transferPhotoCameraStream = null;
+    var transferPhotoCameraTarget = null;
+
+    function stopTransferPhotoCameraStream() {
+        if (transferPhotoCameraStream) {
+            transferPhotoCameraStream.getTracks().forEach(function(t) { t.stop(); });
+            transferPhotoCameraStream = null;
+        }
+        var v = document.getElementById('transferPhotoCameraVideo');
+        if (v) v.srcObject = null;
+    }
+
+    function startTransferPhotoCameraStream() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Camera is not supported in this browser.');
+            var el = document.getElementById('transferPhotoCameraModal');
+            if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).hide();
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+            .then(function(stream) {
+                transferPhotoCameraStream = stream;
+                var v = document.getElementById('transferPhotoCameraVideo');
+                v.srcObject = stream;
+                return v.play();
+            })
+            .catch(function(err) {
+                alert('Could not access the camera: ' + (err && err.message ? err.message : String(err)));
+                var el = document.getElementById('transferPhotoCameraModal');
+                if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).hide();
+            });
+    }
+
     function loadAttachments() {
         $.ajax({
             url: '@Url.Action("GetAttachments", "Transfer")',
@@ -370,6 +599,10 @@
                     renderList('powerOfAttorneyAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'PowerOfAttorney'; }));
                     renderList('paymentReceiptsAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'PaymentReceipts'; }));
                     renderList('bookingFormAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BookingForm'; }));
+                    renderList('buyerPhotoAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BuyerPhoto'; }));
+                    renderList('sellerPhotoAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'SellerPhoto'; }));
+                    renderList('buyerCnicAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'BuyerCNIC'; }));
+                    renderList('sellerCnicAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'SellerCNIC'; }));
                     renderList('otherAttachmentsList', res.attachments.filter(function(a) { return a.attachmentType === 'Other'; }));
                 }
             }
@@ -404,11 +637,19 @@
         });
     }
 
-    function upload(type, fileInputId, descId, btnId, requireTitle) {
-        var fileInput = document.getElementById(fileInputId);
-        var descInput = document.getElementById(descId);
+    function upload(type, fileInputId, descId, btnId, requireTitle, fileOverride) {
+        var fileInput = fileInputId ? document.getElementById(fileInputId) : null;
+        var descInput = descId ? document.getElementById(descId) : null;
         var btn = document.getElementById(btnId);
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        var files = [];
+        if (fileOverride && fileOverride.length) {
+            files = Array.prototype.slice.call(fileOverride);
+        } else if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            for (var fi = 0; fi < fileInput.files.length; fi++) {
+                files.push(fileInput.files[fi]);
+            }
+        }
+        if (!files.length) {
             alert('Please select a file.');
             return;
         }
@@ -419,8 +660,8 @@
         }
         var fd = new FormData();
         fd.append('transferId', transferId);
-        for (var i = 0; i < fileInput.files.length; i++) {
-            fd.append('file', fileInput.files[i]);
+        for (var i = 0; i < files.length; i++) {
+            fd.append('file', files[i]);
         }
         fd.append('attachmentType', type);
         fd.append('description', descriptionValue);
@@ -434,7 +675,7 @@
             contentType: false,
             success: function(r) {
                 if (r.success) {
-                    fileInput.value = '';
+                    if (fileInput) fileInput.value = '';
                     if (descInput) descInput.value = '';
                     loadAttachments();
                 } else alert(r.message || 'Upload failed');
@@ -447,11 +688,185 @@
         });
     }
 
+    $('#transferPhotoCameraModal').on('hidden.bs.modal', function() {
+        stopTransferPhotoCameraStream();
+        transferPhotoCameraTarget = null;
+        $('#transferPhotoCameraCaptureBtn').prop('disabled', false);
+    });
+    $('#transferPhotoCameraModal').on('shown.bs.modal', function() {
+        startTransferPhotoCameraStream();
+    });
+
+    $('#openBuyerPhotoCameraBtn').on('click', function() {
+        transferPhotoCameraTarget = { type: 'BuyerPhoto', fileInputId: 'buyerPhotoFile', descId: 'buyerPhotoDescription', btnId: 'uploadBuyerPhotoBtn' };
+        $('#transferPhotoCameraModalLabel').html('<i class="fas fa-camera me-2"></i>Buyer photo — live camera');
+        if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('transferPhotoCameraModal')).show();
+    });
+    $('#openSellerPhotoCameraBtn').on('click', function() {
+        transferPhotoCameraTarget = { type: 'SellerPhoto', fileInputId: 'sellerPhotoFile', descId: 'sellerPhotoDescription', btnId: 'uploadSellerPhotoBtn' };
+        $('#transferPhotoCameraModalLabel').html('<i class="fas fa-camera me-2"></i>Seller photo — live camera');
+        if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('transferPhotoCameraModal')).show();
+    });
+
+    $('#transferPhotoCameraCaptureBtn').on('click', function() {
+        if (!transferPhotoCameraTarget) return;
+        var video = document.getElementById('transferPhotoCameraVideo');
+        var canvas = document.getElementById('transferPhotoCameraCanvas');
+        var w = video ? video.videoWidth : 0;
+        var h = video ? video.videoHeight : 0;
+        if (!w || !h) {
+            alert('Camera preview is not ready yet. Wait a moment and try again.');
+            return;
+        }
+        var maxW = 1920;
+        var scale = w > maxW ? maxW / w : 1;
+        var outW = Math.round(w * scale);
+        var outH = Math.round(h * scale);
+        canvas.width = outW;
+        canvas.height = outH;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, w, h, 0, 0, outW, outH);
+        var $cap = $('#transferPhotoCameraCaptureBtn').prop('disabled', true);
+        canvas.toBlob(function(blob) {
+            $cap.prop('disabled', false);
+            if (!blob) {
+                alert('Could not capture image.');
+                return;
+            }
+            var prefix = transferPhotoCameraTarget.type === 'BuyerPhoto' ? 'buyer-photo-' : 'seller-photo-';
+            var file = new File([blob], prefix + Date.now() + '.jpg', { type: 'image/jpeg' });
+            var target = transferPhotoCameraTarget;
+            var modalEl = document.getElementById('transferPhotoCameraModal');
+            if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            upload(target.type, target.fileInputId, target.descId, target.btnId, false, [file]);
+        }, 'image/jpeg', 0.88);
+    });
+
     $('button[data-bs-target="#attachments"]').on('shown.bs.tab', function() { loadAttachments(); });
+    $('button[data-bs-target="#newJointOwners"]').on('shown.bs.tab', function() { loadTransferJointOwners(); });
     $('#uploadPowerOfAttorneyBtn').on('click', function() { upload('PowerOfAttorney', 'powerOfAttorneyFile', 'powerOfAttorneyDescription', 'uploadPowerOfAttorneyBtn', false); });
     $('#uploadPaymentReceiptsBtn').on('click', function() { upload('PaymentReceipts', 'paymentReceiptsFile', 'paymentReceiptsDescription', 'uploadPaymentReceiptsBtn', false); });
     $('#uploadBookingFormBtn').on('click', function() { upload('BookingForm', 'bookingFormFile', 'bookingFormDescription', 'uploadBookingFormBtn', false); });
+    $('#uploadBuyerPhotoBtn').on('click', function() { upload('BuyerPhoto', 'buyerPhotoFile', 'buyerPhotoDescription', 'uploadBuyerPhotoBtn', false); });
+    $('#uploadSellerPhotoBtn').on('click', function() { upload('SellerPhoto', 'sellerPhotoFile', 'sellerPhotoDescription', 'uploadSellerPhotoBtn', false); });
+    $('#uploadBuyerCnicBtn').on('click', function() { upload('BuyerCNIC', 'buyerCnicFile', 'buyerCnicDescription', 'uploadBuyerCnicBtn', false); });
+    $('#uploadSellerCnicBtn').on('click', function() { upload('SellerCNIC', 'sellerCnicFile', 'sellerCnicDescription', 'uploadSellerCnicBtn', false); });
     $('#uploadOtherAttachmentsBtn').on('click', function() { upload('Other', 'otherAttachmentsFile', 'otherAttachmentsTitle', 'uploadOtherAttachmentsBtn', true); });
+
+    function loadTransferJointOwners() {
+        $.ajax({
+            url: '@Url.Action("GetTransferJointOwners", "Transfer")',
+            method: 'GET',
+            data: { transferId: transferId, customerId: '@Model.CustomerID' },
+            success: function(res) {
+                var $tb = $('#transferJointOwnersTable tbody');
+                $tb.empty();
+                if (!res.success) {
+                    $tb.html('<tr><td colspan="7" class="text-danger text-center">' + (res.message || 'Failed to load transfer joint owners.') + '</td></tr>');
+                    return;
+                }
+                if (!res.transferJointOwners || res.transferJointOwners.length === 0) {
+                    $tb.html('<tr><td colspan="7" class="text-muted text-center">No new joint owners added yet.</td></tr>');
+                    return;
+                }
+                res.transferJointOwners.forEach(function(item) {
+                    $tb.append('<tr>'
+                        + '<td>' + (item.jointOwnerName || '—') + '</td>'
+                        + '<td>' + (item.fatherName || '—') + '</td>'
+                        + '<td>' + (item.cnic || '—') + '</td>'
+                        + '<td>' + (item.contact || '—') + '</td>'
+                        + '<td>' + (item.percentage != null ? item.percentage : '—') + '</td>'
+                        + '<td>' + (item.address || '—') + '</td>'
+                        + '<td>' + (item.createdAt || '—') + '</td>'
+                        + '</tr>');
+                });
+            },
+            error: function() {
+                $('#transferJointOwnersTable tbody').html('<tr><td colspan="7" class="text-danger text-center">Error loading transfer joint owners.</td></tr>');
+            }
+        });
+    }
+
+    function normalizeDigits(value) {
+        return (value || '').replace(/\D/g, '');
+    }
+    function formatCnicValue(value) {
+        var raw = normalizeDigits(value);
+        if (raw.length <= 5) return raw;
+        if (raw.length <= 12) return raw.slice(0, 5) + '-' + raw.slice(5);
+        return raw.slice(0, 5) + '-' + raw.slice(5, 12) + '-' + raw.slice(12, 13);
+    }
+    function validateTransferJointOwnerInputs() {
+        var name = ($('#transferJointOwnerName').val() || '').trim();
+        var cnic = ($('#transferJointOwnerCNIC').val() || '').trim();
+        var contact = ($('#transferJointOwnerContact').val() || '').trim();
+        var nameOk = /^[a-zA-Z\s\.\-]+$/.test(name);
+        var cnicOk = /^\d{5}-\d{7}-\d$/.test(cnic);
+        var contactDigits = normalizeDigits(contact);
+        var contactOk = contactDigits.length >= 11 && contactDigits.length <= 13;
+        $('#transferJointOwnerName, #transferJointOwnerCNIC, #transferJointOwnerContact').removeClass('is-invalid');
+        if (!name || !nameOk) {
+            $('#transferJointOwnerName').addClass('is-invalid');
+            return { isValid: false, message: 'Joint owner name is required and must contain letters only.' };
+        }
+        if (!cnicOk) {
+            $('#transferJointOwnerCNIC').addClass('is-invalid');
+            return { isValid: false, message: 'CNIC is required in XXXXX-XXXXXXX-X format.' };
+        }
+        if (!contactOk) {
+            $('#transferJointOwnerContact').addClass('is-invalid');
+            return { isValid: false, message: 'Contact number is required and must be between 11 and 13 digits.' };
+        }
+        return { isValid: true };
+    }
+
+    $('#addTransferJointOwnerBtn').on('click', function() {
+        var validation = validateTransferJointOwnerInputs();
+        if (!validation.isValid) {
+            alert(validation.message);
+            return;
+        }
+        $.ajax({
+            url: '@Url.Action("AddTransferJointOwner", "Transfer")',
+            method: 'POST',
+            data: {
+                __RequestVerificationToken: getToken(),
+                transferId: transferId,
+                customerId: '@Model.CustomerID',
+                jointOwnerName: $('#transferJointOwnerName').val(),
+                fatherName: $('#transferJointOwnerFatherName').val(),
+                cnic: $('#transferJointOwnerCNIC').val(),
+                contact: $('#transferJointOwnerContact').val(),
+                address: $('#transferJointOwnerAddress').val(),
+                percentage: $('#transferJointOwnerPercentage').val(),
+                details: $('#transferJointOwnerDetails').val()
+            },
+            success: function(res) {
+                if (!res.success) {
+                    alert(res.message || 'Unable to add transfer joint owner.');
+                    return;
+                }
+                $('#transferJointOwnerName,#transferJointOwnerFatherName,#transferJointOwnerCNIC,#transferJointOwnerContact,#transferJointOwnerPercentage,#transferJointOwnerAddress,#transferJointOwnerDetails').val('');
+                loadTransferJointOwners();
+            },
+            error: function() {
+                alert('Error adding transfer joint owner.');
+            }
+        });
+    });
+
+    $('#transferJointOwnerName').on('input', function() {
+        this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+    });
+    $('#transferJointOwnerFatherName').on('input', function() {
+        this.value = this.value.replace(/[^a-zA-Z\s\.\-]/g, '');
+    });
+    $('#transferJointOwnerContact').on('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+    $('#transferJointOwnerCNIC').on('input', function() {
+        this.value = formatCnicValue(this.value);
+    });
 
     function setBiometricDemoMessage() {
         $('#biometricDemoMessage').show();
@@ -491,6 +906,16 @@
     ['BuyerMobile','BuyerMobile2'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
+    });
+    function clearBuyerMobile2Error() {
+        var buyerMobile2El = document.getElementById('BuyerMobile2');
+        if (buyerMobile2El) {
+            buyerMobile2El.setCustomValidity('');
+        }
+    }
+    ['BuyerPhone', 'BuyerMobile', 'BuyerMobile2'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', clearBuyerMobile2Error);
     });
 
     // --- CNIC auto-hyphen: digits only, format XXXXX-XXXXXXX-X ---
@@ -543,16 +968,8 @@
             }
 
             var buyerDobEl = document.getElementById('BuyerDOB');
-            if (buyerDobEl && buyerDobEl.value) {
-                var dob = new Date(buyerDobEl.value + 'T00:00:00');
-                var minDob = new Date();
-                minDob.setFullYear(minDob.getFullYear() - 16);
-                if (dob > minDob) {
-                    e.preventDefault();
-                    document.querySelector('[data-bs-target="#buyer"]').click();
-                    setTimeout(function() { buyerDobEl.scrollIntoView({ behavior:'smooth', block:'center' }); }, 300);
-                    return;
-                }
+            if (buyerDobEl) {
+                buyerDobEl.classList.remove('is-invalid');
             }
 
             function normalizeDigits(value) {
@@ -565,8 +982,14 @@
                 (mobile2Norm && phoneNorm && mobile2Norm === phoneNorm) ||
                 (mobile2Norm && mobileNorm && mobile2Norm === mobileNorm)) {
                 e.preventDefault();
+                var buyerMobile2El = document.getElementById('BuyerMobile2');
+                if (buyerMobile2El) {
+                    buyerMobile2El.setCustomValidity('Mobile 2 must be different from Phone and Mobile.');
+                    buyerMobile2El.reportValidity();
+                }
                 document.querySelector('[data-bs-target="#buyer"]').click();
                 setTimeout(function() { document.getElementById('BuyerMobile2').scrollIntoView({ behavior:'smooth', block:'center' }); }, 300);
+                return;
             }
         });
     }

@@ -132,9 +132,7 @@
                                 <th>Property ID</th>
                                 <th>Project</th>
                                 <th>Unit No</th>
-                                <th>Street</th>
-                                <th>Block</th>
-                                <th>Type</th>
+                                <th>Tower</th>
                                 <th>Size</th>
                                 <th>Current Dealer</th>
                                 <th>Actions</th>
@@ -161,11 +159,7 @@
                                         }
                                     </td>
                                     <td><strong>@property.PlotNo</strong></td>
-                                    <td>@property.Street</td>
                                     <td>@property.Block</td>
-                                    <td>
-                                        <span class="badge bg-primary">@property.PropertyType</span>
-                                    </td>
                                     <td>@property.Size</td>
                                     <td>
                                         @if (property.Dealer != null)
@@ -210,7 +204,7 @@
                 "pageLength": 25,
                 "order": [[ 2, "asc" ]],
                 "columnDefs": [
-                    { "orderable": false, "targets": [0, 9] }
+                    { "orderable": false, "targets": [0, 8] }
                 ]
             });
         });

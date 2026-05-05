@@ -141,6 +141,7 @@
                             <th>Registration ID</th>
                             <th>Full Name</th>
                             <th>Project</th>
+                            <th>Form No</th>
                             <th>Size</th>
                             <th>SubProject</th>
                             <th>CNIC</th>
@@ -184,6 +185,9 @@
                                 </td>
                                 <td>
                                     @(registration.Project?.ProjectName ?? "—")
+                                </td>
+                                <td>
+                                    @(registration.FormNo ?? "—")
                                 </td>
                                 <td>
                                     @(registration.Size ?? "—")
@@ -340,9 +344,9 @@
         $(document).ready(function () {
             $('#registrationsTable').DataTable({
                 "pageLength": 25,
-                "order": [[8, "desc"]], // Sort by date descending
+                "order": [[9, "desc"]], // Sort by date descending
                 "columnDefs": [
-                    { "orderable": false, "targets": [0, 10] }
+                    { "orderable": false, "targets": [0, 11] }
                 ]
             });
         });

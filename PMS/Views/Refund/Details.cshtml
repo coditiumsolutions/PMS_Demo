@@ -7,10 +7,13 @@
     var wf = Model.WorkflowStatus ?? initiatedStatus;
     var badgeClass = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
         ? "bg-success"
-        : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase)
+    : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase)
             ? "bg-danger"
             : "bg-warning text-dark";
     var selectedPayments = ViewBag.SelectedPayments as List<PMS.Models.Payment> ?? new List<PMS.Models.Payment>();
+    ViewBag.RefundChequesRefundId = Model.RefundID;
+    ViewBag.RefundChequesCap = Model.RefundedAmount;
+    ViewBag.RefundChequesCanManage = ViewBag.CanEdit == true && !string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase);
 }
 
 <div style="display:none;">@Html.AntiForgeryToken()</div>
@@ -49,6 +52,20 @@
     </div>
     <span class="ms-auto badge @badgeClass fs-6">@wf</span>
 </div>
+
+<ul class="nav nav-tabs mb-0" id="refundDetailTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="refund-tab-overview" data-bs-toggle="tab" data-bs-target="#tabRefundOverview" type="button" role="tab">Overview</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="refund-tab-cheques" data-bs-toggle="tab" data-bs-target="#tabRefundCheques" type="button" role="tab"><i class="fas fa-money-check me-1"></i>Refund cheques</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="refund-tab-attachments" data-bs-toggle="tab" data-bs-target="#tabRefundAttachments" type="button" role="tab">Attachments</button>
+    </li>
+</ul>
+<div class="tab-content border border-top-0 rounded-bottom p-3 mb-4 bg-white">
+    <div class="tab-pane fade show active" id="tabRefundOverview" role="tabpanel">
 
 <div class="row g-4">
     <!-- Left: Refund Info -->
@@ -157,8 +174,12 @@
     </div>
 </div>
 
-<!-- Attachments -->
-<div class="card mt-4">
+    </div>
+    <div class="tab-pane fade" id="tabRefundCheques" role="tabpanel">
+        @await Html.PartialAsync("_RefundChequesPanel")
+    </div>
+    <div class="tab-pane fade" id="tabRefundAttachments" role="tabpanel">
+<div class="card border-0 shadow-sm">
     <div class="card-header fw-semibold">
         <i class="fas fa-paperclip me-2"></i>Attachments
     </div>
@@ -181,6 +202,8 @@
             </div>
         }
         <div id="refundAttachmentsList" class="refund-att-list"></div>
+    </div>
+</div>
     </div>
 </div>
 
@@ -296,4 +319,5 @@
     loadAttachments();
 })();
 </script>
+@{ await Html.RenderPartialAsync("_RefundChequesScripts"); }
 }

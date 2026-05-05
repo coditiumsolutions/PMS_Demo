@@ -60,9 +60,9 @@
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Size *</label>
-                                <select id="RegisteredSize" class="form-select" required>
-                                    <option value="">Select Size</option>
-                                </select>
+                                <input id="RegisteredSize" class="form-control" type="text" inputmode="decimal" autocomplete="off" required placeholder="e.g. 5, 10.5" />
+                                <datalist id="RegisteredSizeOptions"></datalist>
+                                <small class="text-muted">Numeric free text. You can type your own value.</small>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -76,7 +76,15 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Price per unit</label>
+                                <input id="PricePerUnit" type="text" inputmode="decimal" class="form-control" placeholder="e.g., 85000" />
+                                <small class="text-muted">UI-only helper to auto-fill Total Amount.</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
                             <div class="mb-3">
                                 <label asp-for="TotalAmount" class="form-label">Total Amount (PKR) *</label>
                                 <input asp-for="TotalAmount" id="TotalAmount" type="number" step="1" min="1" max="1000000000" class="form-control" placeholder="e.g., 5000000" required />
@@ -372,8 +380,50 @@
                 });
             }
 
+            function fillDatalist(selector, values) {
+                const $dl = $(selector);
+                $dl.empty();
+                (values || []).forEach(function(item) {
+                    $dl.append($('<option/>').attr('value', item));
+                });
+            }
+
+            function normalizeNumericText(raw) {
+                var text = String(raw || '').replace(/,/g, '').trim();
+                if (text === '') return '';
+                text = text.replace(/[^0-9.]/g, '');
+                var parts = text.split('.');
+                if (parts.length > 2) {
+                    text = parts[0] + '.' + parts.slice(1).join('');
+                }
+                return text;
+            }
+
+            function parseDecimalText(selector) {
+                var normalized = normalizeNumericText($(selector).val());
+                if (normalized === '') return 0;
+                var val = parseFloat(normalized);
+                return isNaN(val) ? 0 : val;
+            }
+
+            function sanitizeNumericTextField(selector) {
+                $(selector).val(normalizeNumericText($(selector).val()));
+            }
+
+            function autoFillTotalAmountFromSizeAndUnitPrice() {
+                var size = parseDecimalText('#RegisteredSize');
+                var pricePerUnit = parseDecimalText('#PricePerUnit');
+                if (size > 0 && pricePerUnit > 0) {
+                    var computed = Math.round(size * pricePerUnit);
+                    writeAmount('#TotalAmount', computed);
+                    installmentAmountManual = false;
+                    updatePreview();
+                }
+            }
+
             async function loadProjectMeta(projectId) {
-                fillDropdown('#RegisteredSize', [], 'Select Size');
+                $('#RegisteredSize').val('');
+                fillDatalist('#RegisteredSizeOptions', []);
                 fillDropdown('#SubProject', [], 'Select Subproject');
 
                 if (!projectId) {
@@ -386,7 +436,7 @@
                         $.getJSON('@Url.Action("GetProjectSubProjects", "Payment")', { projectId: projectId })
                     ]);
 
-                    fillDropdown('#RegisteredSize', sizes, 'Select Size');
+                    fillDatalist('#RegisteredSizeOptions', sizes);
                     fillDropdown('#SubProject', subprojects, 'Select Subproject');
                 } catch (e) {
                     console.error('Failed loading project size/subproject values.', e);
@@ -496,6 +546,16 @@
                 loadProjectMeta(projectId);
             });
 
+            $('#RegisteredSize').on('input blur change', function() {
+                sanitizeNumericTextField('#RegisteredSize');
+                autoFillTotalAmountFromSizeAndUnitPrice();
+            });
+
+            $('#PricePerUnit').on('input blur change', function() {
+                sanitizeNumericTextField('#PricePerUnit');
+                autoFillTotalAmountFromSizeAndUnitPrice();
+            });
+
             $('#TotalAmount').on('input blur change', function() {
                 sanitizeWholeAmountField('#TotalAmount', false);
                 updatePossessionFieldRequirements();
@@ -542,11 +602,19 @@
                     $('#ProjectID').focus().addClass('is-invalid');
                     return false;
                 }
-                if (!$('#RegisteredSize').val()) {
-                    alert('Please select a Size.');
+                var normalizedRegisteredSize = normalizeNumericText($('#RegisteredSize').val());
+                if (!normalizedRegisteredSize) {
+                    alert('Please enter Size.');
                     $('#RegisteredSize').focus().addClass('is-invalid');
                     return false;
                 }
+                var parsedRegisteredSize = parseFloat(normalizedRegisteredSize);
+                if (!isFinite(parsedRegisteredSize) || parsedRegisteredSize <= 0) {
+                    alert('Size must be a positive numeric value.');
+                    $('#RegisteredSize').focus().addClass('is-invalid');
+                    return false;
+                }
+                $('#RegisteredSize').val(normalizedRegisteredSize).removeClass('is-invalid');
                 if (!$('#SubProject').val()) {
                     alert('Please select a Subproject.');
                     $('#SubProject').focus().addClass('is-invalid');
@@ -618,7 +686,7 @@
                 var planData = {
                     PlanName: $('#PlanName').val(),
                     ProjectID: $('#ProjectID').val() || null,
-                    RegisteredSize: $('#RegisteredSize').val() || null,
+                    RegisteredSize: normalizedRegisteredSize || null,
                     SubProject: $('#SubProject').val() || null,
                     TotalAmount: planTotalPkr,
                     ExchangeRate: exchangeRate,

@@ -26,7 +26,6 @@
                     <tr>
                         <th>Project ID</th>
                         <th>Project Name</th>
-                        <th>Prefix</th>
                         <th>Type</th>
                         <th>Location</th>
                         <th>Properties</th>
@@ -48,9 +47,6 @@
                                 {
                                     <br><small class="text-muted">@project.Description</small>
                                 }
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary">@project.Prefix</span>
                             </td>
                             <td>
                                 <span class="badge bg-info">@project.Type</span>
@@ -95,9 +91,9 @@
         $(document).ready(function() {
             $('#projectsTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 7, "desc" ]],
+                "order": [[ 6, "desc" ]],
                 "columnDefs": [
-                    { "orderable": false, "targets": 8 }
+                    { "orderable": false, "targets": 7 }
                 ]
             });
         });

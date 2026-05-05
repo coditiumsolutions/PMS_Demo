@@ -71,6 +71,7 @@ CREATE TABLE Registration (
     FullName NVARCHAR(150),
     CNIC NVARCHAR(50),               -- Strict format: XXXXX-XXXXXXX-X (digits only)
     PassportNo NVARCHAR(50) NULL,    -- Alphanumeric, required if no CNIC
+    FormNo NVARCHAR(100) NULL,
     Phone NVARCHAR(50),
     Email NVARCHAR(150),
     ProjectID CHAR(10) NULL,          -- FK to Projects (optional)
@@ -130,6 +131,7 @@ CREATE TABLE Customers (
     MobileNo NVARCHAR(50) NOT NULL,     -- Primary mobile (mandatory; must differ from Phone digits)
     MobileNo2 NVARCHAR(50) NULL,        -- Secondary mobile (optional; must differ from Phone and MobileNo)
     Email NVARCHAR(150),
+    FormNo NVARCHAR(100) NULL,
     MailingAddress NVARCHAR(255),
     PermanentAddress NVARCHAR(255),
     City NVARCHAR(100),
@@ -170,7 +172,7 @@ CREATE TABLE CustomerLogs (
 CREATE TABLE Projects (
     ProjectID CHAR(10) PRIMARY KEY,
     ProjectName NVARCHAR(150),
-    Prefix NVARCHAR(4) NOT NULL,
+    Prefix NVARCHAR(7) NOT NULL,
     Type NVARCHAR(50),
     Location NVARCHAR(150),
     Sizes NVARCHAR(1000) NULL,   -- comma-separated (e.g. 5 Marla, 7 Marla, 10 Marla)
@@ -371,6 +373,21 @@ CREATE TABLE Refund (
     ApprovedAt DATETIME NULL,
     Notes NVARCHAR(500) NULL
 );
+
+CREATE TABLE RefundCheques (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    RefundID CHAR(10) NOT NULL FOREIGN KEY REFERENCES Refund(RefundID) ON DELETE CASCADE,
+    ChequeNo NVARCHAR(100) NOT NULL,
+    ChequeDate DATE NOT NULL,
+    Amount DECIMAL(18,2) NOT NULL,
+    Bank NVARCHAR(200) NULL,
+    Details NVARCHAR(MAX) NULL,
+    created_at DATETIME2(3) NOT NULL DEFAULT (SYSUTCDATETIME()),
+    created_by CHAR(10) NULL,
+    modified_by CHAR(10) NULL
+);
+CREATE INDEX IX_RefundCheques_RefundID ON RefundCheques(RefundID);
+
 -- Workflow is configuration-driven from Configuration.ConfigKey='refundworkflow' (e.g. Initiated,Approved,Declined).
 -- On refund approval:
 -- 1) Payments.Status for the customer is set to 'Refunded'
@@ -415,14 +432,70 @@ CREATE TABLE Transfer (
       BuyerBiometric NVARCHAR(MAX) NULL,
       TransferFeeDue float,
       TransferFeePaid float,
-      PaymentDate  Date,
+      PaymentDate  DATE NULL,
       PaymentMode  NVARCHAR(200),
+      PaymentMethod NVARCHAR(200) NULL,
       PaymentChallanNo  NVARCHAR(200),
+      BankName NVARCHAR(200) NULL,
+      PaymentDetails NVARCHAR(MAX) NULL,
       Details nvarchar(max),
        CROComments nvarchar(max),
         AccountsComments nvarchar(max),
          TransferComments nvarchar(max),
     CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE JointOwner (
+    Id CHAR(10) PRIMARY KEY,
+    CustomerID CHAR(10) NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID) ON DELETE CASCADE,
+    JointOwnerName NVARCHAR(150) NOT NULL,
+    FatherName NVARCHAR(150) NULL,
+    CNIC NVARCHAR(50) NULL,
+    Contact NVARCHAR(50) NULL,
+    Address NVARCHAR(255) NULL,
+    Percentage DECIMAL(5,2) NULL,
+    Created_at DATETIME NOT NULL DEFAULT GETDATE(),
+    Created_by CHAR(10) NULL,
+    Modified_by CHAR(10) NULL,
+    Details NVARCHAR(MAX) NULL
+);
+
+CREATE TABLE TransferJointOwners (
+    Id CHAR(10) PRIMARY KEY,
+    TransferID NVARCHAR(50) NOT NULL FOREIGN KEY REFERENCES Transfer(TransferID) ON DELETE CASCADE,
+    CustomerID CHAR(10) NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID) ON DELETE CASCADE,
+    JointOwnerName NVARCHAR(150) NOT NULL,
+    FatherName NVARCHAR(150) NULL,
+    CNIC NVARCHAR(50) NULL,
+    Contact NVARCHAR(50) NULL,
+    Address NVARCHAR(255) NULL,
+    Percentage DECIMAL(5,2) NULL,
+    Created_at DATETIME NOT NULL DEFAULT GETDATE(),
+    Created_by CHAR(10) NULL,
+    Modified_by CHAR(10) NULL,
+    Details NVARCHAR(MAX) NULL
+);
+
+-- ===========================================================
+-- Duplicate file transfer (workflow / fee tracking)
+-- ===========================================================
+CREATE TABLE DuplicateFileTransfer (
+    Id CHAR(10) PRIMARY KEY,
+    CustomerID CHAR(10) NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID),
+    CustomerName NVARCHAR(150) NULL,
+    CustomerCNIC NVARCHAR(50) NULL,
+    Created_at DATETIME NOT NULL DEFAULT GETDATE(),
+    Created_by CHAR(10) NULL,
+    Modified_by CHAR(10) NULL,
+    Status NVARCHAR(50) NULL,
+    Comments NVARCHAR(MAX) NULL,
+    FeeDue DECIMAL(18,2) NULL,
+    FeePaid DECIMAL(18,2) NULL,
+    ChallanID NVARCHAR(100) NULL,
+    BankName NVARCHAR(150) NULL,
+    InstrumentNo NVARCHAR(100) NULL,
+    DepositDate DATE NULL,
+    PaymentMethod NVARCHAR(100) NULL
 );
 
 CREATE TABLE NDC (
@@ -443,7 +516,11 @@ CREATE TABLE NDC (
     AllPaymentClear BIT NOT NULL DEFAULT 0,
     AmountPerUnit DECIMAL(18,2) NULL,
     TransferFeeAmount DECIMAL(18,2) NULL,
-    PropertySize DECIMAL(18,2) NULL
+    PropertySize DECIMAL(18,2) NULL,
+    AmountPerUnit DECIMAL(18,2) NULL,
+    PropertySize DECIMAL(18,2) NULL,
+    TransferFeeAmount DECIMAL(18,2) NULL,
+    RemainingDues DECIMAL(18,2) NULL
 );
 
 CREATE TABLE TransferFee (
@@ -585,5 +662,8 @@ GO
 ALTER TABLE PropertyLogs
 ADD CONSTRAINT FK_PropertyLogs_Users FOREIGN KEY (CreatedBy) REFERENCES Users(UserID);
 GO
+
+
+
 
 

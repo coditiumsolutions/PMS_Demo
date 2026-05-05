@@ -30,7 +30,7 @@
 <div class="a4-container">
     <!-- Header -->
     <div class="a4-header text-center">
-        <img src="~/images/logo.jpeg" alt="JUBA Smart City Logo" class="a4-logo" />
+        <img src="~/images/logo.jpeg" alt="ZKB Logo" class="a4-logo" />
         <div class="a4-title">Transfer Receipt</div>
         <div class="a4-subtitle">ZKB - Property Management System</div>
         <div class="a4-subtitle">Acknowledgement of Transfer Application</div>
@@ -64,7 +64,7 @@
         <div class="a4-section-title">Transferor (Seller) – Current Owner</div>
         <div class="a4-info-block">
             <div class="a4-info-row"><span class="a4-info-label">Name:</span><span class="a4-info-value">@(Model.SellerName ?? "—")</span></div>
-            <div class="a4-info-row"><span class="a4-info-label">Father's Name:</span><span class="a4-info-value">@(Model.SellerFatherName ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Son/D/W/o:</span><span class="a4-info-value">@(Model.SellerFatherName ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">CNIC:</span><span class="a4-info-value">@(Model.SellerCNIC ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">Contact:</span><span class="a4-info-value">@(Model.SellerContact ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">Address:</span><span class="a4-info-value">@(Model.SellerAddress ?? "—")</span></div>
@@ -76,7 +76,7 @@
         <div class="a4-section-title">Transferee (Buyer) – Applicant</div>
         <div class="a4-info-block">
             <div class="a4-info-row"><span class="a4-info-label">Name:</span><span class="a4-info-value">@(Model.BuyerName ?? "—")</span></div>
-            <div class="a4-info-row"><span class="a4-info-label">Father's Name:</span><span class="a4-info-value">@(Model.BuyerFatherName ?? "—")</span></div>
+            <div class="a4-info-row"><span class="a4-info-label">Son/D/W/o:</span><span class="a4-info-value">@(Model.BuyerFatherName ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">CNIC:</span><span class="a4-info-value">@(Model.BuyerCNIC ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">Passport No:</span><span class="a4-info-value">@(Model.BuyerPassportNo ?? "—")</span></div>
             <div class="a4-info-row"><span class="a4-info-label">Phone:</span><span class="a4-info-value">@(Model.BuyerPhone ?? Model.BuyerContact ?? "—")</span></div>
@@ -104,6 +104,14 @@
                 @if (!string.IsNullOrWhiteSpace(Model.PaymentChallanNo))
                 {
                     <div class="a4-info-row"><span class="a4-info-label">Challan No:</span><span class="a4-info-value">@Model.PaymentChallanNo</span></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.BankName))
+                {
+                    <div class="a4-info-row"><span class="a4-info-label">Bank name:</span><span class="a4-info-value">@Model.BankName</span></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.PaymentDetails))
+                {
+                    <div class="a4-info-row"><span class="a4-info-label">Payment details:</span><span class="a4-info-value">@Model.PaymentDetails</span></div>
                 }
             </div>
         </div>

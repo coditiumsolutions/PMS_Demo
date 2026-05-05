@@ -20,11 +20,16 @@ namespace PMS.Controllers
         private const long MaxPaymentAttachmentSize = 8 * 1024 * 1024; // 8MB
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
+        private readonly ISurchargeService _surchargeService;
 
-        public PaymentController(PMSDbContext context, IModulePermissionService modulePermission)
+        public PaymentController(
+            PMSDbContext context,
+            IModulePermissionService modulePermission,
+            ISurchargeService surchargeService)
         {
             _context = context;
             _modulePermission = modulePermission;
+            _surchargeService = surchargeService;
         }
 
         private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
@@ -380,24 +385,9 @@ namespace PMS.Controllers
         {
             var denied = await EnsurePermissionAsync("Read");
             if (denied != null) return denied;
-            // #region agent log
-            var _logPath = @"d:\PMS\PMS\PMS\.cursor\debug.log";
-            void _agentLog(string hypothesisId, string message, object? data = null)
-            {
-                try
-                {
-                    var payload = new { runId = "run1", hypothesisId, location = "PaymentController.GetCustomerPaymentInfo", message, data, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() };
-                    System.IO.File.AppendAllText(_logPath, JsonSerializer.Serialize(payload) + Environment.NewLine);
-                }
-                catch { }
-            }
-            // #endregion
-
-            _agentLog("H1", "GetCustomerPaymentInfo entry", new { customerId, trimmed = customerId?.Trim() });
 
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                _agentLog("H1", "Return: empty customerId");
                 return Json(new { found = false, message = "Please enter a Customer ID." });
             }
 
@@ -409,21 +399,15 @@ namespace PMS.Controllers
                     .Select(c => new { c.CustomerID, c.FullName, c.PlanID })
                     .FirstOrDefaultAsync();
 
-                _agentLog("H1", "Customer lookup result", customer == null ? new { found = false } : new { found = true, planId = customer.PlanID });
-
                 if (customer == null)
                 {
-                    _agentLog("H1", "Return: customer not found");
                     return Json(new { found = false, message = "Customer not found or inactive." });
                 }
 
                 if (string.IsNullOrWhiteSpace(customer.PlanID))
                 {
-                    _agentLog("H1", "Return: no plan");
                     return Json(new { found = false, message = "Customer has no payment plan assigned." });
                 }
-
-                _agentLog("H4", "Before schedules query", new { planId = customer.PlanID });
 
                 // Load schedules without Payments nav to avoid selecting new audit columns (works when DB has no CreatedBy/CreatedAt/LastModified yet)
                 var schedules = await _context.PaymentSchedules
@@ -455,7 +439,7 @@ namespace PMS.Controllers
                             planName = ps.PaymentPlan?.PlanName,
                             paymentDescription = ps.PaymentDescription,
                             installmentNo = ps.InstallmentNo,
-                            dueDate = ps.DueDate.ToString("MMM dd, yyyy"),
+                            dueDate = ps.DueDate.ToString("dd-MM-yyyy"),
                             isOverdue = ps.DueDate.Date < DateTime.Today,
                             amount = ps.Amount,
                             paid = paid,
@@ -467,18 +451,21 @@ namespace PMS.Controllers
                     .Where(x => x.outstanding > 0)
                     .ToList();
 
-                _agentLog("H4", "Return: found true", new { scheduleCount = dueSchedules.Count });
+                var totalDueSurcharge = await ComputeCustomerDueSurchargeAsync(
+                    customer.PlanID,
+                    customerIdTrimmed,
+                    DateTime.Now.Date);
                 return Json(new
                 {
                     found = true,
                     customerId = customer.CustomerID,
                     fullName = string.IsNullOrWhiteSpace(customer.FullName) ? "(No Name)" : customer.FullName,
-                    schedules = dueSchedules
+                    schedules = dueSchedules,
+                    totalDueSurcharge = totalDueSurcharge
                 });
             }
             catch (Exception ex)
             {
-                _agentLog("H1", "Exception", new { exType = ex.GetType().FullName, exMessage = ex.Message });
                 throw;
             }
         }
@@ -526,7 +513,7 @@ namespace PMS.Controllers
                 ViewBag.PreSelectedCustomerId = customerId;
             }
 
-            ViewBag.PaymentStatuses = new List<string> { "Pending", "Paid", "Partially Paid" };
+            ViewBag.PaymentStatuses = new List<string> { "Pending", "Paid", "Partially Paid", "Surcharge Paid" };
             ViewBag.BankNames = await GetBankNamesAsync();
 
             return View();
@@ -598,29 +585,60 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(RecordPayment));
             }
 
-            var schedule = await _context.PaymentSchedules
-                .AsNoTracking()
-                .Include(ps => ps.Payments)
-                .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
+            var isSurchargePayment = string.Equals(scheduleId?.Trim(), "SURCHARGE_PAYMENT", StringComparison.OrdinalIgnoreCase);
+            PaymentSchedule? schedule = null;
+            decimal totalDue = 0m;
+            string normalizedScheduleId;
 
-            if (schedule == null)
+            if (isSurchargePayment)
             {
-                TempData["Error"] = "Installment not found.";
-                return RedirectToAction(nameof(RecordPayment), new { customerId });
+                totalDue = await ComputeCustomerDueSurchargeAsync(
+                    customer.PlanID,
+                    customerId.Trim(),
+                    DateTime.Now.Date);
+
+                if (totalDue <= 0m)
+                {
+                    TempData["Error"] = "No due surcharge found for this customer.";
+                    return RedirectToAction(nameof(RecordPayment), new { customerId = customerId.Trim() });
+                }
+
+                if (amount > totalDue)
+                {
+                    TempData["Error"] = $"Amount Received (PKR {amount:N0}) must not exceed Total Due Surcharge (PKR {totalDue:N0}).";
+                    return RedirectToAction(nameof(RecordPayment), new { customerId = customerId.Trim(), scheduleId = "SURCHARGE_PAYMENT" });
+                }
+
+                normalizedScheduleId = null;
             }
-
-            if (schedule.PlanID != customer.PlanID)
+            else
             {
-                TempData["Error"] = "Selected installment does not belong to this customer's plan.";
-                return RedirectToAction(nameof(RecordPayment), new { customerId });
-            }
+                schedule = await _context.PaymentSchedules
+                    .AsNoTracking()
+                    .Include(ps => ps.Payments)
+                    .FirstOrDefaultAsync(ps => ps.ScheduleID == scheduleId);
 
-            var paidSoFar = schedule.Payments?.Where(p => p.CustomerID == customerId.Trim()).Sum(p => p.Amount) ?? 0m;
-            var totalDue = Math.Max(0m, schedule.Amount - paidSoFar);
-            if (amount > totalDue)
-            {
-                TempData["Error"] = $"Amount Received (PKR {amount:N0}) must not exceed Total Due for this installment (PKR {totalDue:N0}). You can record multiple partial payments.";
-                return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+                if (schedule == null)
+                {
+                    TempData["Error"] = "Installment not found.";
+                    return RedirectToAction(nameof(RecordPayment), new { customerId });
+                }
+
+                if (schedule.PlanID != customer.PlanID)
+                {
+                    TempData["Error"] = "Selected installment does not belong to this customer's plan.";
+                    return RedirectToAction(nameof(RecordPayment), new { customerId });
+                }
+
+                var paidSoFar = schedule.Payments?.Where(p => p.CustomerID == customerId.Trim()).Sum(p => p.Amount) ?? 0m;
+                totalDue = Math.Max(0m, schedule.Amount - paidSoFar);
+                if (amount > totalDue)
+                {
+                    TempData["Error"] = $"Amount Received (PKR {amount:N0}) must not exceed Total Due for this installment (PKR {totalDue:N0}). You can record multiple partial payments.";
+                    return RedirectToAction(nameof(RecordPayment), new { customerId, scheduleId });
+                }
+
+                normalizedScheduleId = scheduleId;
             }
 
             if (await HasCrossCustomerDuplicateReferenceAsync(customerId.Trim(), bankName, referenceNo))
@@ -633,15 +651,18 @@ namespace PMS.Controllers
             {
                 PaymentID = GenerateID(),
                 CustomerID = customerId.Trim(),
-                ScheduleID = scheduleId,
+                ScheduleID = normalizedScheduleId,
                 PaymentDate = DateTime.Now,
                 DepositDate = (depositDate ?? DateTime.Today).Date,
                 Amount = amount,
                 Method = method,
                 ReferenceNo = referenceNo.Trim(),
                 BankName = bankName.Trim(),
-                Status = status,
-                Remarks = remarks
+                Status = isSurchargePayment ? "Surcharge Paid" : status,
+                AccountHead = isSurchargePayment ? "Surcharge Payment" : null,
+                Remarks = isSurchargePayment
+                    ? (string.IsNullOrWhiteSpace(remarks) ? "Surcharge payment." : $"Surcharge payment. {remarks}")
+                    : remarks
             };
 
             Payment? extraPayment = null;
@@ -661,8 +682,8 @@ namespace PMS.Controllers
                     BankName = bankName.Trim(),
                     Status = "Paid",
                     Remarks = string.IsNullOrWhiteSpace(remarks)
-                        ? $"Extra payment received against installment {scheduleId}."
-                        : $"Extra payment received against installment {scheduleId}. {remarks}"
+                        ? $"Extra payment received against {(isSurchargePayment ? "surcharge payment" : $"installment {scheduleId}")}."
+                        : $"Extra payment received against {(isSurchargePayment ? "surcharge payment" : $"installment {scheduleId}")}. {remarks}"
                 };
                 _context.Payments.Add(extraPayment);
             }
@@ -699,9 +720,98 @@ namespace PMS.Controllers
             }
 
             TempData["Success"] = extraAmount > 0m
-                ? $"Payment of PKR {amount:N0} recorded and extra payment of PKR {extraAmount:N0} added. Outstanding for this installment: PKR {totalDue - amount:N0}."
-                : $"Payment of PKR {amount:N0} recorded. Outstanding for this installment: PKR {totalDue - amount:N0}. You can record another payment if needed.";
+                ? $"Payment of PKR {amount:N0} recorded and extra payment of PKR {extraAmount:N0} added. Outstanding for this {(isSurchargePayment ? "surcharge" : "installment")}: PKR {totalDue - amount:N0}."
+                : $"Payment of PKR {amount:N0} recorded. Outstanding for this {(isSurchargePayment ? "surcharge" : "installment")}: PKR {totalDue - amount:N0}. You can record another payment if needed.";
             return RedirectToAction(nameof(RecordPayment), new { customerId = customerId.Trim(), scheduleId });
+        }
+
+        private async Task<decimal> ComputeCustomerDueSurchargeAsync(string? planId, string customerId, DateTime asOfDate)
+        {
+            if (string.IsNullOrWhiteSpace(planId) || string.IsNullOrWhiteSpace(customerId))
+            {
+                return 0m;
+            }
+
+            var schedules = await _context.PaymentSchedules
+                .AsNoTracking()
+                .Where(ps => ps.PlanID == planId)
+                .Select(ps => new PaymentSchedule
+                {
+                    ScheduleID = ps.ScheduleID,
+                    Amount = ps.Amount,
+                    DueDate = ps.DueDate,
+                    SurchargeApplied = ps.SurchargeApplied,
+                    SurchargeRate = ps.SurchargeRate
+                })
+                .ToListAsync();
+
+            var scheduleIds = schedules
+                .Select(s => s.ScheduleID)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToList();
+
+            var payments = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.ScheduleID != null
+                    && scheduleIds.Contains(p.ScheduleID)
+                    && p.CustomerID == customerId.Trim())
+                .ToListAsync();
+
+            var paymentLookup = payments
+                .GroupBy(p => p.ScheduleID ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var schedule in schedules)
+            {
+                if (!string.IsNullOrWhiteSpace(schedule.ScheduleID)
+                    && paymentLookup.TryGetValue(schedule.ScheduleID, out var schedulePayments))
+                {
+                    schedule.Payments = schedulePayments;
+                }
+                else
+                {
+                    schedule.Payments = new List<Payment>();
+                }
+            }
+
+            var surchargeBySchedule = _surchargeService.ComputeBySchedule(
+                schedules,
+                customerId.Trim(),
+                asOfDate.Date);
+
+            var totalCalculatedSurcharge = surchargeBySchedule.Values.Sum(x => x.Surcharge);
+
+            var surchargeAdjustments = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.CustomerID == customerId.Trim()
+                    && p.ScheduleID == null
+                    && p.AuditStatus == "Approved"
+                    && (p.Status == null || p.Status != "Pending"))
+                .ToListAsync();
+
+            var paidSurchargeAmount = surchargeAdjustments
+                .Where(p =>
+                    p.Amount > 0m &&
+                    (
+                        string.Equals((p.AccountHead ?? string.Empty).Trim(), "Surcharge Payment", StringComparison.OrdinalIgnoreCase)
+                        || (p.Remarks ?? string.Empty).Contains("Surcharge payment", StringComparison.OrdinalIgnoreCase)
+                    ))
+                .Sum(p => p.Amount);
+
+            var waivedSurchargeAmount = surchargeAdjustments
+                .Where(p =>
+                    p.Amount < 0m &&
+                    (
+                        string.Equals((p.AccountHead ?? string.Empty).Trim(), "Surcharge Waived Off", StringComparison.OrdinalIgnoreCase)
+                        || (
+                            string.Equals((p.Method ?? string.Empty).Trim(), "Waiver", StringComparison.OrdinalIgnoreCase)
+                            && (p.Remarks ?? string.Empty).Contains("AccountHead:Surcharge Waived Off", StringComparison.OrdinalIgnoreCase)
+                        )
+                    ))
+                .Sum(p => Math.Abs(p.Amount));
+
+            var netDueSurcharge = totalCalculatedSurcharge - paidSurchargeAmount - waivedSurchargeAmount;
+            return Math.Max(0m, netDueSurcharge);
         }
 
         // ─── Multiple Payments ────────────────────────────────────────────────────
@@ -1390,6 +1500,15 @@ namespace PMS.Controllers
             {
                 return Json(Array.Empty<string>());
             }
+
+            var mapped = await _context.ProjectSubProjects
+                .AsNoTracking()
+                .Where(s => s.ProjectID == projectId)
+                .OrderBy(s => s.SubProjectName)
+                .Select(s => s.SubProjectName)
+                .ToArrayAsync();
+            if (mapped.Length > 0)
+                return Json(mapped);
 
             var projectSubProjects = await _context.Projects
                 .AsNoTracking()

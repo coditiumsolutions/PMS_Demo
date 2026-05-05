@@ -1,7 +1,9 @@
 @model PMS.Models.Allotment
+@using PMS.Models
 
 @{
     ViewData["Title"] = "Allotment Details";
+    var attachments = ViewBag.Attachments as IList<Attachment> ?? new List<Attachment>();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -155,6 +157,45 @@
                         }
                     </div>
                 </div>
+
+                @if (attachments.Count > 0)
+                {
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="mb-3"><i class="fas fa-paperclip me-2"></i>Attachments</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>File name</th>
+                                            <th>Type</th>
+                                            <th>Uploaded</th>
+                                            <th class="text-end">Open</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var att in attachments)
+                                        {
+                                            <tr>
+                                                <td>@(att.FileName ?? "—")</td>
+                                                <td><span class="badge bg-secondary">@(att.AttachmentType ?? "—")</span></td>
+                                                <td>@att.UploadedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                                <td class="text-end">
+                                                    @if (!string.IsNullOrEmpty(att.FilePath))
+                                                    {
+                                                        <a href="@att.FilePath" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-external-link-alt me-1"></i>View
+                                                        </a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
 
                 <!-- Customer Information -->
                 <div class="row mt-4">

@@ -84,13 +84,13 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label asp-for="FatherName" class="form-label">Father's Name</label>
+                                        <label asp-for="FatherName" class="form-label">S/D/W/O</label>
                                         <input asp-for="FatherName" class="form-control" />
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="CNIC" class="form-label">National ID (CNIC)</label>
-                                        <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" />
+                                        <input asp-for="CNIC" id="CNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
                                         <small class="text-muted">Required format: 5 digits, hyphen, 7 digits, hyphen, 1 digit (e.g. 11111-1111111-1).</small>
                                         <span id="cnicValidationError" class="text-danger small d-none"></span>
                                     </div>
@@ -107,10 +107,8 @@
 
                                     <div class="mb-3">
                                         <label asp-for="DOB" class="form-label">Date of Birth</label>
-                                        <input asp-for="DOB" type="date" id="DOB" class="form-control" value="1990-01-01"
-                                               max="@(DateTime.Today.AddYears(-16).ToString("yyyy-MM-dd"))"
-                                               title="Must be at least 16 years ago" />
-                                        <small class="text-muted">Default: 01/01/1990. Must be at least 16 years old.</small>
+                                        <input asp-for="DOB" type="date" id="DOB" class="form-control" lang="en-GB" />
+                                        <small class="text-muted">Select date from calendar (DD-MM-YYYY).</small>
                                         <span id="dobValidationError" class="text-danger small d-none"></span>
                                         <span asp-validation-for="DOB" class="text-danger"></span>
                                     </div>
@@ -127,16 +125,17 @@
 
                                     <div class="mb-3">
                                         <label asp-for="Nationality" class="form-label">Nationality</label>
-                                        <select asp-for="Nationality" class="form-select">
-                                            <option value="">Select Nationality</option>
+                                        <input asp-for="Nationality" class="form-control" list="nationalityList-customer-create" autocomplete="off" placeholder="Select from list or type a value" />
+                                        <datalist id="nationalityList-customer-create">
                                             @if (ViewBag.Nationalities != null)
                                             {
                                                 foreach (var nationality in ViewBag.Nationalities)
                                                 {
-                                                    <option value="@nationality">@nationality</option>
+                                                    <option value="@nationality"></option>
                                                 }
                                             }
-                                        </select>
+                                        </datalist>
+                                        <small class="text-muted">Suggestions from configuration; you may enter any nationality.</small>
                                         <span asp-validation-for="Nationality" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -145,6 +144,12 @@
                                 <div class="col-md-6">
                                     <h6 class="mb-3"><i class="fas fa-phone me-2"></i>Contact Information</h6>
                                     
+                                    <div class="mb-3">
+                                        <label asp-for="FormNo" class="form-label">Form No</label>
+                                        <input asp-for="FormNo" id="FormNo" class="form-control" placeholder="Enter form number (optional)" />
+                                        <span asp-validation-for="FormNo" class="text-danger"></span>
+                                    </div>
+
                                     <div class="mb-3">
                                         <label asp-for="Email" class="form-label">Email Address</label>
                                         <input asp-for="Email" id="Email" type="email" class="form-control" />
@@ -174,31 +179,31 @@
 
                                     <div class="mb-3">
                                         <label asp-for="City" class="form-label">City *</label>
-                                        <select asp-for="City" class="form-select" required>
-                                            <option value="">Select City</option>
+                                        <input asp-for="City" class="form-control" list="cityOptions" placeholder="Select or type city" required />
+                                        <datalist id="cityOptions">
                                             @if (ViewBag.Cities != null)
                                             {
                                                 @foreach (var city in ViewBag.Cities)
                                                 {
-                                                    <option value="@city">@city</option>
+                                                    <option value="@city"></option>
                                                 }
                                             }
-                                        </select>
+                                        </datalist>
                                         <span asp-validation-for="City" class="text-danger"></span>
                                     </div>
 
                                     <div class="mb-3">
                                         <label asp-for="Country" class="form-label">Country *</label>
-                                        <select asp-for="Country" class="form-select" required>
-                                            <option value="">Select Country</option>
+                                        <input asp-for="Country" class="form-control" list="countryOptions" placeholder="Select or type country" required />
+                                        <datalist id="countryOptions">
                                             @if (ViewBag.Countries != null)
                                             {
                                                 @foreach (var country in ViewBag.Countries)
                                                 {
-                                                    <option value="@country">@country</option>
+                                                    <option value="@country"></option>
                                                 }
                                             }
-                                        </select>
+                                        </datalist>
                                         <span asp-validation-for="Country" class="text-danger"></span>
                                     </div>
 
@@ -294,7 +299,7 @@
                                             }
                                         </select>
                                         <span asp-validation-for="ProjectID" class="text-danger"></span>
-                                        <small class="text-muted">The project prefix will be used to generate the Customer ID</small>
+                                        <small class="text-muted">Customer ID is generated from the selected subproject prefix.</small>
                                     </div>
 
                                     <div class="mb-3">
@@ -329,10 +334,9 @@
 
                                     <div class="mb-3">
                                         <label asp-for="RegisteredSize" class="form-label">Registered Size *</label>
-                                        <select asp-for="RegisteredSize" id="RegisteredSize" class="form-select" required disabled>
-                                            <option value="">Select Project first</option>
-                                        </select>
-                                        <small class="text-muted">Sizes are loaded from the selected project.</small>
+                                        <input asp-for="RegisteredSize" id="RegisteredSize" class="form-control" list="RegisteredSizeOptions" placeholder="Select or type size" required disabled />
+                                        <datalist id="RegisteredSizeOptions"></datalist>
+                                        <small class="text-muted">Sizes are suggested from selected project, or type your own value.</small>
                                         <span asp-validation-for="RegisteredSize" class="text-danger"></span>
                                     </div>
 
@@ -393,7 +397,7 @@
                                             <strong>Customer ID will be:</strong><br>
                                             <span id="customerIDPreview" class="badge bg-secondary" style="font-size: 14px;">Select Project to preview</span>
                                         </p>
-                                        <small class="text-muted">Format: [Project Prefix][Sequential Number] (e.g., JSC0001)</small>
+                                        <small class="text-muted">Format: [Subproject Prefix][Sequential Number] (e.g., P100001)</small>
                                     </div>
                                 </div>
                             </div>
@@ -597,41 +601,47 @@
             return (value || '').toString().trim().toLowerCase();
         }
 
+        function updateCustomerIdPreview() {
+            var selectedSubProject = $('#SubProject').find('option:selected');
+            var subPrefix = (selectedSubProject.data('prefix') || '').toString().trim();
+            if (subPrefix) {
+                $('#customerIDPreview').text(subPrefix + 'XXXXX').removeClass('bg-secondary').addClass('bg-primary');
+                return;
+            }
+
+            var selectedProject = $('#projectIDSelect').find('option:selected');
+            var projectPrefix = (selectedProject.data('project-prefix') || '').toString().trim();
+            if (projectPrefix) {
+                $('#customerIDPreview').text(projectPrefix + 'XXXXX (legacy fallback)').removeClass('bg-secondary').addClass('bg-warning text-dark');
+                return;
+            }
+
+            $('#customerIDPreview').text('Select Sub Project to preview').removeClass('bg-primary bg-warning text-dark').addClass('bg-secondary');
+        }
+
         function loadSizes(projectId, selectedValue) {
-            var $sizeSelect = $('#RegisteredSize');
-            var desiredValue = (selectedValue || $sizeSelect.val() || '').toString().trim();
-            $sizeSelect.html('<option value="">Select Size</option>').prop('disabled', !projectId);
+            var $sizeInput = $('#RegisteredSize');
+            var $sizeOptions = $('#RegisteredSizeOptions');
+            var desiredValue = (selectedValue || $sizeInput.val() || '').toString().trim();
+            $sizeInput.prop('disabled', !projectId);
+            $sizeOptions.empty();
             if (!projectId) {
+                $sizeInput.val('');
                 return;
             }
 
             $.get('@Url.Action("GetProjectSizes", "Customer")', { projectId: projectId })
                 .done(function(arr) {
-                    var desiredValueNormalized = normalizeDropdownValue(desiredValue);
-                    var matched = false;
                     $(arr).each(function() {
                         var itemValue = (this || '').toString();
-                        var opt = $('<option></option>').val(itemValue).text(itemValue);
-                        if (!matched && normalizeDropdownValue(itemValue) === desiredValueNormalized) {
-                            opt.prop('selected', true);
-                            matched = true;
-                        }
-                        $sizeSelect.append(opt);
+                        $sizeOptions.append($('<option></option>').val(itemValue));
                     });
 
-                    // Keep posted value visible if not currently present in project size list.
-                    if (!matched && desiredValue) {
-                        $sizeSelect.append(
-                            $('<option></option>')
-                                .val(desiredValue)
-                                .text(desiredValue + ' (current)')
-                                .prop('selected', true)
-                        );
-                    }
+                    if (desiredValue) $sizeInput.val(desiredValue);
                     loadAvailablePropertiesPreview();
                 })
                 .fail(function() {
-                    $sizeSelect.html('<option value="">Could not load sizes</option>');
+                    $sizeOptions.empty();
                 });
         }
 
@@ -640,6 +650,7 @@
             var desiredValue = (selectedValue || $subProjectSelect.val() || '').toString().trim();
             $subProjectSelect.html('<option value="">Select Sub Project</option>').prop('disabled', !projectId);
             if (!projectId) {
+                updateCustomerIdPreview();
                 return;
             }
 
@@ -649,8 +660,10 @@
                     var matched = false;
 
                     $(arr).each(function() {
-                        var itemValue = (this || '').toString();
-                        var opt = $('<option></option>').val(itemValue).text(itemValue);
+                        var itemValue = (this && this.name) ? this.name.toString() : (this || '').toString();
+                        var itemPrefix = (this && this.prefix) ? this.prefix.toString() : '';
+                        var opt = $('<option></option>').val(itemValue).text(itemPrefix ? (itemValue + ' (' + itemPrefix + ')') : itemValue);
+                        opt.attr('data-prefix', itemPrefix);
                         if (!matched && normalizeDropdownValue(itemValue) === desiredValueNormalized) {
                             opt.prop('selected', true);
                             matched = true;
@@ -664,12 +677,15 @@
                             $('<option></option>')
                                 .val(desiredValue)
                                 .text(desiredValue + ' (current)')
+                                .attr('data-prefix', '')
                                 .prop('selected', true)
                         );
                     }
+                    updateCustomerIdPreview();
                 })
                 .fail(function() {
                     $subProjectSelect.html('<option value="">Could not load sub projects</option>');
+                    updateCustomerIdPreview();
                 });
         }
 
@@ -687,18 +703,11 @@
             loadSubProjects(selectedProjectId, '');
         });
 
-        // Update Customer ID Preview when Project is selected
+        // Update preview on project change
         $('#projectIDSelect').on('change', function() {
-            var selectedOption = $(this).find('option:selected');
-            var projectPrefix = selectedOption.data('project-prefix');
-            
-            if (projectPrefix) {
-                // Show preview (actual number will be generated on server)
-                $('#customerIDPreview').text(projectPrefix + 'XXXXX').removeClass('bg-secondary').addClass('bg-primary');
-            } else {
-                $('#customerIDPreview').text('Select Project to preview').removeClass('bg-primary').addClass('bg-secondary');
-            }
+            updateCustomerIdPreview();
         });
+        $('#SubProject').on('change', function() { updateCustomerIdPreview(); });
 
         // Registration Search - pre-fill from registration
         $('#btnSearchRegistration').on('click', function() {
@@ -717,6 +726,7 @@
                         $('#RegID').val(r.regID);
                         $('#FullName').val(r.fullName || '');
                         $('#CNIC').val(r.cnic || '');
+                        $('#FormNo').val(r.formNo || '');
                         $('#Phone').val(r.phone || '');
                         $('#Email').val(r.email || '');
 
@@ -736,21 +746,14 @@
                 });
         });
 
-        // Also update preview when Payment Plan is selected (as fallback if Project not selected)
+        // Also update preview when Payment Plan is selected (legacy fallback if Project not selected)
         $('#planIDSelect').on('change', function() {
             // Only update if ProjectID is not selected
             if (!$('#projectIDSelect').val()) {
-                var selectedOption = $(this).find('option:selected');
-                var projectPrefix = selectedOption.data('project-prefix');
-                
-                if (projectPrefix) {
-                    // Show preview (actual number will be generated on server)
-                    $('#customerIDPreview').text(projectPrefix + 'XXXXX').removeClass('bg-secondary').addClass('bg-primary');
-                } else {
-                    $('#customerIDPreview').text('Select Project or Payment Plan to preview').removeClass('bg-primary').addClass('bg-secondary');
-                }
+                updateCustomerIdPreview();
             }
         });
+        updateCustomerIdPreview();
 
         function toggleDealerFields() {
             var isYes = $('#dealerRegYes').is(':checked');
@@ -899,7 +902,19 @@
             return true;
         }
 
+        function normalizeDigits(value) {
+            return (value || '').toString().replace(/\D/g, '');
+        }
+
+        function formatCnicValue(value) {
+            var raw = normalizeDigits(value).slice(0, 13);
+            if (raw.length <= 5) return raw;
+            if (raw.length <= 12) return raw.slice(0, 5) + '-' + raw.slice(5);
+            return raw.slice(0, 5) + '-' + raw.slice(5, 12) + '-' + raw.slice(12, 13);
+        }
+
         $('#CNIC').on('input blur', function() {
+            this.value = formatCnicValue(this.value);
             var cnic = ($('#CNIC').val() || '').trim();
             var cnicValid = /^\d{5}-\d{7}-\d$/.test(cnic);
             if (cnicValid) {
@@ -1025,23 +1040,32 @@
         }
 
         function validateStep1Dob() {
-            var dobVal = $('#DOB').val();
-            if (!dobVal) return true;
-            var maxDob = new Date();
-            maxDob.setFullYear(maxDob.getFullYear() - 16);
-            var dob = new Date(dobVal);
-            if (dob > maxDob) {
-                $('#DOB').addClass('is-invalid');
-                $('#dobValidationError').text('Date of Birth must be at least 16 years ago.').removeClass('d-none');
+            var value = ($('#DOB').val() || '').toString().trim();
+            if (!value) {
+                $('#DOB').removeClass('is-invalid');
+                $('#dobValidationError').addClass('d-none').text('');
+                return true;
+            }
+            var dt = new Date(value + 'T00:00:00');
+            var isValidDate = !isNaN(dt.getTime());
+            $('#DOB').toggleClass('is-invalid', !isValidDate);
+            if (!isValidDate) {
+                $('#dobValidationError').text('Please select a valid date from calendar.').removeClass('d-none');
                 return false;
             }
-            $('#DOB').removeClass('is-invalid');
             $('#dobValidationError').addClass('d-none').text('');
             return true;
         }
 
         // Form submission handler
         $('#customerWizardForm').on('submit', function(e) {
+            if (!validateStep1Dob()) {
+                e.preventDefault();
+                currentStep = 1;
+                updateWizardUI();
+                $('html, body').animate({ scrollTop: $('#DOB').offset().top - 20 }, 300);
+                return false;
+            }
             // Only validate if we're on step 3 (final step)
             if (currentStep !== 3) {
                 e.preventDefault();
@@ -1109,21 +1133,7 @@
 
         // Initialize wizard
         $(document).ready(function() {
-            // Default DOB to 01/01/1990 if empty (Create form)
-            var dobInput = document.getElementById('DOB');
-            if (dobInput && !dobInput.value) {
-                dobInput.value = '1990-01-01';
-            }
-            $('#DOB').on('change input', function() {
-                var d = $(this).val();
-                if (d) {
-                    var maxDob = new Date(); maxDob.setFullYear(maxDob.getFullYear() - 16);
-                    if (new Date(d) <= maxDob) {
-                        $(this).removeClass('is-invalid');
-                        $('#dobValidationError').addClass('d-none').text('');
-                    }
-                }
-            });
+            $('#DOB').on('change blur', function() { validateStep1Dob(); });
             // Check if we're returning from a validation error (ModelState has errors)
             var serverErrorKeys = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 ViewData.ModelState

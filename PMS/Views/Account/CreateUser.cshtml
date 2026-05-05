@@ -163,8 +163,14 @@
                                     @foreach (var key in (string[])ViewBag.ModuleKeys)
                                     {
                                         var currentPerm = "NoAccess";
+                                        var displayName = key switch
+                                        {
+                                            "PaymentAudit" => "Audit",
+                                            "DuplicateFileTransfer" => "Duplicate file transfer",
+                                            _ => key
+                                        };
                                         <tr>
-                                            <td>@key</td>
+                                            <td>@displayName</td>
                                             <td>
                                                 <select name="ModulePermissions_@key" class="form-select form-select-sm">
                                                     @if (ViewBag.PermissionOptions != null)

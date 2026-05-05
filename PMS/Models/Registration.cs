@@ -29,6 +29,9 @@ namespace PMS.Models
         [StringLength(150)]
         public string? Email { get; set; }
 
+        [StringLength(100)]
+        public string? FormNo { get; set; }
+
         [StringLength(10)]
         [Required(ErrorMessage = "Project is required.")]
         public string? ProjectID { get; set; }

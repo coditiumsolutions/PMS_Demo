@@ -36,11 +36,6 @@
                                 <strong>@Model.ProjectName</strong>
                             </dd>
 
-                            <dt class="col-sm-4">Prefix:</dt>
-                            <dd class="col-sm-8">
-                                <span class="badge bg-secondary">@Model.Prefix</span>
-                            </dd>
-
                             <dt class="col-sm-4">Type:</dt>
                             <dd class="col-sm-8">
                                 <span class="badge bg-info">@Model.Type</span>
@@ -79,6 +74,41 @@
                     <h6>Description:</h6>
                     <p class="text-muted">@Model.Description</p>
                 }
+
+                @{
+                    var subProjectMappings = (ViewBag.SubProjectMappings as IEnumerable<PMS.Models.ProjectSubProject>)?.ToList()
+                        ?? new List<PMS.Models.ProjectSubProject>();
+                }
+                <hr>
+                <h6>Sub Projects with Prefixes</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>SubProject</th>
+                                <th>Prefix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (subProjectMappings.Any())
+                            {
+                                foreach (var mapping in subProjectMappings)
+                                {
+                                    <tr>
+                                        <td>@mapping.SubProjectName</td>
+                                        <td><span class="badge bg-dark">@mapping.Prefix</span></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="2" class="text-muted text-center">No subprojects configured.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -124,7 +154,7 @@
                                     <th>Property ID</th>
                                     <th>Plot No</th>
                                     <th>Block</th>
-                                    <th>Type</th>
+                                    <th>Unit type (category)</th>
                                     <th>Size</th>
                                     <th>Status</th>
                                 </tr>
@@ -138,7 +168,7 @@
                                         </td>
                                         <td>@property.PlotNo</td>
                                         <td>@property.Block</td>
-                                        <td>@property.PropertyType</td>
+                                        <td>@(property.PlotType ?? "—")</td>
                                         <td>@property.Size</td>
                                         <td>
                                             <span class="badge @(property.Status == "Available" ? "bg-success" : "bg-primary")">
