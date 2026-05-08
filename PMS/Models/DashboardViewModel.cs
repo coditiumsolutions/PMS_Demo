@@ -6,6 +6,12 @@ namespace PMS.Models
     {
         public int TotalCustomers { get; set; }
         public int PendingCustomers { get; set; }
+        public int PendingCustomerUpdateRequests { get; set; }
+        public int PendingWaivers { get; set; }
+        public int PendingTransfers { get; set; }
+        public int PendingRefunds { get; set; }
+        public string PendingWaiverStatusFilter { get; set; } = "Initiated";
+        public bool ShowPendingTasks { get; set; }
         public int TotalProjects { get; set; }
         public int TotalProperties { get; set; }
         public int AvailableProperties { get; set; }

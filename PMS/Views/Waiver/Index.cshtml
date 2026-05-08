@@ -140,7 +140,7 @@
                                         <i class="fas fa-edit"></i>
                                     </a>
                                 }
-                                @if (ViewBag.CanDelete == true)
+                                @if (ViewBag.CanDelete == true && !isApproved)
                                 {
                                     <form asp-action="Delete" asp-route-id="@w.WaiverID" method="post" class="d-inline" onsubmit="return confirm('Delete this waiver?');">
                                         @Html.AntiForgeryToken()

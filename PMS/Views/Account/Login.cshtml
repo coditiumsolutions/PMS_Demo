@@ -45,7 +45,7 @@
         }
 
         .login-wrapper {
-            /* width: 100%; */
+            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -92,6 +92,12 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+        }
+
+        .login-right > div {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
         }
 
         .logo-section {
@@ -241,26 +247,94 @@
             padding-left: 3rem;
         }
 
-        @@media (max-width: 768px) {
+        @@media (max-width: 991.98px) {
             .login-container {
                 flex-direction: column;
-                max-width: 450px;
+                min-height: auto;
+                max-width: 720px;
             }
-            
+
             .login-left {
-                padding: 0.2rem;
+                padding: 2rem 1.5rem;
             }
-            
+
             .login-right {
-                padding: 0.2rem;
+                padding: 2rem 1.5rem;
             }
-            
+
             .welcome-title {
                 font-size: 2rem;
             }
-            
+
             .login-form-title {
                 font-size: 1.75rem;
+            }
+        }
+
+        @@media (max-width: 575.98px) {
+            body {
+                align-items: flex-start;
+                padding: 12px;
+            }
+
+            .login-container {
+                border-radius: 14px;
+            }
+
+            .login-left {
+                padding: 1.5rem 1rem;
+            }
+
+            .logo-img {
+                max-width: 150px;
+                padding: 8px 14px;
+                margin-bottom: 1rem;
+            }
+
+            .features-list li {
+                font-size: 0.88rem;
+                text-align: left;
+            }
+
+            .login-right {
+                padding: 1.25rem 1rem;
+            }
+
+            .welcome-title {
+                font-size: 1.5rem;
+            }
+
+            .welcome-subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 1rem;
+            }
+
+            .login-form-title {
+                font-size: 1.4rem;
+            }
+
+            .login-form-subtitle {
+                font-size: 0.88rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .form-control {
+                padding: 0.75rem 0.9rem;
+                font-size: 0.9rem;
+            }
+
+            .input-group .form-control {
+                padding-left: 2.5rem;
+            }
+
+            .input-group i {
+                left: 0.85rem;
+                font-size: 0.85rem;
+            }
+
+            .btn-login {
+                padding: 0.75rem 1rem;
+                font-size: 0.95rem;
             }
         }
     </style>
@@ -315,6 +389,7 @@
                     }
 
                     <form method="post">
+                        @Html.AntiForgeryToken()
                         <div class="input-group">
                             <i class="fas fa-envelope"></i>
                             <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email address" required>
@@ -324,11 +399,15 @@
                             <i class="fas fa-lock"></i>
                             <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
                         </div>
-                        
+
                         <button type="submit" class="btn btn-login">
                             <i class="fas fa-sign-in-alt me-2"></i>Sign In
                         </button>
                     </form>
+                    <p class="text-muted mt-3 mb-0" style="font-size: 0.85rem;">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Secure login is enabled.
+                    </p>
                 </div>
             </div>
         </div>

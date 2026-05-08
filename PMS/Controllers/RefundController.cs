@@ -140,7 +140,18 @@ namespace PMS.Controllers
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(workflowFilter))
-                query = query.Where(r => r.WorkflowStatus == workflowFilter);
+            {
+                if (string.Equals(workflowFilter, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(r =>
+                        !string.Equals(r.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(r.WorkflowStatus, "Declined", StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    query = query.Where(r => r.WorkflowStatus == workflowFilter);
+                }
+            }
             if (!string.IsNullOrWhiteSpace(customerFilter))
                 query = query.Where(r => r.CustomerID == customerFilter.Trim());
 

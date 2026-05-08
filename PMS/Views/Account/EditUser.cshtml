@@ -122,56 +122,11 @@
                             </div>
                         </div>
 
-                        <!-- Role & Status -->
+                        <!-- Status -->
                         <div class="col-md-6">
                             <h6 class="text-primary mb-3">
-                                <i class="fas fa-shield-alt me-2"></i>Role & Status
+                                <i class="fas fa-user-check me-2"></i>Status
                             </h6>
-
-                            <div class="mb-3">
-                                <label asp-for="RoleID" class="form-label">User Role *</label>
-                                <select asp-for="RoleID" class="form-select" required id="roleSelect">
-                                    <option value="">Select Role</option>
-                                    @if (ViewBag.Roles != null)
-                                    {
-                                        @foreach (var role in ViewBag.Roles)
-                                        {
-                                            <option value="@role.RoleID" data-permissions="@role.Permissions">
-                                                @role.RoleName
-                                            </option>
-                                        }
-                                    }
-                                </select>
-                                <span asp-validation-for="RoleID" class="text-danger"></span>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Role Permissions</label>
-                                <style>
-                                    .permission-tag { font-weight: 500; }
-                                    .permission-tag .fas { color: inherit; }
-                                </style>
-                                <div id="permissionsDisplay" class="p-3 bg-light rounded" style="min-height: 100px;">
-                                    @if (!string.IsNullOrEmpty(Model.Role?.Permissions))
-                                    {
-                                        <div class="d-flex flex-wrap gap-2 align-items-center">
-                                            @foreach (var permission in Model.Role.Permissions.Split(','))
-                                            {
-                                                var p = permission.Trim();
-                                                if (string.IsNullOrEmpty(p)) { continue; }
-                                                <span class="badge rounded-pill bg-primary text-white px-3 py-2 d-inline-flex align-items-center gap-2 permission-tag">
-                                                    <i class="fas fa-check" aria-hidden="true"></i>
-                                                    <span>@p</span>
-                                                </span>
-                                            }
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <small class="text-muted">Select a role to view permissions</small>
-                                    }
-                                </div>
-                            </div>
 
                             <div class="mb-3">
                                 <div class="form-check form-switch">
@@ -190,6 +145,14 @@
                         <i class="fas fa-lock me-2"></i>Module rights
                     </h6>
                     <p class="text-muted small">No Access = no access; Read = view only; Author = write/create only (cannot edit existing); Edit = Create + Edit + Read; Admin = full CRUD. These will be applied per module later.</p>
+                    <div class="mb-2 d-flex flex-wrap gap-2 align-items-center">
+                        <span class="small text-muted me-1">Quick actions:</span>
+                        <button type="button" class="btn btn-outline-dark btn-sm js-set-all-permissions" data-permission="NoAccess">NoAccess for all</button>
+                        <button type="button" class="btn btn-outline-info btn-sm js-set-all-permissions" data-permission="Read">Read for all</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-set-all-permissions" data-permission="Author">Author for all</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm js-set-all-permissions" data-permission="Edit">Edit for all</button>
+                        <button type="button" class="btn btn-outline-success btn-sm js-set-all-permissions" data-permission="Admin">Admin for all</button>
+                    </div>
                     <div class="table-responsive mb-3">
                         <table class="table table-sm table-bordered">
                             <thead class="table-light">
@@ -214,7 +177,7 @@
                                         <tr>
                                             <td>@displayName</td>
                                             <td>
-                                                <select name="ModulePermissions_@key" class="form-select form-select-sm">
+                                                <select name="ModulePermissions_@key" class="form-select form-select-sm module-permission-select">
                                                     @{
                                                         var permissionOptions = new List<string>();
                                                         if (ViewBag.PermissionOptions != null)
@@ -315,26 +278,9 @@
     
     <script>
         $(document).ready(function() {
-            // Display role permissions
-            $('#roleSelect').on('change', function() {
-                var selectedOption = $(this).find('option:selected');
-                var permissions = selectedOption.data('permissions');
-                var permissionsDiv = $('#permissionsDisplay');
-                
-                if (permissions) {
-                    var permissionsList = permissions.split(',').map(function(p) { return p.trim(); }).filter(Boolean);
-                    var html = '<div class="d-flex flex-wrap gap-2 align-items-center">';
-                    permissionsList.forEach(function(permission) {
-                        html += '<span class="badge rounded-pill bg-primary text-white px-3 py-2 d-inline-flex align-items-center gap-2 permission-tag">' +
-                                '<i class="fas fa-check" aria-hidden="true"></i>' +
-                                '<span>' + permission + '</span>' +
-                                '</span>';
-                    });
-                    html += '</div>';
-                    permissionsDiv.html(html);
-                } else {
-                    permissionsDiv.html('<small class="text-muted">No permissions assigned to this role</small>');
-                }
+            $(document).on('click', '.js-set-all-permissions', function() {
+                var permission = $(this).data('permission');
+                $('.module-permission-select').val(permission);
             });
         });
     </script>

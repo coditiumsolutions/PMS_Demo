@@ -24,7 +24,7 @@ namespace PMS.Controllers
             "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "DuplicateFileTransfer", "Waiver", "PaymentAudit"
         };
 
-        private static readonly string[] PermissionOptions = new[] { "NoAccess", "Read", "Edit", "Admin" };
+        private static readonly string[] PermissionOptions = new[] { "NoAccess", "Read", "Author", "Edit", "Admin" };
 
         public AccountController(PMSDbContext context, IModulePermissionService modulePermission, ISiteConfigService siteConfigService)
         {
@@ -50,6 +50,7 @@ namespace PMS.Controllers
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Login(string email, string password)
         {
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
@@ -117,7 +118,7 @@ namespace PMS.Controllers
                     var loginLog = new ActivityLog
                     {
                         UserID = user.UserID,
-                        Action = "Login",
+                        Action = "Login (MAC/Thumbprint Disabled)",
                         RefType = "User",
                         RefID = user.UserID,
                         CreatedAt = DateTime.Now
@@ -229,6 +230,19 @@ namespace PMS.Controllers
             var users = await _context.Users
                 .Include(u => u.Role)
                 .ToListAsync();
+
+            var whitelistCounts = await _context.UserMacWhitelists
+                .GroupBy(x => x.UserID)
+                .Select(g => new { UserID = g.Key, Count = g.Count(x => x.IsActive) })
+                .ToDictionaryAsync(x => x.UserID, x => x.Count);
+
+            var blockedCounts = await _context.BlockedMacLoginAttempts
+                .GroupBy(x => x.UserID)
+                .Select(g => new { UserID = g.Key, Count = g.Count(x => !x.IsWhitelisted) })
+                .ToDictionaryAsync(x => x.UserID, x => x.Count);
+
+            ViewBag.WhitelistCounts = whitelistCounts;
+            ViewBag.BlockedCounts = blockedCounts;
             return View(users);
         }
 
@@ -249,6 +263,8 @@ namespace PMS.Controllers
         {
             if (ModelState.IsValid)
             {
+                user.RoleID = await ResolveRoleIdForUserTypeAsync(user.UserType, null);
+
                 // Check if email already exists
                 var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == user.Email);
                 if (existingUser != null)
@@ -359,6 +375,7 @@ namespace PMS.Controllers
 
                     var existing = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserID == user.UserID);
                     if (existing == null) return NotFound();
+                    user.RoleID = await ResolveRoleIdForUserTypeAsync(user.UserType, existing.RoleID);
                     user.PasswordHash = existing.PasswordHash;
                     user.CreatedAt = existing.CreatedAt;
                     _context.Users.Update(user);
@@ -472,7 +489,7 @@ namespace PMS.Controllers
             {
                 var val = Request.Form["ModulePermissions_" + key].FirstOrDefault();
                 if (string.IsNullOrEmpty(val)) val = "NoAccess";
-                if (val != "NoAccess" && val != "Read" && val != "Edit" && val != "Admin") val = "NoAccess";
+                if (val != "NoAccess" && val != "Read" && val != "Author" && val != "Edit" && val != "Admin") val = "NoAccess";
                 _context.UserModulePermissions.Add(new UserModulePermission
                 {
                     UserID = userId,
@@ -481,6 +498,22 @@ namespace PMS.Controllers
                 });
             }
             await _context.SaveChangesAsync();
+        }
+
+        private async Task<string?> ResolveRoleIdForUserTypeAsync(string? userType, string? fallbackRoleId)
+        {
+            if (string.IsNullOrWhiteSpace(userType))
+            {
+                return fallbackRoleId;
+            }
+
+            var normalized = userType.Trim();
+            var mappedRoleId = await _context.ACLs
+                .Where(r => r.RoleName != null && r.RoleName.ToLower() == normalized.ToLower())
+                .Select(r => r.RoleID)
+                .FirstOrDefaultAsync();
+
+            return string.IsNullOrWhiteSpace(mappedRoleId) ? fallbackRoleId : mappedRoleId;
         }
 
         private void SetUsersConfigViewBag()

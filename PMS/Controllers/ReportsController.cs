@@ -45,20 +45,52 @@ namespace PMS.Controllers
             if (denied != null) return denied;
             var today = DateTime.Today;
 
-            // Get all payment schedules that are overdue
-            var defaulters = await _context.PaymentSchedules
-                .Include(ps => ps.PaymentPlan)
-                    .ThenInclude(pp => pp.Customers)
-                .Include(ps => ps.Payments)
-                .Where(ps => ps.DueDate < today)
-                .ToListAsync();
+            // Load overdue schedules without depending on Payments include,
+            // so the page keeps working even if Payments table is missing.
+            List<PaymentSchedule> defaulters;
+            try
+            {
+                defaulters = await _context.PaymentSchedules
+                    .AsNoTracking()
+                    .Include(ps => ps.PaymentPlan)
+                        .ThenInclude(pp => pp.Customers)
+                    .Where(ps => ps.DueDate < today)
+                    .ToListAsync();
+            }
+            catch
+            {
+                return View(new List<DefaulterReportViewModel>());
+            }
+
+            // Try to load payment totals separately (optional dependency).
+            var paymentTotals = new Dictionary<string, decimal>();
+            try
+            {
+                var paymentsTableExists = await _context.Database
+                    .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
+                    .FirstOrDefaultAsync();
+
+                if (paymentsTableExists > 0)
+                {
+                    paymentTotals = await _context.Payments
+                        .AsNoTracking()
+                        .Where(p => p.ScheduleID != null)
+                        .GroupBy(p => p.ScheduleID!)
+                        .Select(g => new { ScheduleID = g.Key, Total = g.Sum(p => (decimal?)p.Amount) ?? 0m })
+                        .ToDictionaryAsync(x => x.ScheduleID, x => x.Total);
+                }
+            }
+            catch
+            {
+                // Keep paymentTotals empty; overdue logic will treat paid amount as 0.
+            }
 
             // Filter to only those without full payment
             var defaultersList = new List<DefaulterReportViewModel>();
 
             foreach (var schedule in defaulters)
             {
-                var totalPaid = schedule.Payments?.Sum(p => p.Amount) ?? 0m;
+                var totalPaid = paymentTotals.TryGetValue(schedule.ScheduleID, out var paidAmount) ? paidAmount : 0m;
                 var amountDue = schedule.Amount;
                 var balance = amountDue - totalPaid;
 

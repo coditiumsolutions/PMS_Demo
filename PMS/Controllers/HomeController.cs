@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using PMS.Data;
 using PMS.Models;
+using PMS.Services;
 
 namespace PMS.Controllers
 {
@@ -42,15 +43,32 @@ namespace PMS.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly PMSDbContext _context;
+        private readonly IModulePermissionService _modulePermission;
 
-        public HomeController(ILogger<HomeController> logger, PMSDbContext context)
+        public HomeController(ILogger<HomeController> logger, PMSDbContext context, IModulePermissionService modulePermission)
         {
             _logger = logger;
             _context = context;
+            _modulePermission = modulePermission;
         }
 
         public async Task<IActionResult> Index()
         {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var homePerm = await _modulePermission.GetPermissionAsync(userId, "Home");
+            if (!_modulePermission.CanRead(homePerm))
+            {
+                return RedirectToAction("Workspace", "Home");
+            }
+
+            var currentUserType = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.UserID == userId && u.IsActive)
+                .Select(u => u.UserType)
+                .FirstOrDefaultAsync();
+            var showPendingTasks = string.Equals(currentUserType?.Trim(), "Admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(currentUserType?.Trim(), "Manager", StringComparison.OrdinalIgnoreCase);
+
             // #region agent log
             try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:28", message = "Index method entry", data = new { }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
             // #endregion
@@ -328,6 +346,11 @@ namespace PMS.Controllers
             // Get dashboard counts (handle missing tables)
             int totalCustomers = 0;
             int pendingCustomers = 0;
+            int pendingCustomerUpdateRequests = 0;
+            int pendingWaivers = 0;
+            int pendingTransfers = 0;
+            int pendingRefunds = 0;
+            string pendingWaiverStatusFilter = "Initiated";
             int totalProjects = 0;
             int totalProperties = 0;
             int availableProperties = 0;
@@ -338,6 +361,9 @@ namespace PMS.Controllers
             {
                 totalCustomers = await _context.Customers.AsNoTracking().CountAsync();
                 pendingCustomers = await _context.Customers.AsNoTracking().CountAsync(c => c.Status == "Pending");
+                pendingCustomerUpdateRequests = await _context.CustomerUpdateRequests
+                    .AsNoTracking()
+                    .CountAsync(r => r.Status == "Pending");
                 totalProjects = await _context.Projects.AsNoTracking().CountAsync();
                 totalProperties = await _context.Properties.AsNoTracking().CountAsync();
                 availableProperties = await _context.Properties.AsNoTracking().CountAsync(p => p.Status == "Available");
@@ -347,6 +373,34 @@ namespace PMS.Controllers
                     .OrderByDescending(c => c.CreatedAt)
                     .Take(5)
                     .ToListAsync();
+
+                var waiverStatuses = await _context.Configurations
+                    .AsNoTracking()
+                    .Where(c => c.ConfigKey == "WaiverWorkFlow")
+                    .Select(c => c.ConfigValue)
+                    .FirstOrDefaultAsync();
+                var workflowStatuses = waiverStatuses?
+                    .Split(',')
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList() ?? new List<string>();
+                if (workflowStatuses.Count > 0)
+                {
+                    pendingWaiverStatusFilter = workflowStatuses[0];
+                }
+                pendingWaivers = await _context.Waivers
+                    .AsNoTracking()
+                    .CountAsync(w => w.Status == pendingWaiverStatusFilter);
+
+                pendingTransfers = await _context.Transfers
+                    .AsNoTracking()
+                    .CountAsync(t => !string.Equals(t.WorkFlowStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(t.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase));
+
+                pendingRefunds = await _context.Refunds
+                    .AsNoTracking()
+                    .CountAsync(r => !string.Equals(r.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(r.WorkflowStatus, "Declined", StringComparison.OrdinalIgnoreCase));
             }
             catch
             {
@@ -357,6 +411,12 @@ namespace PMS.Controllers
                 {
                     TotalCustomers = totalCustomers,
                     PendingCustomers = pendingCustomers,
+                    PendingCustomerUpdateRequests = pendingCustomerUpdateRequests,
+                    PendingWaivers = pendingWaivers,
+                    PendingTransfers = pendingTransfers,
+                    PendingRefunds = pendingRefunds,
+                    PendingWaiverStatusFilter = pendingWaiverStatusFilter,
+                    ShowPendingTasks = showPendingTasks,
                     TotalProjects = totalProjects,
                     TotalProperties = totalProperties,
                     AvailableProperties = availableProperties,
@@ -394,6 +454,12 @@ namespace PMS.Controllers
                 {
                     TotalCustomers = 0,
                     PendingCustomers = 0,
+                    PendingCustomerUpdateRequests = 0,
+                    PendingWaivers = 0,
+                    PendingTransfers = 0,
+                    PendingRefunds = 0,
+                    PendingWaiverStatusFilter = "Initiated",
+                    ShowPendingTasks = showPendingTasks,
                     TotalProjects = 0,
                     TotalProperties = 0,
                     AvailableProperties = 0,

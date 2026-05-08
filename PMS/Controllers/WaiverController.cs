@@ -28,6 +28,57 @@ namespace PMS.Controllers
             _surchargeService = surchargeService;
         }
 
+        private async Task<bool> IsTableExistsAsync(string tableName)
+        {
+            try
+            {
+                // Used to prevent EF from querying missing tables (e.g., Payments)
+                var count = await _context.Database
+                    .SqlQueryRaw<int>($"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'")
+                    .FirstOrDefaultAsync();
+                return count > 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task<bool> IsAdminOrManagerUserTypeAsync()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return false;
+            }
+
+            var userType = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.UserID == userId && u.IsActive)
+                .Select(u => u.UserType)
+                .FirstOrDefaultAsync();
+
+            var normalized = userType?.Trim();
+            return string.Equals(normalized, "Admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "Manager", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string AppendComment(string? existing, string newComment)
+        {
+            var trimmed = (newComment ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                return existing ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(existing))
+            {
+                return trimmed;
+            }
+
+            return existing.TrimEnd() + Environment.NewLine + trimmed;
+        }
+
         private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -142,13 +193,24 @@ namespace PMS.Controllers
             if (string.IsNullOrWhiteSpace(customerId))
                 return Json(new { success = false, message = "Enter a Customer ID." });
 
-            var customer = await _context.Customers
+            var paymentsTableExists = await IsTableExistsAsync("Payments");
+
+            var customerQuery = _context.Customers
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p!.Project)
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p!.PaymentSchedules)
-                        .ThenInclude(ps => ps.Payments)
-                .AsNoTracking()
+                .AsNoTracking();
+
+            if (paymentsTableExists)
+            {
+                customerQuery = customerQuery
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(p => p!.PaymentSchedules)
+                            .ThenInclude(ps => ps.Payments);
+            }
+
+            var customer = await customerQuery
                 .FirstOrDefaultAsync(c => c.CustomerID == customerId.Trim());
 
             if (customer == null)
@@ -200,11 +262,22 @@ namespace PMS.Controllers
             if (string.IsNullOrWhiteSpace(model.CustomerID))
                 ModelState.AddModelError(nameof(model.CustomerID), "Customer ID is required.");
 
-            var customer = await _context.Customers
+            var paymentsTableExists = await IsTableExistsAsync("Payments");
+
+            var customerQuery = _context.Customers
                 .Include(c => c.PaymentPlan)
                     .ThenInclude(p => p!.PaymentSchedules)
-                        .ThenInclude(ps => ps.Payments)
-                .AsNoTracking()
+                .AsNoTracking();
+
+            if (paymentsTableExists)
+            {
+                customerQuery = customerQuery
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(p => p!.PaymentSchedules)
+                            .ThenInclude(ps => ps.Payments);
+            }
+
+            var customer = await customerQuery
                 .FirstOrDefaultAsync(c => c.CustomerID == model.CustomerID);
 
             if (customer == null)
@@ -303,9 +376,15 @@ namespace PMS.Controllers
 
             var workflowStatuses = ViewBag.WorkflowStatuses as List<string> ?? new List<string> { "Initiated", "Approved", "Declined" };
             var approvedStatus = ResolveWorkflowStatus(workflowStatuses, "Approved");
+            var declinedStatus = ResolveWorkflowStatus(workflowStatuses, "Declined");
             if (string.Equals(waiver.Status, approvedStatus, StringComparison.OrdinalIgnoreCase))
             {
                 TempData["ErrorMessage"] = "Approved waivers cannot be edited.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            if (string.Equals(waiver.Status, declinedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Declined waivers cannot be edited.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
@@ -315,6 +394,8 @@ namespace PMS.Controllers
             ViewBag.HasNextStep = currentIndex >= 0 && currentIndex < workflowStatuses.Count - 1;
             ViewBag.PreviousStepLabel = currentIndex > 0 ? workflowStatuses[currentIndex - 1] : null;
             ViewBag.NextStepLabel = currentIndex >= 0 && currentIndex < workflowStatuses.Count - 1 ? workflowStatuses[currentIndex + 1] : null;
+
+            ViewBag.CanApproveDecline = await IsAdminOrManagerUserTypeAsync();
             return View(waiver);
         }
 
@@ -381,7 +462,7 @@ namespace PMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> MoveStatus(string id, string direction)
+        public async Task<IActionResult> MoveStatus(string id, string? direction, string? targetStatus, string? moveComments)
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
@@ -396,9 +477,15 @@ namespace PMS.Controllers
 
             var workflowStatuses = ViewBag.WorkflowStatuses as List<string> ?? new List<string> { "Initiated", "Approved", "Declined" };
             var approvedStatus = ResolveWorkflowStatus(workflowStatuses, "Approved");
+            var declinedStatus = ResolveWorkflowStatus(workflowStatuses, "Declined");
             if (string.Equals(waiver.Status, approvedStatus, StringComparison.OrdinalIgnoreCase))
             {
                 TempData["ErrorMessage"] = "Approved waivers cannot be moved.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            if (string.Equals(waiver.Status, declinedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Declined waivers cannot be moved.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
@@ -409,43 +496,101 @@ namespace PMS.Controllers
                 return RedirectToAction(nameof(Edit), new { id });
             }
 
-            var requestedForward = string.Equals(direction, "forward", StringComparison.OrdinalIgnoreCase);
-            var requestedBackward = string.Equals(direction, "backward", StringComparison.OrdinalIgnoreCase);
-            if (!requestedForward && !requestedBackward)
-            {
-                TempData["ErrorMessage"] = "Invalid status move direction.";
-                return RedirectToAction(nameof(Edit), new { id });
-            }
-
-            var targetIndex = requestedForward ? idx + 1 : idx - 1;
-            if (targetIndex < 0 || targetIndex >= workflowStatuses.Count)
-            {
-                TempData["ErrorMessage"] = "No further workflow step available in that direction.";
-                return RedirectToAction(nameof(Edit), new { id });
-            }
-
             var oldStatus = waiver.Status ?? string.Empty;
-            var targetStatus = workflowStatuses[targetIndex];
-            waiver.Status = targetStatus;
+            string resolvedTargetStatus;
+
+            if (!string.IsNullOrWhiteSpace(targetStatus))
+            {
+                var foundIndex = workflowStatuses.FindIndex(s => string.Equals(s, targetStatus, StringComparison.OrdinalIgnoreCase));
+                if (foundIndex < 0)
+                {
+                    TempData["ErrorMessage"] = "Invalid target workflow status.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+
+                resolvedTargetStatus = workflowStatuses[foundIndex];
+                var isDecisionTarget =
+                    string.Equals(resolvedTargetStatus, approvedStatus, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(resolvedTargetStatus, declinedStatus, StringComparison.OrdinalIgnoreCase);
+
+                // Approved/Declined are decision outcomes (either/or), not ordered "next" steps.
+                if (!isDecisionTarget && foundIndex <= idx)
+                {
+                    TempData["ErrorMessage"] = "Invalid status move.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+            }
+            else
+            {
+                var requestedForward = string.Equals(direction, "forward", StringComparison.OrdinalIgnoreCase);
+                var requestedBackward = string.Equals(direction, "backward", StringComparison.OrdinalIgnoreCase);
+                if (!requestedForward && !requestedBackward)
+                {
+                    TempData["ErrorMessage"] = "Invalid status move direction.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+
+                var targetIndex = requestedForward ? idx + 1 : idx - 1;
+                if (targetIndex < 0 || targetIndex >= workflowStatuses.Count)
+                {
+                    TempData["ErrorMessage"] = "No further workflow step available in that direction.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+
+                resolvedTargetStatus = workflowStatuses[targetIndex];
+            }
+
             waiver.LastModifiedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (string.Equals(targetStatus, approvedStatus, StringComparison.OrdinalIgnoreCase))
+            var isFinalApproved = string.Equals(resolvedTargetStatus, approvedStatus, StringComparison.OrdinalIgnoreCase);
+            var isFinalDeclined = string.Equals(resolvedTargetStatus, declinedStatus, StringComparison.OrdinalIgnoreCase);
+
+            // Approved/Declined actions must be limited to higher authority.
+            if ((isFinalApproved || isFinalDeclined) && !await IsAdminOrManagerUserTypeAsync())
+            {
+                TempData["ErrorMessage"] = "Only Admin or Manager users can approve or decline waivers.";
+                return RedirectToAction("AccessDenied", "Account");
+            }
+
+            // Comments requirement for Approved/Declined moves + append into Comments column.
+            if (isFinalApproved || isFinalDeclined)
+            {
+                var trimmed = (moveComments ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(trimmed))
+                {
+                    TempData["ErrorMessage"] = "Comments are required to approve or decline.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+
+                var label = isFinalApproved ? "Approved" : "Declined";
+                waiver.Comments = AppendComment(waiver.Comments, $"{label}: {trimmed}");
+            }
+
+            waiver.Status = resolvedTargetStatus;
+
+            if (isFinalApproved)
             {
                 await ApplyApprovedStateAsync(waiver);
+            }
+            else if (isFinalDeclined)
+            {
+                // Ensure approval fields aren't accidentally set.
+                waiver.ApprovedBy = null;
+                waiver.ApprovedAt = null;
             }
 
             _context.ActivityLogs.Add(new ActivityLog
             {
                 UserID = waiver.LastModifiedBy,
-                Action = $"Waiver {waiver.WaiverID} status changed from {oldStatus} to {targetStatus}.",
+                Action = $"Waiver {waiver.WaiverID} status changed from {oldStatus} to {resolvedTargetStatus}.",
                 RefType = "Waiver",
                 RefID = waiver.WaiverID,
                 CreatedAt = DateTime.Now
             });
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = $"Waiver {waiver.WaiverID} moved to {targetStatus}.";
-            return string.Equals(targetStatus, approvedStatus, StringComparison.OrdinalIgnoreCase)
+            TempData["SuccessMessage"] = $"Waiver {waiver.WaiverID} moved to {resolvedTargetStatus}.";
+            return string.Equals(resolvedTargetStatus, approvedStatus, StringComparison.OrdinalIgnoreCase)
                 ? RedirectToAction(nameof(Details), new { id = waiver.WaiverID })
                 : RedirectToAction(nameof(Edit), new { id = waiver.WaiverID });
         }
@@ -491,6 +636,13 @@ namespace PMS.Controllers
 
         private async Task ApplyApprovedStateAsync(Waiver waiver)
         {
+            var paymentsTableExists = await IsTableExistsAsync("Payments");
+            if (!paymentsTableExists)
+            {
+                // Payments table is missing in some environments; still allow status change without failing.
+                return;
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             waiver.ApprovedBy = userId;
             waiver.ApprovedAt = DateTime.Now;

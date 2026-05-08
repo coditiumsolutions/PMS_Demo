@@ -105,9 +105,17 @@
                     {
                         foreach (var row in Model.Logs)
                         {
-                            var logJson = System.Text.Json.JsonSerializer.Serialize(new { logId = row.LogId, createdAt = row.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"), userId = row.UserId ?? "", userName = row.UserName ?? "", action = row.Action ?? "", refType = row.RefType ?? "", refId = row.RefId ?? "", details = row.Details ?? "" });
-                            var logAttr = logJson.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
-                            <tr class="log-row cursor-pointer" role="button" tabindex="0" data-log="@Html.Raw(logAttr)">
+                            <tr class="log-row cursor-pointer"
+                                role="button"
+                                tabindex="0"
+                                data-log-id="@row.LogId"
+                                data-created-at="@row.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")"
+                                data-user-id="@(row.UserId ?? "")"
+                                data-user-name="@(row.UserName ?? "")"
+                                data-action="@(row.Action ?? "")"
+                                data-ref-type="@(row.RefType ?? "")"
+                                data-ref-id="@(row.RefId ?? "")"
+                                data-details="@(row.Details ?? "")">
                                 <td>@row.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
                                 <td>@row.UserName</td>
                                 <td>@row.Action</td>
@@ -209,19 +217,23 @@
         var modalEl = document.getElementById('logDetailModal');
         if (!modalEl) return;
         var modal = new bootstrap.Modal(modalEl);
-        var fields = ['logId', 'createdAt', 'userId', 'userName', 'action', 'refType', 'refId', 'details'];
         document.querySelectorAll('.log-row').forEach(function (tr) {
             tr.addEventListener('click', function () {
-                var raw = tr.getAttribute('data-log');
-                if (!raw) return;
-                try {
-                    var log = JSON.parse(raw);
-                    fields.forEach(function (f) {
-                        var el = document.getElementById('dlg-' + f);
-                        if (el) el.textContent = log[f] !== undefined && log[f] !== null && log[f] !== '' ? log[f] : '—';
-                    });
-                    modal.show();
-                } catch (e) { console.warn(e); }
+                var setText = function (id, value) {
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    el.textContent = value && value.trim() !== '' ? value : '—';
+                };
+
+                setText('dlg-logId', tr.getAttribute('data-log-id') || '');
+                setText('dlg-createdAt', tr.getAttribute('data-created-at') || '');
+                setText('dlg-userId', tr.getAttribute('data-user-id') || '');
+                setText('dlg-userName', tr.getAttribute('data-user-name') || '');
+                setText('dlg-action', tr.getAttribute('data-action') || '');
+                setText('dlg-refType', tr.getAttribute('data-ref-type') || '');
+                setText('dlg-refId', tr.getAttribute('data-ref-id') || '');
+                setText('dlg-details', tr.getAttribute('data-details') || '');
+                modal.show();
             });
             tr.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tr.click(); }

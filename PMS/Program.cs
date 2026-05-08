@@ -1,7 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.DataProtection;
 using PMS.Data;
 using PMS.Services;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +22,17 @@ builder.Services.AddScoped<SeedDataService>();
 builder.Services.AddScoped<PMS.Services.IModulePermissionService, PMS.Services.ModulePermissionService>();
 builder.Services.AddScoped<ISiteConfigService, SiteConfigService>();
 builder.Services.AddScoped<ISurchargeService, SurchargeService>();
+
+// Persist Data Protection keys to keep auth cookies valid after IIS redeploy/restart.
+var dataProtectionPath = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(dataProtectionPath))
+{
+    dataProtectionPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "PMS", "DataProtectionKeys");
+}
+Directory.CreateDirectory(dataProtectionPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+    .SetApplicationName("PMS");
 
 // Add session support
 builder.Services.AddSession(options =>
@@ -62,6 +78,24 @@ builder.Services.AddAuthentication("Cookies")
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddCertificateForwarding(options =>
+{
+    options.CertificateHeader = "X-ARR-ClientCert";
+    options.HeaderConverter = value =>
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        try
+        {
+            return new X509Certificate2(Convert.FromBase64String(value));
+        }
+        catch
+        {
+            return null;
+        }
+    };
+});
+
 // Configure CORS
 builder.Services.AddCors(options =>
 {
@@ -93,7 +127,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
 app.UseStaticFiles();
+var wellKnownPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", ".well-known");
+Directory.CreateDirectory(wellKnownPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = "/.well-known",
+    FileProvider = new PhysicalFileProvider(wellKnownPath),
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "text/plain"
+});
 
 app.UseRouting();
 
@@ -104,6 +148,7 @@ app.UseCors("AllowSpecificOrigins");
 app.UseSession();
 
 // Add authentication and authorization middleware
+app.UseCertificateForwarding();
 app.UseAuthentication();
 app.UseAuthorization();
 

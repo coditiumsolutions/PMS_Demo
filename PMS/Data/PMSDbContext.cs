@@ -15,6 +15,8 @@ namespace PMS.Data
         public DbSet<UserModulePermission> UserModulePermissions { get; set; }
         public DbSet<UserSession> UserSessions { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
+        public DbSet<UserMacWhitelist> UserMacWhitelists { get; set; }
+        public DbSet<BlockedMacLoginAttempt> BlockedMacLoginAttempts { get; set; }
         public DbSet<Notification> Notifications { get; set; }
 
         // Registration & Customers
@@ -22,6 +24,8 @@ namespace PMS.Data
         public DbSet<PaymentPlan> PaymentPlans { get; set; }
         public DbSet<PaymentSchedule> PaymentSchedules { get; set; }
         public DbSet<Customer> Customers { get; set; }
+        public DbSet<CustomerUpdateRequest> CustomerUpdateRequests { get; set; }
+        public DbSet<CustomerUpdateRequestChange> CustomerUpdateRequestChanges { get; set; }
         public DbSet<JointOwner> JointOwners { get; set; }
         public DbSet<CustomerLog> CustomerLogs { get; set; }
         public DbSet<BlockingLog> BlockingLogs { get; set; }
@@ -127,6 +131,39 @@ namespace PMS.Data
                 entity.Property(e => e.DeviceInfo).HasMaxLength(150);
                 entity.HasOne(e => e.User)
                       .WithMany(u => u.UserSessions)
+                      .HasForeignKey(e => e.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<UserMacWhitelist>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserID).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.MacAddress).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.DeviceName).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.AddedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.HasIndex(e => new { e.UserID, e.MacAddress }).IsUnique();
+
+                entity.HasOne(e => e.User)
+                      .WithMany(u => u.MacWhitelists)
+                      .HasForeignKey(e => e.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<BlockedMacLoginAttempt>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserID).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.MacAddress).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.DeviceName).HasMaxLength(150).IsRequired(false);
+                entity.Property(e => e.IPAddress).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.UserAgent).HasMaxLength(500).IsRequired(false);
+                entity.Property(e => e.WhitelistedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.HasIndex(e => new { e.UserID, e.AttemptedAt });
+
+                entity.HasOne(e => e.User)
+                      .WithMany(u => u.BlockedMacLoginAttempts)
                       .HasForeignKey(e => e.UserID)
                       .OnDelete(DeleteBehavior.Cascade);
             });
@@ -244,6 +281,56 @@ namespace PMS.Data
                       .WithMany(c => c.CustomerLogs)
                       .HasForeignKey(e => e.CustomerID)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<CustomerUpdateRequest>(entity =>
+            {
+                entity.HasKey(e => e.RequestID);
+                entity.Property(e => e.RequestID).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.CustomerID).HasMaxLength(10).HasColumnType("char(10)").IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("Pending");
+                entity.Property(e => e.RequestedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.ApprovedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+                entity.Property(e => e.RejectedBy).HasMaxLength(10).HasColumnType("char(10)").IsRequired(false);
+
+                entity.HasOne(e => e.Customer)
+                      .WithMany(c => c.CustomerUpdateRequests)
+                      .HasForeignKey(e => e.CustomerID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.RequestedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.RequestedBy)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(e => e.ApprovedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.ApprovedBy)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(e => e.RejectedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.RejectedBy)
+                      .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasIndex(e => new { e.CustomerID, e.Status, e.RequestedAt })
+                      .HasDatabaseName("IX_CustomerUpdateRequests_Customer_Status");
+            });
+
+            modelBuilder.Entity<CustomerUpdateRequestChange>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(10).HasColumnType("char(10)");
+                entity.Property(e => e.RequestID).HasMaxLength(10).HasColumnType("char(10)").IsRequired();
+                entity.Property(e => e.FieldName).HasMaxLength(100).IsRequired();
+
+                entity.HasOne(e => e.Request)
+                      .WithMany(r => r.Changes)
+                      .HasForeignKey(e => e.RequestID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.RequestID)
+                      .HasDatabaseName("IX_CustomerUpdateRequestChanges_RequestID");
             });
 
             modelBuilder.Entity<JointOwner>(entity =>

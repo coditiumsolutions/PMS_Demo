@@ -1,0 +1,139 @@
+@{
+    ViewData["Title"] = "Create Customer Update Request";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="fas fa-user-edit me-2"></i>Create Update Request</h2>
+    <a asp-action="UpdateRequests" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Customer ID</label>
+                <input type="text" id="customerIdSearch" class="form-control" placeholder="Enter customer ID" />
+            </div>
+            <div class="col-md-4">
+                <button type="button" id="searchCustomerBtn" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i>Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form asp-action="CreateUpdateRequest" method="post" id="updateRequestForm" class="d-none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="customerId" name="customerId" />
+    <input type="hidden" id="proposedDataJson" name="proposedDataJson" />
+
+    <div class="card">
+        <div class="card-header">
+            <div class="fw-bold">Edit Proposed Values</div>
+            <div class="small text-muted">Only changed fields are included in the request.</div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Field</th>
+                            <th style="width: 37%;">Proposed Value</th>
+                            <th style="width: 38%;">Current Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-paper-plane me-1"></i>Submit Request
+            </button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        const editableFields = [
+            "FullName", "FatherName", "CNIC", "PassportNo", "DOB", "Gender", "Nationality",
+            "Phone", "MobileNo", "MobileNo2", "Email",
+            "FormNo", "MailingAddress", "PermanentAddress", "City", "Country",
+            "SubProject", "RegisteredSize",
+            "NomineeName", "NomineeID", "NomineeRelation",
+            "AdditionalInfo",
+            "IsDealerRegistered", "DealerID", "DealerName", "DealerPercentage"
+        ];
+
+        const searchBtn = document.getElementById('searchCustomerBtn');
+        const customerInput = document.getElementById('customerIdSearch');
+        const form = document.getElementById('updateRequestForm');
+        const comparisonBody = document.getElementById('comparisonBody');
+        const customerIdHidden = document.getElementById('customerId');
+        const proposedJson = document.getElementById('proposedDataJson');
+
+        searchBtn.addEventListener('click', function () {
+            const customerId = customerInput.value.trim();
+            if (!customerId) {
+                alert('Please enter customer ID.');
+                return;
+            }
+
+            fetch('@Url.Action("SearchCustomerForUpdateRequest", "Customer")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: new URLSearchParams({ customerId: customerId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    alert(data.message || 'Customer not found.');
+                    return;
+                }
+
+                customerIdHidden.value = data.customerId;
+                comparisonBody.innerHTML = '';
+
+                editableFields.forEach(function (field) {
+                    const currentValue = (data.fields && data.fields[field]) ? data.fields[field] : '';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${field}</strong></td>
+                        <td><input type="text" class="form-control proposed-input" data-field="${field}" value="${escapeHtml(currentValue)}"></td>
+                        <td class="text-muted">${escapeHtml(currentValue)}</td>
+                    `;
+                    comparisonBody.appendChild(tr);
+                });
+
+                form.classList.remove('d-none');
+            })
+            .catch(() => alert('Unable to search customer.'));
+        });
+
+        form.addEventListener('submit', function (e) {
+            const payload = {};
+            document.querySelectorAll('.proposed-input').forEach(function (el) {
+                payload[el.getAttribute('data-field')] = el.value;
+            });
+            proposedJson.value = JSON.stringify(payload);
+        });
+
+        function escapeHtml(value) {
+            return (value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+    })();
+</script>
+}

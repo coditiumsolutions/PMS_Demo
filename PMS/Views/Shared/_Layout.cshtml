@@ -114,13 +114,13 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* GLOBAL: Remove Bootstrap Default Backdrop but Add Custom One */
+        /* GLOBAL: keep modal plain (no dimming effects) */
         .modal-backdrop {
             display: none !important;
         }
 
         .modal {
-            background: rgba(0, 0, 0, 0.5) !important;
+            background: transparent !important;
             z-index: 9999 !important;
         }
 
@@ -133,19 +133,6 @@
         .modal-dialog {
             z-index: 10000 !important;
             margin: auto;
-        }
-
-        /* When modal is open, dim everything including sidebar */
-        body.modal-open::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 9998;
-            pointer-events: none;
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -1188,20 +1175,89 @@
             font-size: 12px;
         }
 
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 2100;
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 10px;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-font-color);
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+        }
+
+        .mobile-menu-toggle i {
+            font-size: 18px;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1999;
+        }
+
         @@media (max-width: 768px) {
-            .sidebar {
-                min-height: auto;
-                width: 100% !important;
-                min-width: 100%;
+            /* Keep sidebar rendered on mobile; we control visibility via transform. */
+            .sidebar.collapse {
+                display: block !important;
             }
-            
+
+            .mobile-menu-toggle {
+                display: inline-flex;
+            }
+
+            .sidebar-backdrop {
+                display: block;
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+                transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            }
+
+            body.sidebar-open .sidebar-backdrop {
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
+            }
+
+            .sidebar {
+                min-height: 100vh;
+                width: 280px !important;
+                min-width: 280px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                transform: translateX(-100%);
+                transition: transform 0.25s ease-in-out;
+                z-index: 2000 !important;
+                overflow-y: auto !important;
+            }
+
+            body.sidebar-open .sidebar {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+            }
+
             .content-header {
                 padding: 25px;
                 margin-left: 0;
+                margin-right: 0;
+                margin-top: 72px;
             }
-            
+
             .content-body {
-                padding: 25px;
+                padding: 15px 2px 15px 2px;
                 margin-left: 0;
             }
         }
@@ -1216,9 +1272,18 @@
         })();
     </script>
     <div class="container-fluid">
+        <button id="mobileMenuToggle"
+                class="mobile-menu-toggle"
+                type="button"
+                aria-label="Open menu"
+                aria-controls="appSidebar"
+                aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
         <div class="row">
                     <!-- Sidebar -->
-                    <nav class="col-md-3 col-lg-3 d-md-block sidebar collapse">
+                    <nav id="appSidebar" class="col-md-3 col-lg-3 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="brand-section" style="background: var(--sidebar-bg);">
                         @{
@@ -1708,6 +1773,48 @@
                 $(this).text(formatLargeNumber(value));
             });
         });
+    </script>
+    <script>
+        (function () {
+            var mobileToggle = document.getElementById('mobileMenuToggle');
+            var sidebarBackdrop = document.getElementById('sidebarBackdrop');
+            var sidebar = document.getElementById('appSidebar');
+
+            if (!mobileToggle || !sidebarBackdrop || !sidebar) {
+                return;
+            }
+
+            function isMobileViewport() {
+                return window.innerWidth <= 768;
+            }
+
+            function setMenuState(isOpen) {
+                document.body.classList.toggle('sidebar-open', isOpen);
+                mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+
+            mobileToggle.addEventListener('click', function () {
+                setMenuState(!document.body.classList.contains('sidebar-open'));
+            });
+
+            sidebarBackdrop.addEventListener('click', function () {
+                setMenuState(false);
+            });
+
+            sidebar.querySelectorAll('a.nav-link').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    if (isMobileViewport()) {
+                        setMenuState(false);
+                    }
+                });
+            });
+
+            window.addEventListener('resize', function () {
+                if (!isMobileViewport()) {
+                    setMenuState(false);
+                }
+            });
+        })();
     </script>
     
     @await RenderSectionAsync("Scripts", required: false)

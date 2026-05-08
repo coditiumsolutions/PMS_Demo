@@ -7,6 +7,21 @@
     var hasNextStep = ViewBag.HasNextStep == true;
     var previousStepLabel = ViewBag.PreviousStepLabel as string;
     var nextStepLabel = ViewBag.NextStepLabel as string;
+    var approvedStatus = (string?)ViewBag.ApprovedStatus ?? "Approved";
+    var declinedStatus = (string?)ViewBag.DeclinedStatus ?? "Declined";
+    var canApproveDecline = ViewBag.CanApproveDecline == true;
+
+    var approvedIndex = workflowStatuses.FindIndex(s => string.Equals(s, approvedStatus, StringComparison.OrdinalIgnoreCase));
+    var declinedIndex = workflowStatuses.FindIndex(s => string.Equals(s, declinedStatus, StringComparison.OrdinalIgnoreCase));
+
+    var canMoveToApproved = canApproveDecline && currentWorkflowIndex >= 0 && approvedIndex > currentWorkflowIndex;
+    var canMoveToDeclined = canApproveDecline && currentWorkflowIndex >= 0 && declinedIndex > currentWorkflowIndex;
+    var isDecisionClosed = string.Equals(Model.Status, approvedStatus, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Model.Status, declinedStatus, StringComparison.OrdinalIgnoreCase);
+
+    var nextStepIsApprovedOrDeclined =
+        string.Equals(nextStepLabel, approvedStatus, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(nextStepLabel, declinedStatus, StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -31,35 +46,83 @@
 
 <div class="card mb-4">
     <div class="card-header fw-semibold"><i class="fas fa-route me-2"></i>Workflow Status</div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            @for (var i = 0; i < workflowStatuses.Count; i++)
-            {
-                var step = workflowStatuses[i];
-                var isCurrent = i == currentWorkflowIndex;
-                <span class="badge @(isCurrent ? "bg-primary" : "bg-secondary")">@(i + 1). @step</span>
-                @if (i < workflowStatuses.Count - 1)
+    <div class="card-body workflow-redesign">
+        <div class="workflow-track mb-3">
+            <div class="small text-muted mb-2">Current workflow path</div>
+            <div class="workflow-steps">
+                @for (var i = 0; i < workflowStatuses.Count; i++)
                 {
-                    <i class="fas fa-arrow-right text-muted"></i>
+                    var step = workflowStatuses[i];
+                    var isCurrent = i == currentWorkflowIndex;
+                    var statusClass = isCurrent ? "current" : (i < currentWorkflowIndex ? "done" : "pending");
+                    <div class="workflow-step @statusClass">
+                        <span class="step-index">@(i + 1)</span>
+                        <span class="step-label">@step</span>
+                    </div>
                 }
-            }
+            </div>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="direction" value="backward" />
-                <button type="submit" class="btn btn-outline-secondary" @(hasPreviousStep ? null : "disabled")>
-                    <i class="fas fa-arrow-left me-1"></i>Move Back @(string.IsNullOrWhiteSpace(previousStepLabel) ? "" : $"to {previousStepLabel}")
-                </button>
-            </form>
-            <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="direction" value="forward" />
-                <button type="submit" class="btn btn-primary" @(hasNextStep ? null : "disabled")>
-                    <i class="fas fa-arrow-right me-1"></i>Move Forward @(string.IsNullOrWhiteSpace(nextStepLabel) ? "" : $"to {nextStepLabel}")
-                </button>
-            </form>
+
+        <div class="workflow-actions-panel mb-3">
+            <div class="small text-muted mb-2">General workflow actions</div>
+            <div class="d-flex flex-wrap gap-2">
+                <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="direction" value="backward" />
+                    <button type="submit" class="btn btn-outline-secondary" @(hasPreviousStep ? null : "disabled")>
+                        <i class="fas fa-arrow-left me-1"></i>Move Back @(string.IsNullOrWhiteSpace(previousStepLabel) ? "" : $"to {previousStepLabel}")
+                    </button>
+                </form>
+                @if (!canApproveDecline || isDecisionClosed)
+                {
+                    <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="direction" value="forward" />
+                        <button type="submit" class="btn btn-primary" @(hasNextStep && !nextStepIsApprovedOrDeclined ? null : "disabled")>
+                            <i class="fas fa-arrow-right me-1"></i>Move Forward @(string.IsNullOrWhiteSpace(nextStepLabel) ? "" : $"to {nextStepLabel}")
+                        </button>
+                    </form>
+                }
+            </div>
         </div>
+
+        @if (canApproveDecline && !isDecisionClosed)
+        {
+            <div class="workflow-decision-panel">
+                <div class="small text-muted mb-2">Decision actions (Admin/Manager only)</div>
+                <div class="decision-grid">
+                    @if (approvedIndex >= 0)
+                    {
+                        <div class="decision-card decision-card-approve">
+                            <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post" class="d-grid gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="targetStatus" value="@approvedStatus" />
+                                <label class="form-label form-label-sm fw-semibold mb-0">Approve comment</label>
+                                <textarea name="moveComments" class="form-control" rows="4" maxlength="2000" required placeholder="Reason for approval..."></textarea>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-check me-1"></i>Move to Approved
+                                </button>
+                            </form>
+                        </div>
+                    }
+
+                    @if (declinedIndex >= 0)
+                    {
+                        <div class="decision-card decision-card-decline">
+                            <form asp-action="MoveStatus" asp-route-id="@Model.WaiverID" method="post" class="d-grid gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="targetStatus" value="@declinedStatus" />
+                                <label class="form-label form-label-sm fw-semibold mb-0">Decline comment</label>
+                                <textarea name="moveComments" class="form-control" rows="4" maxlength="2000" required placeholder="Reason for decline..."></textarea>
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="fas fa-times me-1"></i>Move to Declined
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -129,6 +192,94 @@
         <a asp-action="Details" asp-route-id="@Model.WaiverID" class="btn btn-secondary">Cancel</a>
     </div>
 </form>
+
+<style>
+    .workflow-redesign .workflow-steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .workflow-redesign .workflow-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid #dfe3e8;
+        background: #f8f9fb;
+        max-width: 100%;
+    }
+
+    .workflow-redesign .workflow-step .step-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 700;
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    .workflow-redesign .workflow-step .step-label {
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .workflow-redesign .workflow-step.current {
+        border-color: #9c6ade;
+        background: #f4ecff;
+    }
+
+    .workflow-redesign .workflow-step.current .step-index {
+        background: #9c6ade;
+        color: #fff;
+    }
+
+    .workflow-redesign .workflow-step.done {
+        border-color: #2da44e;
+        background: #eefaf1;
+    }
+
+    .workflow-redesign .workflow-step.done .step-index {
+        background: #2da44e;
+        color: #fff;
+    }
+
+    .workflow-redesign .workflow-actions-panel,
+    .workflow-redesign .workflow-decision-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .workflow-redesign .decision-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+    }
+
+    .workflow-redesign .decision-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px;
+        background: #fff;
+        min-width: 0;
+    }
+
+    .workflow-redesign .decision-card-approve {
+        border-left: 4px solid #198754;
+    }
+
+    .workflow-redesign .decision-card-decline {
+        border-left: 4px solid #dc3545;
+    }
+</style>
 
 @section Scripts {
 <script>

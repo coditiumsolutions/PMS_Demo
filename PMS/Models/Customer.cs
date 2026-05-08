@@ -143,6 +143,7 @@ namespace PMS.Models
         public virtual ICollection<JointOwner> JointOwners { get; set; } = new List<JointOwner>();
         public virtual ICollection<TransferJointOwner> TransferJointOwners { get; set; } = new List<TransferJointOwner>();
         public virtual ICollection<DuplicateFileTransfer> DuplicateFileTransfers { get; set; } = new List<DuplicateFileTransfer>();
+        public virtual ICollection<CustomerUpdateRequest> CustomerUpdateRequests { get; set; } = new List<CustomerUpdateRequest>();
 
         /// <summary>Either CNIC format 5-7-1 (e.g. 11111-1111111-1) or Passport No with at least 5 characters.</summary>
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

@@ -99,7 +99,18 @@ namespace PMS.Controllers
                 query = query.Where(t => t.CustomerID.Contains(customerIdFilter));
 
             if (!string.IsNullOrWhiteSpace(workflowFilter))
-                query = query.Where(t => t.WorkFlowStatus == workflowFilter);
+            {
+                if (string.Equals(workflowFilter, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(t =>
+                        !string.Equals(t.WorkFlowStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(t.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    query = query.Where(t => t.WorkFlowStatus == workflowFilter);
+                }
+            }
 
             var list = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
 

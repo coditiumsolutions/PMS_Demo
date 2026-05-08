@@ -8,7 +8,7 @@ echo ========================================
 echo.
 
 set PROJECT_PATH=%~dp0
-set DEPLOY_PATH=D:\PMSDeploy
+set DEPLOY_PATH=C:\PMSDeploy
 
 echo Project Path: %PROJECT_PATH%
 echo Deploy Path: %DEPLOY_PATH%
@@ -37,6 +37,11 @@ if %ERRORLEVEL% NEQ 0 (
     echo Build failed!
     exit /b 1
 )
+
+REM Step 3.5: Stop running PMS app to avoid file locks
+echo Step 3.5: Stopping PMS app (IIS/app)...
+powershell -Command "Import-Module WebAdministration; Stop-WebAppPool -Name 'PMS' -ErrorAction SilentlyContinue | Out-Null; Stop-Website -Name 'PMS' -ErrorAction SilentlyContinue | Out-Null"
+taskkill /F /IM PMS.exe >nul 2>&1
 
 REM Step 4: Publish to deployment folder
 echo Step 4: Publishing to %DEPLOY_PATH%...
@@ -74,18 +79,22 @@ if exist "%DEPLOY_PATH%\PMS.dll" (
     exit /b 1
 )
 
+REM Step 7: Start IIS site/app pool again
+echo Step 7: Starting IIS site/app pool...
+powershell -Command "Import-Module WebAdministration; Start-WebAppPool -Name 'PMS' -ErrorAction SilentlyContinue | Out-Null; Start-Website -Name 'PMS' -ErrorAction SilentlyContinue | Out-Null"
+
 echo.
 echo ========================================
 echo Deployment completed successfully!
 echo ========================================
 echo.
 echo Deployment Location: %DEPLOY_PATH%
-echo IIS Site URL: http://172.20.228.2:84/
+echo IIS Site URL: http://178.105.20.255/
 echo.
 echo Next Steps:
 echo 1. Ensure IIS site 'PMS' is pointing to: %DEPLOY_PATH%
 echo 2. Restart IIS site if needed
-echo 3. Test the application at: http://172.20.228.2:84/
+echo 3. Test the application at: http://178.105.20.255/
 echo.
-
-pause
+echo.
+echo Deploy script finished.

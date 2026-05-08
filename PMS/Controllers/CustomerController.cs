@@ -8,6 +8,8 @@ using System.Security.Claims;
 using System.IO;
 using System;
 using System.Linq;
+using System.Text.Json;
+using System.Globalization;
 
 namespace PMS.Controllers
 {
@@ -21,6 +23,16 @@ namespace PMS.Controllers
 
         private static readonly string[] _allowedKinFileExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".pdf" };
         private const long _maxKinFileSize = 8 * 1024 * 1024; // 8MB
+        private static readonly string[] EditableCustomerFields = new[]
+        {
+            "FullName", "FatherName", "CNIC", "PassportNo", "DOB", "Gender", "Nationality",
+            "Phone", "MobileNo", "MobileNo2", "Email",
+            "FormNo", "MailingAddress", "PermanentAddress", "City", "Country",
+            "SubProject", "RegisteredSize",
+            "NomineeName", "NomineeID", "NomineeRelation",
+            "AdditionalInfo",
+            "IsDealerRegistered", "DealerID", "DealerName", "DealerPercentage"
+        };
 
         public CustomerController(
             PMSDbContext context,
@@ -48,10 +60,54 @@ namespace PMS.Controllers
             return null;
         }
 
+        private async Task<bool> IsPendingCustomerAccessAllowedAsync()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return false;
+            }
+
+            var userType = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.UserID == userId && u.IsActive)
+                .Select(u => u.UserType)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrWhiteSpace(userType))
+            {
+                return false;
+            }
+
+            var normalizedUserType = userType.Trim();
+            return string.Equals(normalizedUserType, "Admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedUserType, "Manager", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task<IActionResult?> EnsureAdminOrManagerUserTypeAsync(string denialMessage)
+        {
+            if (await IsPendingCustomerAccessAllowedAsync())
+            {
+                return null;
+            }
+
+            TempData["Error"] = denialMessage;
+            return RedirectToAction("AccessDenied", "Account");
+        }
+
         public async Task<IActionResult> Index(string projectFilter = "All", string statusFilter = "All", string searchTerm = "")
         {
             var denied = await EnsurePermissionAsync("Read");
             if (denied != null) return denied;
+
+            var normalizedStatusFilter = (statusFilter ?? string.Empty).Trim();
+            if (string.Equals(normalizedStatusFilter, "Pending", StringComparison.OrdinalIgnoreCase)
+                && !await IsPendingCustomerAccessAllowedAsync())
+            {
+                TempData["Error"] = "Only Admin or Manager users can view pending customers.";
+                return RedirectToAction("AccessDenied", "Account");
+            }
+
             // Get all projects for dropdown
             var projects = await _context.Projects
                 .OrderBy(p => p.ProjectName)
@@ -109,12 +165,312 @@ namespace PMS.Controllers
             return View(customers);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> UpdateRequests(string status = "All", string customerId = "")
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+
+            var normalizedStatus = (status ?? "All").Trim();
+            var normalizedCustomerId = (customerId ?? string.Empty).Trim();
+
+            var query = _context.CustomerUpdateRequests
+                .AsNoTracking()
+                .Include(r => r.Customer)
+                .Include(r => r.RequestedByUser)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(normalizedStatus) && !string.Equals(normalizedStatus, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(r => r.Status == normalizedStatus);
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedCustomerId))
+            {
+                query = query.Where(r => r.CustomerID == normalizedCustomerId);
+            }
+
+            var requests = await query
+                .OrderByDescending(r => r.RequestedAt)
+                .ToListAsync();
+
+            ViewBag.Status = normalizedStatus;
+            ViewBag.CustomerId = normalizedCustomerId;
+            return View(requests);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CreateUpdateRequest()
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SearchCustomerForUpdateRequest(string customerId)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+
+            var normalizedCustomerId = (customerId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedCustomerId))
+            {
+                return BadRequest(new { success = false, message = "Customer ID is required." });
+            }
+
+            var customer = await _context.Customers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CustomerID == normalizedCustomerId);
+
+            if (customer == null)
+            {
+                return NotFound(new { success = false, message = "Customer not found." });
+            }
+
+            var fieldData = BuildCustomerFieldDictionary(customer);
+            return Json(new
+            {
+                success = true,
+                customerId = customer.CustomerID,
+                customerName = customer.FullName ?? string.Empty,
+                fields = fieldData
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateUpdateRequest(string customerId, string proposedDataJson)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+
+            var normalizedCustomerId = (customerId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedCustomerId))
+            {
+                TempData["Error"] = "Customer ID is required.";
+                return RedirectToAction(nameof(CreateUpdateRequest));
+            }
+
+            var customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.CustomerID == normalizedCustomerId);
+
+            if (customer == null)
+            {
+                TempData["Error"] = "Customer not found.";
+                return RedirectToAction(nameof(CreateUpdateRequest));
+            }
+
+            Dictionary<string, string?> proposedData;
+            try
+            {
+                proposedData = JsonSerializer.Deserialize<Dictionary<string, string?>>(proposedDataJson ?? "{}")
+                    ?? new Dictionary<string, string?>();
+            }
+            catch
+            {
+                TempData["Error"] = "Invalid proposed data format.";
+                return RedirectToAction(nameof(CreateUpdateRequest));
+            }
+
+            var originalData = BuildCustomerFieldDictionary(customer);
+            var diffs = BuildFieldDiffs(originalData, proposedData);
+            if (!diffs.Any())
+            {
+                TempData["Error"] = "No field changes detected.";
+                return RedirectToAction(nameof(CreateUpdateRequest));
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var request = new CustomerUpdateRequest
+            {
+                RequestID = GenerateID(),
+                CustomerID = normalizedCustomerId,
+                Status = "Pending",
+                ProposedDataJson = JsonSerializer.Serialize(proposedData),
+                OriginalDataJson = JsonSerializer.Serialize(originalData),
+                RequestedBy = userId,
+                RequestedAt = DateTime.Now,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.CustomerUpdateRequests.Add(request);
+
+            foreach (var diff in diffs)
+            {
+                _context.CustomerUpdateRequestChanges.Add(new CustomerUpdateRequestChange
+                {
+                    Id = GenerateID(),
+                    RequestID = request.RequestID,
+                    FieldName = diff.FieldName,
+                    OldValue = diff.OldValue,
+                    NewValue = diff.NewValue,
+                    CreatedAt = DateTime.Now
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await LogActivity(userId, $"Created customer update request {request.RequestID}", "CustomerUpdateRequest", request.RequestID);
+            }
+
+            TempData["Success"] = $"Update request {request.RequestID} created successfully.";
+            return RedirectToAction(nameof(UpdateRequests));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> UpdateRequestDetails(string id)
+        {
+            var denied = await EnsurePermissionAsync("Read");
+            if (denied != null) return denied;
+            denied = await EnsureAdminOrManagerUserTypeAsync("Only Admin or Manager users can review customer update requests.");
+            if (denied != null) return denied;
+
+            var requestId = (id ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                return NotFound();
+            }
+
+            var request = await _context.CustomerUpdateRequests
+                .AsNoTracking()
+                .Include(r => r.Customer)
+                .Include(r => r.RequestedByUser)
+                .Include(r => r.ApprovedByUser)
+                .Include(r => r.RejectedByUser)
+                .Include(r => r.Changes)
+                .FirstOrDefaultAsync(r => r.RequestID == requestId);
+
+            if (request == null)
+            {
+                return NotFound();
+            }
+
+            return View(request);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveUpdateRequest(string requestId, string reviewerComments)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            denied = await EnsureAdminOrManagerUserTypeAsync("Only Admin or Manager users can approve customer update requests.");
+            if (denied != null) return denied;
+
+            var normalizedRequestId = (requestId ?? string.Empty).Trim();
+            var request = await _context.CustomerUpdateRequests
+                .Include(r => r.Customer)
+                .Include(r => r.Changes)
+                .FirstOrDefaultAsync(r => r.RequestID == normalizedRequestId);
+
+            if (request == null)
+            {
+                TempData["Error"] = "Request not found.";
+                return RedirectToAction(nameof(UpdateRequests));
+            }
+
+            if (!string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "Only pending requests can be approved.";
+                return RedirectToAction(nameof(UpdateRequestDetails), new { id = request.RequestID });
+            }
+
+            if (request.Customer == null)
+            {
+                TempData["Error"] = "Customer not found for this request.";
+                return RedirectToAction(nameof(UpdateRequestDetails), new { id = request.RequestID });
+            }
+
+            foreach (var change in request.Changes)
+            {
+                TryApplyFieldChange(request.Customer, change.FieldName, change.NewValue);
+            }
+
+            if (request.Customer.IsDealerRegistered == 0)
+            {
+                request.Customer.DealerID = null;
+            }
+
+            var reviewerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            request.Status = "Approved";
+            request.ReviewerComments = (reviewerComments ?? string.Empty).Trim();
+            request.ApprovedBy = reviewerId;
+            request.ApprovedAt = DateTime.Now;
+            request.RejectedBy = null;
+            request.RejectedAt = null;
+
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(reviewerId))
+            {
+                await LogActivity(reviewerId, $"Approved update request {request.RequestID}", "CustomerUpdateRequest", request.RequestID);
+                await LogActivity(reviewerId, $"Applied approved update request {request.RequestID} to customer {request.CustomerID}", "Customer", request.CustomerID);
+            }
+
+            TempData["Success"] = $"Request {request.RequestID} approved and applied.";
+            return RedirectToAction(nameof(UpdateRequestDetails), new { id = request.RequestID });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectUpdateRequest(string requestId, string reviewerComments)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            denied = await EnsureAdminOrManagerUserTypeAsync("Only Admin or Manager users can reject customer update requests.");
+            if (denied != null) return denied;
+
+            var normalizedRequestId = (requestId ?? string.Empty).Trim();
+            var request = await _context.CustomerUpdateRequests
+                .FirstOrDefaultAsync(r => r.RequestID == normalizedRequestId);
+
+            if (request == null)
+            {
+                TempData["Error"] = "Request not found.";
+                return RedirectToAction(nameof(UpdateRequests));
+            }
+
+            if (!string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "Only pending requests can be rejected.";
+                return RedirectToAction(nameof(UpdateRequestDetails), new { id = request.RequestID });
+            }
+
+            var reviewerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            request.Status = "Rejected";
+            request.ReviewerComments = (reviewerComments ?? string.Empty).Trim();
+            request.RejectedBy = reviewerId;
+            request.RejectedAt = DateTime.Now;
+            request.ApprovedBy = null;
+            request.ApprovedAt = null;
+
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(reviewerId))
+            {
+                await LogActivity(reviewerId, $"Rejected update request {request.RequestID}", "CustomerUpdateRequest", request.RequestID);
+            }
+
+            TempData["Success"] = $"Request {request.RequestID} rejected.";
+            return RedirectToAction(nameof(UpdateRequestDetails), new { id = request.RequestID });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> BulkUpdatePendingCustomers(List<string> selectedCustomerIds, string bulkAction, string comments, string projectFilter = "All", string searchTerm = "")
         {
             var denied = await EnsurePermissionAsync("Edit");
             if (denied != null) return denied;
+
+            if (!await IsPendingCustomerAccessAllowedAsync())
+            {
+                TempData["Error"] = "Only Admin or Manager users can update pending customers.";
+                return RedirectToAction("AccessDenied", "Account");
+            }
 
             var selectedIds = (selectedCustomerIds ?? new List<string>())
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -1008,18 +1364,49 @@ namespace PMS.Controllers
             {
                 return NotFound();
             }
+            var customerIdTrimmed = id.Trim();
 
-            var customer = await _context.Customers
-                .Include(c => c.Project)
-                .Include(c => c.PaymentPlan)
-                    .ThenInclude(pp => pp.Project)
-                .Include(c => c.PaymentPlan)
-                    .ThenInclude(pp => pp.PaymentSchedules)
-                        .ThenInclude(ps => ps.Payments.Where(p => p.AuditStatus == "Approved"))
-                .Include(c => c.JointOwners)
-                .Include(c => c.Allotments)
-                    .ThenInclude(a => a.Property)
-                .FirstOrDefaultAsync(c => c.CustomerID == id);
+            var paymentsTableExists = false;
+            try
+            {
+                var tableExists = await _context.Database
+                    .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
+                    .FirstOrDefaultAsync();
+                paymentsTableExists = tableExists > 0;
+            }
+            catch
+            {
+                paymentsTableExists = false;
+            }
+
+            Customer? customer;
+            if (paymentsTableExists)
+            {
+                customer = await _context.Customers
+                    .Include(c => c.Project)
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(pp => pp.Project)
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(pp => pp.PaymentSchedules)
+                            .ThenInclude(ps => ps.Payments)
+                    .Include(c => c.JointOwners)
+                    .Include(c => c.Allotments)
+                        .ThenInclude(a => a.Property)
+                    .FirstOrDefaultAsync(c => c.CustomerID == customerIdTrimmed);
+            }
+            else
+            {
+                customer = await _context.Customers
+                    .Include(c => c.Project)
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(pp => pp.Project)
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(pp => pp.PaymentSchedules)
+                    .Include(c => c.JointOwners)
+                    .Include(c => c.Allotments)
+                        .ThenInclude(a => a.Property)
+                    .FirstOrDefaultAsync(c => c.CustomerID == customerIdTrimmed);
+            }
 
             if (customer == null)
             {
@@ -1032,19 +1419,23 @@ namespace PMS.Controllers
                 customer.CustomerID,
                 DateTime.Now.Date);
 
-            var otherPaymentsRaw = await _context.Payments
-                .AsNoTracking()
-                .Where(p => p.CustomerID == customer.CustomerID
-                    && p.ScheduleID == null
-                    && p.AuditStatus == "Approved")
-                .OrderBy(p => p.PaymentDate)
-                .ToListAsync();
-            var otherPayments = otherPaymentsRaw
-                .Where(p =>
-                    p.Amount < 0
-                    || string.Equals((p.AccountHead ?? string.Empty).Trim(), "Surcharge Payment", StringComparison.OrdinalIgnoreCase)
-                    || (p.Remarks ?? string.Empty).Contains("Surcharge payment", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            List<Payment> otherPayments = new();
+            if (paymentsTableExists)
+            {
+                var otherPaymentsRaw = await _context.Payments
+                    .AsNoTracking()
+                    .Where(p => p.CustomerID == customer.CustomerID
+                        && p.ScheduleID == null
+                        && p.AuditStatus == "Approved")
+                    .OrderBy(p => p.PaymentDate)
+                    .ToListAsync();
+                otherPayments = otherPaymentsRaw
+                    .Where(p =>
+                        p.Amount < 0
+                        || string.Equals((p.AccountHead ?? string.Empty).Trim(), "Surcharge Payment", StringComparison.OrdinalIgnoreCase)
+                        || (p.Remarks ?? string.Empty).Contains("Surcharge payment", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
             ViewBag.OtherAccountHeadPayments = otherPayments;
 
             return View(customer);
@@ -1577,6 +1968,159 @@ namespace PMS.Controllers
 
             _context.ActivityLogs.Add(activityLog);
             await _context.SaveChangesAsync();
+        }
+
+        private Dictionary<string, string?> BuildCustomerFieldDictionary(Customer customer)
+        {
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["FullName"] = customer.FullName,
+                ["FatherName"] = customer.FatherName,
+                ["CNIC"] = customer.CNIC,
+                ["PassportNo"] = customer.PassportNo,
+                ["DOB"] = customer.DOB?.ToString("yyyy-MM-dd"),
+                ["Gender"] = customer.Gender,
+                ["Nationality"] = customer.Nationality,
+                ["Phone"] = customer.Phone,
+                ["MobileNo"] = customer.MobileNo,
+                ["MobileNo2"] = customer.MobileNo2,
+                ["Email"] = customer.Email,
+                ["FormNo"] = customer.FormNo,
+                ["MailingAddress"] = customer.MailingAddress,
+                ["PermanentAddress"] = customer.PermanentAddress,
+                ["City"] = customer.City,
+                ["Country"] = customer.Country,
+                ["SubProject"] = customer.SubProject,
+                ["RegisteredSize"] = customer.RegisteredSize,
+                ["NomineeName"] = customer.NomineeName,
+                ["NomineeID"] = customer.NomineeID,
+                ["NomineeRelation"] = customer.NomineeRelation,
+                ["AdditionalInfo"] = customer.AdditionalInfo,
+                ["IsDealerRegistered"] = customer.IsDealerRegistered?.ToString(),
+                ["DealerID"] = customer.DealerID?.ToString(),
+                ["DealerName"] = customer.DealerName,
+                ["DealerPercentage"] = null
+            };
+        }
+
+        private List<CustomerUpdateFieldDiff> BuildFieldDiffs(
+            Dictionary<string, string?> originalData,
+            Dictionary<string, string?> proposedData)
+        {
+            var diffs = new List<CustomerUpdateFieldDiff>();
+            foreach (var field in EditableCustomerFields)
+            {
+                originalData.TryGetValue(field, out var oldValue);
+                proposedData.TryGetValue(field, out var newValue);
+
+                var normalizedOldValue = NormalizeFieldValue(field, oldValue);
+                var normalizedNewValue = NormalizeFieldValue(field, newValue);
+                if (!string.Equals(normalizedOldValue, normalizedNewValue, StringComparison.Ordinal))
+                {
+                    diffs.Add(new CustomerUpdateFieldDiff
+                    {
+                        FieldName = field,
+                        OldValue = normalizedOldValue,
+                        NewValue = normalizedNewValue
+                    });
+                }
+            }
+
+            return diffs;
+        }
+
+        private string? NormalizeFieldValue(string fieldName, string? value)
+        {
+            var normalized = (value ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return null;
+            }
+
+            if (string.Equals(fieldName, "DOB", StringComparison.OrdinalIgnoreCase))
+            {
+                if (DateTime.TryParse(normalized, out var dt))
+                {
+                    return dt.ToString("yyyy-MM-dd");
+                }
+            }
+
+            return normalized;
+        }
+
+        private void TryApplyFieldChange(Customer customer, string fieldName, string? newValue)
+        {
+            var normalized = NormalizeFieldValue(fieldName, newValue);
+
+            switch (fieldName)
+            {
+                case "FullName": customer.FullName = normalized; break;
+                case "FatherName": customer.FatherName = normalized; break;
+                case "CNIC": customer.CNIC = normalized; break;
+                case "PassportNo": customer.PassportNo = normalized; break;
+                case "DOB":
+                    if (string.IsNullOrWhiteSpace(normalized))
+                    {
+                        customer.DOB = null;
+                    }
+                    else if (DateTime.TryParse(normalized, out var dob))
+                    {
+                        customer.DOB = dob.Date;
+                    }
+                    break;
+                case "Gender": customer.Gender = normalized; break;
+                case "Nationality": customer.Nationality = normalized; break;
+                case "Phone": customer.Phone = normalized; break;
+                case "MobileNo": customer.MobileNo = normalized; break;
+                case "MobileNo2": customer.MobileNo2 = normalized; break;
+                case "Email": customer.Email = normalized; break;
+                case "FormNo": customer.FormNo = normalized; break;
+                case "MailingAddress": customer.MailingAddress = normalized; break;
+                case "PermanentAddress": customer.PermanentAddress = normalized; break;
+                case "City": customer.City = normalized; break;
+                case "Country": customer.Country = normalized; break;
+                case "SubProject": customer.SubProject = normalized; break;
+                case "RegisteredSize": customer.RegisteredSize = normalized; break;
+                case "NomineeName": customer.NomineeName = normalized; break;
+                case "NomineeID": customer.NomineeID = normalized; break;
+                case "NomineeRelation": customer.NomineeRelation = normalized; break;
+                case "AdditionalInfo": customer.AdditionalInfo = normalized; break;
+                case "IsDealerRegistered":
+                    if (string.IsNullOrWhiteSpace(normalized))
+                    {
+                        customer.IsDealerRegistered = null;
+                    }
+                    else if (int.TryParse(normalized, out var isDealerRegistered))
+                    {
+                        customer.IsDealerRegistered = isDealerRegistered;
+                    }
+                    break;
+                case "DealerID":
+                    if (string.IsNullOrWhiteSpace(normalized))
+                    {
+                        customer.DealerID = null;
+                    }
+                    else if (int.TryParse(normalized, out var dealerId))
+                    {
+                        customer.DealerID = dealerId;
+                    }
+                    break;
+                case "DealerName": customer.DealerName = normalized; break;
+                case "DealerPercentage":
+                    if (!string.IsNullOrWhiteSpace(normalized))
+                    {
+                        _ = decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out _)
+                            || decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.CurrentCulture, out _);
+                    }
+                    break;
+            }
+        }
+
+        private sealed class CustomerUpdateFieldDiff
+        {
+            public string FieldName { get; set; } = string.Empty;
+            public string? OldValue { get; set; }
+            public string? NewValue { get; set; }
         }
 
         private string GenerateID()

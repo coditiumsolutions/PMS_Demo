@@ -43,5 +43,7 @@ namespace PMS.Models
         public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
         public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
         public virtual ICollection<UserModulePermission> ModulePermissions { get; set; } = new List<UserModulePermission>();
+        public virtual ICollection<UserMacWhitelist> MacWhitelists { get; set; } = new List<UserMacWhitelist>();
+        public virtual ICollection<BlockedMacLoginAttempt> BlockedMacLoginAttempts { get; set; } = new List<BlockedMacLoginAttempt>();
     }
 }
