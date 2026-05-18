@@ -1,0 +1,65 @@
+@model List<AccChequeBook>
+@{
+    ViewData["Title"] = "Cheque books";
+    var bankId = (int)ViewBag.BankAccountId;
+    var label = ViewBag.BankLabel as string ?? "";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("ChequeBooks")" />
+
+    <div>
+        <h2 class="h5 mb-0">@label</h2>
+        <p class="text-muted small mb-0">Series and leaf counts for physical cheque books.</p>
+    </div>
+    <div class="btn-group">
+        @if (ViewBag.CanCreate == true)
+        {
+            <a class="btn btn-primary btn-sm" asp-action="ChequeBookCreate" asp-route-bankAccountId="@bankId">Add cheque book</a>
+        }
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All banks</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Series</th>
+                <th class="text-end">Leaves</th>
+                <th class="text-end">Used</th>
+                <th>Issued</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>@c.SeriesFrom → @c.SeriesTo</td>
+                    <td class="text-end">@c.TotalLeaves</td>
+                    <td class="text-end">@c.UsedLeaves</td>
+                    <td>@c.IssuedDate.ToString("yyyy-MM-dd")</td>
+                    <td>@(c.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        @if (ViewBag.CanEdit == true)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="ChequeBookEdit" asp-route-id="@c.ChequeBookID">Edit</a>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "chequebook";
+                            ViewData["AmsDeleteId"] = c.ChequeBookID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("ChequeBooks", new { bankAccountId = bankId });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No cheque books for this account yet.</p>
+}

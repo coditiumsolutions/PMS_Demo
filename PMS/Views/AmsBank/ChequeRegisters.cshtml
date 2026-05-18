@@ -1,0 +1,63 @@
+@model List<AccChequeRegister>
+@{
+    ViewData["Title"] = "Cheque register";
+    var bankId = (int)ViewBag.BankAccountId;
+    var label = ViewBag.BankLabel as string ?? "";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("BankChequeRegisters")" />
+
+    <div>
+        <h2 class="h5 mb-0">@label</h2>
+        <p class="text-muted small mb-0">Cheques for this bank account; link to vouchers when posting payment vouchers.</p>
+    </div>
+    <div class="btn-group">
+        @if (ViewBag.CanCreate == true)
+        {
+            <a class="btn btn-primary btn-sm" asp-action="ChequeRegisterCreate" asp-route-bankAccountId="@bankId">Add row</a>
+        }
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All banks</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>No.</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th class="text-end">Amount</th>
+                <th>Status</th>
+                <th>PDC</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.ChequeNo</td>
+                    <td>@r.ChequeDate.ToString("yyyy-MM-dd")</td>
+                    <td>@r.ChequeType</td>
+                    <td class="text-end">@r.Amount.ToString("N2")</td>
+                    <td>@r.Status</td>
+                    <td>@(r.IsPostDated ? "Yes" : "No")</td>
+                    <td>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "chequeregister";
+                            ViewData["AmsDeleteId"] = r.ChequeRegisterID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("ChequeRegisters", new { bankAccountId = ViewBag.BankAccountId });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No cheque register rows yet.</p>
+}

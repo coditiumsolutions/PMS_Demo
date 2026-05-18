@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PMS.Data;
 using PMS.Models;
 using PMS.Services;
@@ -13,24 +14,45 @@ namespace PMS.Controllers
 {
     public class AccountController : Controller
     {
+        private const string TwoFactorPendingCookie = "PMS.2FA.Pending";
+        private const string TwoFactorSetupCookie = "PMS.2FA.Setup";
+        private const int TwoFactorPendingMinutes = 10;
+        private const int TwoFactorMaxAttempts = 5;
+        private const int TwoFactorLockoutMinutes = 15;
+
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
         private readonly ISiteConfigService _siteConfigService;
+        private readonly ITwoFactorConfigService _twoFactorConfig;
+        private readonly ITotpAuthenticatorService _totp;
+        private readonly TotpSecretProtector _totpProtector;
+        private readonly IMemoryCache _memoryCache;
 
         private static readonly string[] ModuleKeys = new[]
         {
             "Home", "Registration", "Customer", "Transfer", "TransferFee", "NDC", "Project", "Dealer", "Property", "Payment",
             "Allotment", "Rental", "SalesInquiry", "Reports", "Account", "Settings", "ActivityLog",
-            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "DuplicateFileTransfer", "Waiver", "PaymentAudit"
+            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "DuplicateFileTransfer", "Waiver", "PaymentAudit", "Possession"
         };
 
         private static readonly string[] PermissionOptions = new[] { "NoAccess", "Read", "Author", "Edit", "Admin" };
 
-        public AccountController(PMSDbContext context, IModulePermissionService modulePermission, ISiteConfigService siteConfigService)
+        public AccountController(
+            PMSDbContext context,
+            IModulePermissionService modulePermission,
+            ISiteConfigService siteConfigService,
+            ITwoFactorConfigService twoFactorConfig,
+            ITotpAuthenticatorService totp,
+            TotpSecretProtector totpProtector,
+            IMemoryCache memoryCache)
         {
             _context = context;
             _modulePermission = modulePermission;
             _siteConfigService = siteConfigService;
+            _twoFactorConfig = twoFactorConfig;
+            _totp = totp;
+            _totpProtector = totpProtector;
+            _memoryCache = memoryCache;
         }
 
         [HttpGet]
@@ -67,81 +89,378 @@ namespace PMS.Controllers
 
             if (user != null && !string.IsNullOrEmpty(user.PasswordHash) && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
-                // Create user session
-                var session = new UserSession
-                {
-                    SessionID = GenerateID(),
-                    UserID = user.UserID,
-                    IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    DeviceInfo = Request.Headers["User-Agent"].ToString()
-                };
+                var enforce2Fa = await _twoFactorConfig.IsEnforce2FAAsync();
+                var require2Fa = enforce2Fa || user.TwoFactorEnabled;
 
-                _context.UserSessions.Add(session);
-                await _context.SaveChangesAsync();
+                if (!require2Fa)
+                    return await CompleteSignInAsync(user);
 
-                // Create claims
-                var claims = new List<Claim>
+                var rateKey = TwoFactorRateKey(user.UserID);
+                if (IsTwoFactorLockedOut(rateKey))
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.UserID),
-                    new Claim(ClaimTypes.Name, user.FullName ?? ""),
-                    new Claim(ClaimTypes.Email, user.Email ?? ""),
-                    new Claim("SessionID", session.SessionID)
-                };
-
-                if (user.Role != null)
-                {
-                    claims.Add(new Claim(ClaimTypes.Role, user.Role.RoleName ?? ""));
+                    ViewBag.Error = "Too many failed attempts. Try again later or contact an administrator.";
+                    var cfgLocked = await _siteConfigService.GetAsync();
+                    return View(cfgLocked);
                 }
 
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                
-                // Configure persistent cookie properties - CRITICAL for staying logged in
-                var authProperties = new AuthenticationProperties
-                {
-                    IsPersistent = true, // CRITICAL: Makes cookie persistent (survives browser restart)
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30), // 30 days from now
-                    AllowRefresh = true, // Allow refreshing expiration on each request (sliding expiration)
-                    IssuedUtc = DateTimeOffset.UtcNow,
-                    // These ensure the cookie persists across browser sessions
-                };
+                AppendTwoFactorPendingCookie(user.UserID);
 
-                // Sign in with persistent cookie - creates a cookie that lasts 30 days
-                // With SlidingExpiration=true in Program.cs, expiration resets on each request
-                await HttpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity), 
-                    authProperties);
-
-                // Create login log in ActivityLog table
-                try
+                if (!user.TwoFactorEnabled)
                 {
-                    var loginLog = new ActivityLog
+                    if (!enforce2Fa)
                     {
-                        UserID = user.UserID,
-                        Action = "Login (MAC/Thumbprint Disabled)",
-                        RefType = "User",
-                        RefID = user.UserID,
-                        CreatedAt = DateTime.Now
-                    };
-                    _context.ActivityLogs.Add(loginLog);
-                    await _context.SaveChangesAsync();
-                }
-                catch
-                {
-                    // ActivityLog table may not exist, continue anyway
+                        ClearTwoFactorCookies();
+                        return await CompleteSignInAsync(user);
+                    }
+                    return RedirectToAction(nameof(TwoFactorSetup));
                 }
 
-                // Redirect to Dashboard only if user has Home module access; otherwise Workspace
-                var homePerm = await _modulePermission.GetPermissionAsync(user.UserID, "Home");
-                if (_modulePermission.CanRead(homePerm))
-                    return RedirectToAction("Index", "Home");
-                else
-                    return RedirectToAction("Workspace", "Home");
+                return RedirectToAction(nameof(TwoFactorVerify));
             }
 
             ViewBag.Error = "Invalid email or password.";
             var siteConfig = await _siteConfigService.GetAsync();
             return View(siteConfig);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> TwoFactorVerify()
+        {
+            var pendingUserId = ReadPendingUserId();
+            if (string.IsNullOrEmpty(pendingUserId))
+                return RedirectToAction(nameof(Login));
+
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserID == pendingUserId && u.IsActive);
+            if (user == null)
+            {
+                ClearTwoFactorCookies();
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (!user.TwoFactorEnabled)
+            {
+                ClearTwoFactorCookies();
+                return RedirectToAction(nameof(Login));
+            }
+
+            ViewData["Title"] = "Authenticator verification";
+            return View();
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TwoFactorVerify(string code)
+        {
+            var pendingUserId = ReadPendingUserId();
+            if (string.IsNullOrEmpty(pendingUserId))
+                return RedirectToAction(nameof(Login));
+
+            var rateKey = TwoFactorRateKey(pendingUserId);
+            if (IsTwoFactorLockedOut(rateKey))
+            {
+                ViewBag.Error = "Too many failed attempts. Try again later.";
+                return View();
+            }
+
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserID == pendingUserId && u.IsActive);
+            if (user == null || !user.TwoFactorEnabled)
+            {
+                ClearTwoFactorCookies();
+                return RedirectToAction(nameof(Login));
+            }
+
+            var secretPlain = _totpProtector.UnprotectFromStorage(user.TwoFactorSecret);
+            // #region agent log
+            AgentDebugLog.Write("H4", "AccountController.TwoFactorVerify:post", "before_verify", new
+            {
+                hasSecretPlain = !string.IsNullOrEmpty(secretPlain),
+                storedSecretFieldLen = user.TwoFactorSecret?.Length ?? 0
+            });
+            // #endregion
+            if (string.IsNullOrEmpty(secretPlain) || !_totp.VerifyTotp(secretPlain, code ?? ""))
+            {
+                RecordTwoFactorFailure(rateKey);
+                ViewBag.Error = "Invalid code. Try again.";
+                return View();
+            }
+
+            ClearTwoFactorFailures(rateKey);
+            ClearTwoFactorCookies();
+            return await CompleteSignInAsync(user);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> TwoFactorSetup()
+        {
+            var pendingUserId = ReadPendingUserId();
+            if (string.IsNullOrEmpty(pendingUserId))
+                return RedirectToAction(nameof(Login));
+
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserID == pendingUserId && u.IsActive);
+            if (user == null)
+            {
+                ClearTwoFactorCookies();
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (user.TwoFactorEnabled)
+                return RedirectToAction(nameof(TwoFactorVerify));
+
+            var site = await _siteConfigService.GetAsync();
+            var issuer = string.IsNullOrWhiteSpace(site.ProjectName) ? "PMS" : site.ProjectName!;
+            var secret = _totp.GenerateBase32Secret();
+            var account = user.Email ?? user.UserID;
+            var uri = _totp.BuildOtpAuthUri(issuer, account, secret);
+            var qrPng = _totp.CreateQrCodePng(uri);
+            var setupExp = DateTimeOffset.UtcNow.AddMinutes(TwoFactorPendingMinutes);
+            var setupPayload = TwoFactorPendingSerializer.SerializeSetup(user.UserID, secret, setupExp);
+            Response.Cookies.Append(TwoFactorSetupCookie, _totpProtector.ProtectSetupPayload(setupPayload), BuildTwoFactorCookieOptions(setupExp));
+
+            ViewBag.QrPngBase64 = Convert.ToBase64String(qrPng);
+            ViewBag.ManualSecret = secret;
+            ViewBag.Issuer = issuer;
+            ViewBag.Account = account;
+            ViewData["Title"] = "Set up Google Authenticator";
+            return View();
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TwoFactorSetup(string code)
+        {
+            var pendingUserId = ReadPendingUserId();
+            // #region agent log
+            AgentDebugLog.Write("H4", "AccountController.TwoFactorSetup:post", "entry", new
+            {
+                hasPending = !string.IsNullOrEmpty(pendingUserId),
+                hasSetupCookie = Request.Cookies.ContainsKey(TwoFactorSetupCookie)
+            });
+            // #endregion
+            if (string.IsNullOrEmpty(pendingUserId))
+                return RedirectToAction(nameof(Login));
+
+            if (!Request.Cookies.TryGetValue(TwoFactorSetupCookie, out var setupRaw))
+            {
+                ViewBag.Error = "Setup session expired. Please start again from login.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            var setupBytes = _totpProtector.UnprotectSetupPayload(setupRaw);
+            var setup = setupBytes == null ? null : TwoFactorPendingSerializer.DeserializeSetup(setupBytes);
+            // #region agent log
+            AgentDebugLog.Write("H4", "AccountController.TwoFactorSetup:post", "setup_cookie_state", new
+            {
+                setupNull = setup == null,
+                userMatch = setup != null && setup.UserId == pendingUserId,
+                notExpired = setup != null && setup.ExpiresUtc >= DateTimeOffset.UtcNow,
+                setupSecretLen = setup?.SecretBase32?.Length ?? 0
+            });
+            // #endregion
+            if (setup == null || setup.UserId != pendingUserId || setup.ExpiresUtc < DateTimeOffset.UtcNow)
+            {
+                Response.Cookies.Delete(TwoFactorSetupCookie, BuildTwoFactorCookieDeleteOptions());
+                ViewBag.Error = "Setup session expired. Reload this page.";
+                return RedirectToAction(nameof(TwoFactorSetup));
+            }
+
+            var rateKey = TwoFactorRateKey(pendingUserId);
+            if (IsTwoFactorLockedOut(rateKey))
+            {
+                // #region agent log
+                AgentDebugLog.Write("H5", "AccountController.TwoFactorSetup:post", "lockout_show_same_secret", new { });
+                // #endregion
+                return await TwoFactorSetupDisplayAsync(pendingUserId, setup.SecretBase32,
+                    "Too many failed attempts. Try again later.");
+            }
+
+            if (!_totp.VerifyTotp(setup.SecretBase32, code ?? ""))
+            {
+                // #region agent log
+                AgentDebugLog.Write("H5", "AccountController.TwoFactorSetup:post", "verify_fail_keep_same_secret", new { });
+                // #endregion
+                RecordTwoFactorFailure(rateKey);
+                return await TwoFactorSetupDisplayAsync(pendingUserId, setup.SecretBase32,
+                    "Invalid code. Enter the 6-digit code from your authenticator app.");
+            }
+
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserID == pendingUserId && u.IsActive);
+            if (user == null)
+            {
+                ClearTwoFactorCookies();
+                return RedirectToAction(nameof(Login));
+            }
+
+            user.TwoFactorSecret = _totpProtector.ProtectForStorage(setup.SecretBase32);
+            user.TwoFactorEnabled = true;
+            await _context.SaveChangesAsync();
+
+            ClearTwoFactorFailures(rateKey);
+            Response.Cookies.Delete(TwoFactorSetupCookie, BuildTwoFactorCookieDeleteOptions());
+            ClearTwoFactorCookies();
+            return await CompleteSignInAsync(user);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult TwoFactorCancel()
+        {
+            ClearTwoFactorCookies();
+            Response.Cookies.Delete(TwoFactorSetupCookie, BuildTwoFactorCookieDeleteOptions());
+            return RedirectToAction(nameof(Login));
+        }
+
+        /// <summary>Re-show setup UI for the same TOTP secret (cookie unchanged). Used after wrong code so the app and authenticator stay in sync.</summary>
+        private async Task<IActionResult> TwoFactorSetupDisplayAsync(string pendingUserId, string secretBase32, string? errorMessage)
+        {
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserID == pendingUserId && u.IsActive);
+            if (user == null)
+            {
+                ClearTwoFactorCookies();
+                return RedirectToAction(nameof(Login));
+            }
+
+            var site = await _siteConfigService.GetAsync();
+            var issuer = string.IsNullOrWhiteSpace(site.ProjectName) ? "PMS" : site.ProjectName!;
+            var account = user.Email ?? user.UserID;
+            var uri = _totp.BuildOtpAuthUri(issuer, account, secretBase32);
+            var qrPng = _totp.CreateQrCodePng(uri);
+            if (!string.IsNullOrEmpty(errorMessage))
+                ViewBag.Error = errorMessage;
+            ViewBag.QrPngBase64 = Convert.ToBase64String(qrPng);
+            ViewBag.ManualSecret = secretBase32;
+            ViewBag.Issuer = issuer;
+            ViewBag.Account = account;
+            ViewData["Title"] = "Set up Google Authenticator";
+            return View("TwoFactorSetup");
+        }
+
+        private async Task<IActionResult> CompleteSignInAsync(User user)
+        {
+            var session = new UserSession
+            {
+                SessionID = GenerateID(),
+                UserID = user.UserID,
+                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                DeviceInfo = Request.Headers["User-Agent"].ToString()
+            };
+
+            _context.UserSessions.Add(session);
+            await _context.SaveChangesAsync();
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserID),
+                new Claim(ClaimTypes.Name, user.FullName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? ""),
+                new Claim("SessionID", session.SessionID)
+            };
+
+            if (user.Role != null)
+                claims.Add(new Claim(ClaimTypes.Role, user.Role.RoleName ?? ""));
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30),
+                AllowRefresh = true,
+                IssuedUtc = DateTimeOffset.UtcNow,
+            };
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(claimsIdentity),
+                authProperties);
+
+            try
+            {
+                var loginLog = new ActivityLog
+                {
+                    UserID = user.UserID,
+                    Action = "Login (MAC/Thumbprint Disabled)",
+                    RefType = "User",
+                    RefID = user.UserID,
+                    CreatedAt = DateTime.Now
+                };
+                _context.ActivityLogs.Add(loginLog);
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // ActivityLog table may not exist
+            }
+
+            var homePerm = await _modulePermission.GetPermissionAsync(user.UserID, "Home");
+            if (_modulePermission.CanRead(homePerm))
+                return RedirectToAction("Index", "Home");
+            return RedirectToAction("Workspace", "Home");
+        }
+
+        private void AppendTwoFactorPendingCookie(string userId)
+        {
+            var exp = DateTimeOffset.UtcNow.AddMinutes(TwoFactorPendingMinutes);
+            var payload = TwoFactorPendingSerializer.SerializePending(userId, exp);
+            var token = _totpProtector.ProtectPendingPayload(payload);
+            Response.Cookies.Append(TwoFactorPendingCookie, token, BuildTwoFactorCookieOptions(exp));
+        }
+
+        private string? ReadPendingUserId()
+        {
+            if (!Request.Cookies.TryGetValue(TwoFactorPendingCookie, out var raw))
+                return null;
+            var bytes = _totpProtector.UnprotectPendingPayload(raw);
+            if (bytes == null) return null;
+            var dto = TwoFactorPendingSerializer.DeserializePending(bytes);
+            if (dto == null || dto.ExpiresUtc < DateTimeOffset.UtcNow)
+                return null;
+            return dto.UserId;
+        }
+
+        private void ClearTwoFactorCookies()
+        {
+            Response.Cookies.Delete(TwoFactorPendingCookie, BuildTwoFactorCookieDeleteOptions());
+        }
+
+        private CookieOptions BuildTwoFactorCookieOptions(DateTimeOffset expires)
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                IsEssential = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = expires.UtcDateTime,
+            };
+        }
+
+        private CookieOptions BuildTwoFactorCookieDeleteOptions()
+        {
+            return new CookieOptions { Path = "/", HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Lax };
+        }
+
+        private static string TwoFactorRateKey(string userId) => $"2fa_rate_{userId}";
+
+        private bool IsTwoFactorLockedOut(string rateKey) =>
+            _memoryCache.TryGetValue(rateKey + "_lock", out _);
+
+        private void RecordTwoFactorFailure(string rateKey)
+        {
+            _memoryCache.TryGetValue(rateKey, out int count);
+            count++;
+            _memoryCache.Set(rateKey, count, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(10) });
+            if (count >= TwoFactorMaxAttempts)
+                _memoryCache.Set(rateKey + "_lock", true, TimeSpan.FromMinutes(TwoFactorLockoutMinutes));
+        }
+
+        private void ClearTwoFactorFailures(string rateKey)
+        {
+            _memoryCache.Remove(rateKey);
+            _memoryCache.Remove(rateKey + "_lock");
         }
 
         [HttpGet]
@@ -176,6 +495,8 @@ namespace PMS.Controllers
             }
 
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            Response.Cookies.Delete(TwoFactorPendingCookie, BuildTwoFactorCookieDeleteOptions());
+            Response.Cookies.Delete(TwoFactorSetupCookie, BuildTwoFactorCookieDeleteOptions());
             return RedirectToAction("Login");
         }
 
@@ -378,6 +699,8 @@ namespace PMS.Controllers
                     user.RoleID = await ResolveRoleIdForUserTypeAsync(user.UserType, existing.RoleID);
                     user.PasswordHash = existing.PasswordHash;
                     user.CreatedAt = existing.CreatedAt;
+                    user.TwoFactorEnabled = existing.TwoFactorEnabled;
+                    user.TwoFactorSecret = existing.TwoFactorSecret;
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
 
@@ -436,6 +759,23 @@ namespace PMS.Controllers
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             await _context.SaveChangesAsync();
             TempData["Success"] = "Password has been reset successfully.";
+            return RedirectToAction(nameof(EditUser), new { id = userId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ResetTwoFactor(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return NotFound();
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound();
+            user.TwoFactorEnabled = false;
+            user.TwoFactorSecret = null;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Authenticator (2FA) has been reset for this user. They must register again on next login if 2FA is required.";
             return RedirectToAction(nameof(EditUser), new { id = userId });
         }
 

@@ -1,0 +1,66 @@
+@model AccBankReconciliation
+@{
+    ViewData["Title"] = "Reconciliation — " + (Model.BankAccount?.BankName);
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success py-2">@TempData["Success"]</div>
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <p class="mb-0 text-muted small">Period: <strong>@(Model.Period?.PeriodName)</strong> · Statement <strong>@Model.StatementDate.ToString("yyyy-MM-dd")</strong></p>
+        <p class="mb-0 small">Book <strong>@Model.BookBalance.ToString("N2")</strong> · Bank <strong>@Model.BankStatementBalance.ToString("N2")</strong> · Diff <strong>@Model.Difference.ToString("N2")</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+        @if (ViewBag.CanEdit == true)
+        {
+            <a class="btn btn-primary btn-sm" asp-action="AddLine" asp-route-reconciliationId="@Model.ReconciliationID"><i class="fas fa-plus me-1"></i>Add line</a>
+        }
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All</a>
+    </div>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th class="text-end">Amount</th>
+                <th>Voucher line</th>
+                <th>Cheque</th>
+                <th>Done</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model.Lines.OrderBy(x => x.TransactionDate))
+            {
+                <tr>
+                    <td>@l.TransactionDate.ToString("yyyy-MM-dd")</td>
+                    <td class="small">@(l.Description ?? "—")</td>
+                    <td class="text-end">@l.Amount.ToString("N2")</td>
+                    <td class="small">@(l.VoucherLineID?.ToString() ?? "—")</td>
+                    <td class="small">@(l.ChequeRegisterID?.ToString() ?? "—")</td>
+                    <td>@(l.IsReconciled ? "Yes" : "No")</td>
+                    <td>
+                        @if (ViewBag.CanEdit == true)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="EditLine" asp-route-id="@l.ReconLineID">Edit</a>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "reconline";
+                            ViewData["AmsDeleteId"] = l.ReconLineID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("Details", new { id = Model.ReconciliationID });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Lines.Any())
+{
+    <p class="text-muted">No lines. Link posted voucher lines or cheque register rows.</p>
+}

@@ -1,0 +1,133 @@
+@model List<AmsChequeRegisterListItemVm>
+@{
+    ViewData["Title"] = "Cheque / PDC register";
+    var banks = ViewBag.BankAccounts as IEnumerable<AccBankAccount> ?? Array.Empty<AccBankAccount>();
+    var st = ViewBag.FilterStatus as string;
+    var bankId = ViewBag.FilterBankId as int?;
+    var pdcOnly = ViewBag.PdcOnly as bool? ?? false;
+}
+<p class="text-muted small mb-3">Read-only view of <code>acc.ChequeRegister</code>. Cheques linked to bank vouchers clear on voucher post; AR-linked cheques stay pending until cleared in bank recon / a later process.</p>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label small mb-0">Status</label>
+        <select name="status" class="form-select form-select-sm">
+            @if (string.IsNullOrEmpty(st))
+            {
+                <option value="" selected="selected">All</option>
+            }
+            else
+            {
+                <option value="">All</option>
+            }
+            @if (st == "Pending")
+            {
+                <option value="Pending" selected="selected">Pending</option>
+            }
+            else
+            {
+                <option value="Pending">Pending</option>
+            }
+            @if (st == "Cleared")
+            {
+                <option value="Cleared" selected="selected">Cleared</option>
+            }
+            else
+            {
+                <option value="Cleared">Cleared</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label small mb-0">Bank</label>
+        <select name="bankAccountId" class="form-select form-select-sm">
+            <option value="">All banks</option>
+            @foreach (var b in banks)
+            {
+                if (bankId == b.BankAccountID)
+                {
+                    <option value="@b.BankAccountID" selected="selected">@b.BankName (@b.AccountNumber)</option>
+                }
+                else
+                {
+                    <option value="@b.BankAccountID">@b.BankName (@b.AccountNumber)</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" name="pdcOnly" value="true" id="pdcOnly" @(pdcOnly ? "checked" : null) />
+            <label class="form-check-label small" for="pdcOnly">Post-dated only</label>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Apply</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("ChequeRegister")" />
+    </div>
+</form>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Cheque</th>
+                <th>Bank</th>
+                <th class="text-end">Amount</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>PDC</th>
+                <th>Voucher</th>
+                <th>AR receipt</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model)
+            {
+                var c = row.Cheque;
+                <tr>
+                    <td class="text-nowrap">#@c.ChequeNo <span class="text-muted small">@c.ChequeDate.ToString("yyyy-MM-dd")</span></td>
+                    <td>@(c.BankAccount?.BankName)</td>
+                    <td class="text-end">@c.Amount.ToString("N2")</td>
+                    <td>@c.ChequeType</td>
+                    <td>@c.Status</td>
+                    <td>@(c.IsPostDated ? "Yes" : "No")</td>
+                    <td>
+                        @if (c.VoucherID is int vid && c.Voucher != null)
+                        {
+                            <a asp-controller="AmsBankVoucher" asp-action="Details" asp-route-id="@vid">@c.Voucher.VoucherNo</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (row.Receipt != null)
+                        {
+                            <span class="text-nowrap">@row.Receipt.ReceiptNo</span>
+                            <span class="text-muted small">@row.Receipt.CustomerID</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "chequeregister";
+                            ViewData["AmsDeleteId"] = c.ChequeRegisterID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No cheques match the filters.</p>
+}

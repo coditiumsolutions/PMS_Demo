@@ -1,0 +1,146 @@
+@model AmsArReceiptCreateVm
+@{
+    ViewData["Title"] = "AR receipt";
+    var customers = ViewBag.Customers as IEnumerable<Customer> ?? Array.Empty<Customer>();
+    var banks = ViewBag.BankAccounts as IEnumerable<AccBankAccount> ?? Array.Empty<AccBankAccount>();
+    var pendingCheques = ViewBag.PendingCheques as IEnumerable<AccChequeRegister> ?? Array.Empty<AccChequeRegister>();
+    var open = ViewBag.OpenInvoices as List<AccARInvoice> ?? new List<AccARInvoice>();
+    var cur = (Model.CustomerID ?? string.Empty).Trim();
+}
+<p class="text-muted small mb-3">Choose customer, then enter received amount and allocations. Totals must match.</p>
+<form asp-action="CreateReceipt" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label asp-for="CustomerID" class="form-label">Customer</label>
+            <select asp-for="CustomerID" class="form-select" id="custSel" onchange="location='@Url.Action("CreateReceipt", "AmsAr")?customerId='+encodeURIComponent(this.value||'')">
+                <option value="">— Select —</option>
+                @foreach (var c in customers)
+                {
+                    var cid = (c.CustomerID ?? string.Empty).Trim();
+                    if (cid == cur)
+                    {
+                        <option value="@cid" selected="selected">@cid — @c.FullName</option>
+                    }
+                    else
+                    {
+                        <option value="@cid">@cid — @c.FullName</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="ReceiptDate" class="form-label"></label>
+            <input asp-for="ReceiptDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="ReceivedAmount" class="form-label"></label>
+            <input asp-for="ReceivedAmount" class="form-control" type="number" step="0.01" min="0.01" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="PaymentMode" class="form-label"></label>
+            <select asp-for="PaymentMode" class="form-select">
+                <option value="Bank">Bank</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="BankAccountID" class="form-label">Bank (optional)</label>
+            <select asp-for="BankAccountID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var b in banks)
+                {
+                    <option value="@b.BankAccountID">@b.BankName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check">
+                <input asp-for="IsPostDated" class="form-check-input" />
+                <label asp-for="IsPostDated" class="form-check-label">Post-dated</label>
+            </div>
+        </div>
+        <div class="col-12">
+            <label asp-for="Remarks" class="form-label"></label>
+            <textarea asp-for="Remarks" class="form-control" rows="2" maxlength="500"></textarea>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-header py-2">Cheque (optional)</div>
+        <div class="card-body">
+            <p class="small text-muted mb-2">Same pattern as bank vouchers: choose bank, then link a pending cheque or enter a new one. Cheque stays <strong>Pending</strong> until cleared (e.g. bank recon).</p>
+            <div class="form-check mb-2">
+                <input asp-for="UseCheque" class="form-check-input" />
+                <label asp-for="UseCheque" class="form-check-label">Record cheque / PDC for this receipt</label>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label asp-for="ChequeRegisterID" class="form-label">Pending cheque (same bank)</label>
+                    <select asp-for="ChequeRegisterID" class="form-select">
+                        <option value="">— New / none —</option>
+                        @foreach (var c in pendingCheques)
+                        {
+                            <option value="@c.ChequeRegisterID">@(c.BankAccount?.BankName) — #@c.ChequeNo @c.Amount.ToString("N2") @(c.IsPostDated ? "(PDC)" : "")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="NewChequeNo" class="form-label">New cheque no.</label>
+                    <input asp-for="NewChequeNo" class="form-control" maxlength="30" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="NewChequeDate" class="form-label">Cheque date</label>
+                    <input asp-for="NewChequeDate" class="form-control" type="date" />
+                </div>
+            </div>
+        </div>
+    </div>
+    @if (!open.Any())
+    {
+        <p class="text-warning">No open invoices for this customer (or select a customer).</p>
+    }
+    else
+    {
+        <h6 class="text-muted">Allocate to invoices</h6>
+        <div class="table-responsive mb-3">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr><th>Invoice</th><th>Due</th><th class="text-end">Balance</th><th class="text-end">Allocate</th></tr>
+                </thead>
+                <tbody>
+                    @{
+                        var byId = Model.Allocations.ToDictionary(a => a.ARInvoiceID, a => a.Amount);
+                    }
+                    @{ var i = 0; }
+                    @foreach (var inv in open)
+                    {
+                        var bal = inv.TotalAmount - inv.PaidAmount;
+                        var amt = byId.TryGetValue(inv.ARInvoiceID, out var x) ? x : 0m;
+                        <tr>
+                            <td>
+                                @inv.InvoiceNo
+                                <input type="hidden" name="Allocations[@i].ARInvoiceID" value="@inv.ARInvoiceID" />
+                            </td>
+                            <td>@inv.DueDate.ToString("yyyy-MM-dd")</td>
+                            <td class="text-end">@bal.ToString("N2")</td>
+                            <td style="max-width:8rem">
+                                <input name="Allocations[@i].Amount" class="form-control form-control-sm text-end" type="number" step="0.01" min="0" value="@amt.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                            </td>
+                        </tr>
+                        i++;
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <div asp-validation-summary="All" class="text-danger"></div>
+    @if (open.Any())
+    {
+        <button type="submit" class="btn btn-primary">Save receipt</button>
+    }
+    <a asp-action="IndexInvoices" class="btn btn-outline-secondary">Back</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

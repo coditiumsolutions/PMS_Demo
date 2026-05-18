@@ -1,0 +1,111 @@
+@model AccRefundVoucher
+@{
+    ViewData["Title"] = "Edit refund voucher " + Model.VoucherNo;
+    var vouchers = ViewBag.PostedVouchers as IEnumerable<AccVoucher> ?? Array.Empty<AccVoucher>();
+    var banks = ViewBag.BankAccounts as IEnumerable<AccBankAccount> ?? Array.Empty<AccBankAccount>();
+    var cheques = ViewBag.ChequeRegisters as IEnumerable<AccChequeRegister> ?? Array.Empty<AccChequeRegister>();
+}
+<p class="text-muted small mb-3">Net refund is recalculated from gross and deductions on save.</p>
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="RefundVoucherID" />
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label asp-for="VoucherNo" class="form-label"></label>
+            <input asp-for="VoucherNo" class="form-control" maxlength="30" required />
+            <span asp-validation-for="VoucherNo" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="VoucherDate" class="form-label"></label>
+            <input asp-for="VoucherDate" class="form-control" type="date" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="CustomerID" class="form-label"></label>
+            <input asp-for="CustomerID" class="form-control" maxlength="10" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select">
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Posted">Posted</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="AllotmentID" class="form-label"></label>
+            <input asp-for="AllotmentID" class="form-control" maxlength="10" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="PMSRefundID" class="form-label">PMS refund ID</label>
+            <input asp-for="PMSRefundID" class="form-control" maxlength="10" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="GrossRefundAmount" class="form-label"></label>
+            <input asp-for="GrossRefundAmount" class="form-control" type="number" step="0.01" min="0" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="ProcessingFee" class="form-label"></label>
+            <input asp-for="ProcessingFee" class="form-control" type="number" step="0.01" min="0" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="PenaltyDeduction" class="form-label"></label>
+            <input asp-for="PenaltyDeduction" class="form-control" type="number" step="0.01" min="0" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="OtherDeduction" class="form-label"></label>
+            <input asp-for="OtherDeduction" class="form-control" type="number" step="0.01" min="0" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="PaymentMode" class="form-label"></label>
+            <select asp-for="PaymentMode" class="form-select">
+                <option value="Bank">Bank</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Cash">Cash</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="BankAccountID" class="form-label">Bank account (optional)</label>
+            <select asp-for="BankAccountID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var b in banks)
+                {
+                    <option value="@b.BankAccountID">@b.BankName — @b.AccountNumber</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="ChequeRegisterID" class="form-label">Cheque register (optional)</label>
+            <select asp-for="ChequeRegisterID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var c in cheques)
+                {
+                    <option value="@c.ChequeRegisterID">@c.ChequeNo · @(c.BankAccount?.BankName) · @c.ChequeDate.ToString("yyyy-MM-dd")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label asp-for="ChequeNo" class="form-label"></label>
+            <input asp-for="ChequeNo" class="form-control" maxlength="30" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="ChequeDate" class="form-label"></label>
+            <input asp-for="ChequeDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="AccountingVoucherID" class="form-label">Posted accounting voucher (optional)</label>
+            <select asp-for="AccountingVoucherID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var v in vouchers)
+                {
+                    <option value="@v.VoucherID">@v.VoucherNo · @(v.VoucherType?.TypeCode) · @v.VoucherDate.ToString("yyyy-MM-dd")</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

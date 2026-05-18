@@ -1,0 +1,27 @@
+@model AccAccountingAuditLog
+@{
+    ViewData["Title"] = "Audit log entry " + Model.LogID;
+}
+<div class="mb-3">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="fas fa-arrow-left me-1"></i>Back to list</a>
+</div>
+<dl class="row small">
+    <dt class="col-sm-2">Log ID</dt><dd class="col-sm-10">@Model.LogID</dd>
+    <dt class="col-sm-2">Table</dt><dd class="col-sm-10"><code>@Model.TableName</code></dd>
+    <dt class="col-sm-2">Record</dt><dd class="col-sm-10">@Model.RecordID</dd>
+    <dt class="col-sm-2">Action</dt><dd class="col-sm-10"><span class="badge bg-secondary">@Model.Action</span></dd>
+    <dt class="col-sm-2">Changed at (UTC)</dt><dd class="col-sm-10">@Model.ChangedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+    <dt class="col-sm-2">Changed by</dt><dd class="col-sm-10">@Model.ChangedBy</dd>
+    <dt class="col-sm-2">IP</dt><dd class="col-sm-10">@(Model.IPAddress ?? "—")</dd>
+    <dt class="col-sm-2">User agent</dt><dd class="col-sm-10 text-break">@(Model.UserAgent ?? "—")</dd>
+</dl>
+@if (!string.IsNullOrEmpty(Model.OldValues))
+{
+    <h6 class="mt-3">Old values (JSON)</h6>
+    <pre class="bg-light border rounded p-2 small" style="max-height:24rem; overflow:auto">@Model.OldValues</pre>
+}
+@if (!string.IsNullOrEmpty(Model.NewValues))
+{
+    <h6 class="mt-3">New values (JSON)</h6>
+    <pre class="bg-light border rounded p-2 small" style="max-height:24rem; overflow:auto">@Model.NewValues</pre>
+}

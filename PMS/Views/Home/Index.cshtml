@@ -156,6 +156,15 @@
                                 </span>
                             </a>
                         </div>
+                        <div class="col-6 col-md-4 pending-task-col">
+                            <a href="@Url.Action("Index", "Allotment", new { statusFilter = "All" })" class="report-link pending-task-link">
+                                <span class="report-icon"><i class="fas fa-hand-holding"></i></span>
+                                <span>
+                                    <strong>Pending Allotments</strong>
+                                    <small>@Model.PendingAllotments</small>
+                                </span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

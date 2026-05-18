@@ -29,11 +29,10 @@ namespace PMS.Controllers
                 return RedirectToAction("AccessDenied", "Account");
             if (requiredLevel == "Edit" && !_modulePermission.CanEdit(perm))
                 return RedirectToAction("AccessDenied", "Account");
-            if (requiredLevel == "Admin" && !_modulePermission.CanDelete(perm))
+            if (requiredLevel == "Admin" && !await HttpContext.RequestServices.GetRequiredService<AmsAccessService>().IsAdminUserAsync(userId))
                 return RedirectToAction("AccessDenied", "Account");
             ViewBag.CanCreate = _modulePermission.CanEdit(perm);
             ViewBag.CanEdit = _modulePermission.CanEdit(perm);
-            ViewBag.CanDelete = _modulePermission.CanDelete(perm);
             return null;
         }
 

@@ -1,0 +1,42 @@
+@model List<AccCostCenter>
+@{
+    ViewData["Title"] = "Cost centers";
+}
+<p class="mb-3 text-muted small">Cost centers from <code>acc.CostCenter</code>. Used on budget lines and voucher lines.</p>
+<div class="mb-3">
+    <partial name="_AmsExportCsv" model="@("CostCenters")" />
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Project</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>@c.CostCenterCode</td>
+                    <td>@c.CostCenterName</td>
+                    <td>@(c.CostCenterType ?? "—")</td>
+                    <td class="small">@(c.ProjectID ?? "—")</td>
+                    <td>@(c.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "costcenter";
+                            ViewData["AmsDeleteId"] = c.CostCenterID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

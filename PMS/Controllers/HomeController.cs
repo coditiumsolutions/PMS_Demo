@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.Json;
 using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -69,9 +68,6 @@ namespace PMS.Controllers
             var showPendingTasks = string.Equals(currentUserType?.Trim(), "Admin", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(currentUserType?.Trim(), "Manager", StringComparison.OrdinalIgnoreCase);
 
-            // #region agent log
-            try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:28", message = "Index method entry", data = new { }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-            // #endregion
             try
             {
                 var today = DateTime.Now.Date;
@@ -103,7 +99,7 @@ namespace PMS.Controllers
                 try
                 {
                     tableExists = await _context.Database
-                        .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
+                        .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
                         .FirstOrDefaultAsync();
                 }
                 catch
@@ -116,9 +112,6 @@ namespace PMS.Controllers
                 {
                     try
                     {
-                        // #region agent log
-                        try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:74", message = "Before accessing _context.Payments", data = new { tableExists }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                        // #endregion
                         var monthlyPayments = await _context.Payments
                             .AsNoTracking()
                             .Where(p => p.Amount > 0)
@@ -138,20 +131,14 @@ namespace PMS.Controllers
                             x => new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), 
                             x => x.Total);
                     }
-                    catch (Exception ex1)
+                    catch
                     {
-                        // #region agent log
-                        try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:90", message = "Exception in monthlyPayments query", data = new { error = ex1.Message, type = ex1.GetType().Name }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                        // #endregion
                         // Payments query failed
                     }
                 }
             }
-            catch (Exception ex2)
+            catch
             {
-                // #region agent log
-                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:96", message = "Exception in monthlyPayments outer catch", data = new { error = ex2.Message, type = ex2.GetType().Name }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                // #endregion
                 // Payments table doesn't exist or query failed
             }
 
@@ -176,7 +163,7 @@ namespace PMS.Controllers
                     try
                     {
                         tableExists = await _context.Database
-                            .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
+                            .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
                             .FirstOrDefaultAsync();
                     }
                     catch
@@ -189,9 +176,6 @@ namespace PMS.Controllers
                 {
                     try
                     {
-                        // #region agent log
-                        try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:135", message = "Before accessing _context.Payments for paymentTotals", data = new { tableExists }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                        // #endregion
                         var payments = await _context.Payments
                             .AsNoTracking()
                             .Where(p => p.Status == "Completed")
@@ -320,9 +304,6 @@ namespace PMS.Controllers
             List<Payment> recentPayments = new List<Payment>();
             try
             {
-                // #region agent log
-                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:279", message = "Calculating TotalPayments from Payments table", data = new { }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                // #endregion
                 totalPayments = await _context.Payments
                     .AsNoTracking()
                     .Select(p => (decimal?)p.Amount)
@@ -335,11 +316,8 @@ namespace PMS.Controllers
                     .Take(5)
                     .ToListAsync();
             }
-            catch (Exception ex3)
+            catch
             {
-                // #region agent log
-                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:290", message = "Exception in TotalPayments query", data = new { error = ex3.Message, type = ex3.GetType().Name }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                // #endregion
                 // Payments query failed; keep default values.
             }
 
@@ -350,6 +328,7 @@ namespace PMS.Controllers
             int pendingWaivers = 0;
             int pendingTransfers = 0;
             int pendingRefunds = 0;
+            int pendingAllotments = 0;
             string pendingWaiverStatusFilter = "Initiated";
             int totalProjects = 0;
             int totalProperties = 0;
@@ -401,6 +380,11 @@ namespace PMS.Controllers
                     .AsNoTracking()
                     .CountAsync(r => !string.Equals(r.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase)
                         && !string.Equals(r.WorkflowStatus, "Declined", StringComparison.OrdinalIgnoreCase));
+
+                pendingAllotments = await _context.Allotments
+                    .AsNoTracking()
+                    .CountAsync(a => !string.Equals(a.WorkFlowStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(a.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase));
             }
             catch
             {
@@ -415,6 +399,7 @@ namespace PMS.Controllers
                     PendingWaivers = pendingWaivers,
                     PendingTransfers = pendingTransfers,
                     PendingRefunds = pendingRefunds,
+                    PendingAllotments = pendingAllotments,
                     PendingWaiverStatusFilter = pendingWaiverStatusFilter,
                     ShowPendingTasks = showPendingTasks,
                     TotalProjects = totalProjects,
@@ -439,16 +424,10 @@ namespace PMS.Controllers
                     DealerData = dealerData
                 };
 
-                // #region agent log
-                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:352", message = "Index method success - returning dashboard", data = new { }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                // #endregion
                 return View(dashboardData);
             }
-            catch (Exception ex)
+            catch
             {
-                // #region agent log
-                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:354", message = "Exception in Index outer catch", data = new { error = ex.Message, type = ex.GetType().Name, stackTrace = ex.StackTrace }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                // #endregion
                 // If any database error occurs, return a minimal dashboard
                 var dashboardData = new DashboardViewModel
                 {
@@ -458,6 +437,7 @@ namespace PMS.Controllers
                     PendingWaivers = 0,
                     PendingTransfers = 0,
                     PendingRefunds = 0,
+                    PendingAllotments = 0,
                     PendingWaiverStatusFilter = "Initiated",
                     ShowPendingTasks = showPendingTasks,
                     TotalProjects = 0,
@@ -479,9 +459,6 @@ namespace PMS.Controllers
                     CustomerTrendData = new Dictionary<string, int>(),
                     DealerData = new List<DealerDashboardData>()
                 };
-                // #region agent log
-                try { System.IO.File.AppendAllText(@"d:\PMS\PMS\PMS\.cursor\debug.log", JsonSerializer.Serialize(new { sessionId = "debug-session", runId = "run1", hypothesisId = "A", location = "HomeController.cs:380", message = "Index method returning default dashboard after exception", data = new { }, timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }) + "\n"); } catch { }
-                // #endregion
                 return View(dashboardData);
             }
         }

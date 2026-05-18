@@ -1,0 +1,39 @@
+@model List<AmsApAgingRowVm>
+@{
+    ViewData["Title"] = "AP aging";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("ApAging")" />
+
+    <p class="mb-0 text-muted small">Open vendor payables (balance = total − retention held − paid).</p>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="IndexBills">Bills</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Bill</th>
+                <th>Vendor</th>
+                <th>Due</th>
+                <th class="text-end">Balance</th>
+                <th class="text-end">Days past due</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr class="@(r.DaysPastDue > 0 ? "table-warning" : null)">
+                    <td>@r.BillNo</td>
+                    <td>@r.VendorName</td>
+                    <td>@r.DueDate.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end">@r.Balance.ToString("N2")</td>
+                    <td class="text-end">@r.DaysPastDue</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No open AP balances.</p>
+}

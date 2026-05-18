@@ -1,0 +1,454 @@
+-- NOTE: This file is a **design reference**. The deployed AMS schema is **acc**.*
+-- (Scripts/AMS_Create_acc_schema.sql). Differences vs snippets below include:
+--   • Tables live in schema **acc** (not dbo).
+--   • **Voucher.CreatedBy** (and similar user refs) are **NVARCHAR(10)** (User.Id short string), not INT.
+--   • **VoucherLine.LineNumber** (not LineNo); optional **Voucher.BankAccountID** — run Scripts/AMS_Alter_Voucher_BankAccount.sql if missing on an older DB.
+--   • **FiscalYear.ClosedBy** is NVARCHAR(10), not INT.
+-- Compare live SQL Server: **Scripts/AMS_Verify_Acc_Schema.sql**. App toggle **AmsAccCompat:MapVoucherBankAccountColumn**
+-- (appsettings.json / appsettings.Development.json): map false when **BankAccountID** not on **acc.Voucher** yet.
+--
+-- ============================================================
+-- MODULE 1: CHART OF ACCOUNTS
+-- ============================================================
+
+CREATE TABLE AccountCategory (
+    AccountCategoryID   INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName        NVARCHAR(100)   NOT NULL,   -- e.g. Asset, Liability, Equity, Revenue, Expense
+    NatureType          NVARCHAR(20)    NOT NULL,   -- 'Debit' | 'Credit'
+    IsActive            BIT             NOT NULL DEFAULT 1,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE AccountHead (
+    AccountHeadID       INT IDENTITY(1,1) PRIMARY KEY,
+    AccountCategoryID   INT             NOT NULL REFERENCES AccountCategory(AccountCategoryID),
+    ParentAccountHeadID INT             NULL     REFERENCES AccountHead(AccountHeadID),  -- for hierarchy
+    AccountCode         NVARCHAR(30)    NOT NULL UNIQUE,  -- e.g. 1001, 1001-01
+    AccountName         NVARCHAR(150)   NOT NULL,
+    AccountLevel        TINYINT         NOT NULL DEFAULT 1,  -- 1=Group, 2=Sub, 3=Ledger
+    IsControlAccount    BIT             NOT NULL DEFAULT 0,
+    AllowDirectPosting  BIT             NOT NULL DEFAULT 1,
+    OpeningBalance      DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    OpeningBalanceDate  DATE            NULL,
+    Description         NVARCHAR(500)   NULL,
+    IsActive            BIT             NOT NULL DEFAULT 1,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE(),
+    CreatedBy           INT             NOT NULL  -- FK to Users
+);
+
+-- ============================================================
+-- MODULE 2: FISCAL YEAR & ACCOUNTING PERIODS
+-- ============================================================
+
+CREATE TABLE FiscalYear (
+    FiscalYearID        INT IDENTITY(1,1) PRIMARY KEY,
+    YearName            NVARCHAR(50)    NOT NULL,  -- e.g. FY 2024-25
+    StartDate           DATE            NOT NULL,
+    EndDate             DATE            NOT NULL,
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Open',  -- Open | Closed | Locked
+    ClosedBy            INT             NULL,      -- FK to Users
+    ClosedAt            DATETIME2       NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE AccountingPeriod (
+    PeriodID            INT IDENTITY(1,1) PRIMARY KEY,
+    FiscalYearID        INT             NOT NULL REFERENCES FiscalYear(FiscalYearID),
+    PeriodName          NVARCHAR(50)    NOT NULL,  -- e.g. July 2024
+    StartDate           DATE            NOT NULL,
+    EndDate             DATE            NOT NULL,
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Open',  -- Open | Closed
+    ClosedBy            INT             NULL,
+    ClosedAt            DATETIME2       NULL
+);
+
+-- ============================================================
+-- MODULE 3: JOURNAL VOUCHERS (CORE DOUBLE-ENTRY)
+-- ============================================================
+
+CREATE TABLE VoucherType (
+    VoucherTypeID       INT IDENTITY(1,1) PRIMARY KEY,
+    TypeCode            NVARCHAR(10)    NOT NULL UNIQUE,  -- JV, BPV, BRV, CPV, CRV, SV, PV
+    TypeName            NVARCHAR(100)   NOT NULL,         -- Journal, Bank Payment, Bank Receipt, etc.
+    IsAutoNumbered      BIT             NOT NULL DEFAULT 1,
+    Prefix              NVARCHAR(10)    NULL,
+    IsActive            BIT             NOT NULL DEFAULT 1
+);
+
+CREATE TABLE Voucher (
+    VoucherID           INT IDENTITY(1,1) PRIMARY KEY,
+    VoucherTypeID       INT             NOT NULL REFERENCES VoucherType(VoucherTypeID),
+    VoucherNo           NVARCHAR(30)    NOT NULL UNIQUE,
+    VoucherDate         DATE            NOT NULL,
+    PeriodID            INT             NOT NULL REFERENCES AccountingPeriod(PeriodID),
+    FiscalYearID        INT             NOT NULL REFERENCES FiscalYear(FiscalYearID),
+    ReferenceNo         NVARCHAR(100)   NULL,      -- cheque no, receipt no, etc.
+    Narration           NVARCHAR(1000)  NULL,
+    TotalDebit          DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    TotalCredit         DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Draft',  -- Draft | Posted | Reversed
+    IsReversed          BIT             NOT NULL DEFAULT 0,
+    ReversalVoucherID   INT             NULL REFERENCES Voucher(VoucherID),
+    -- PMS Links (optional)
+    ProjectID           INT             NULL,  -- FK to Projects
+    AllotmentID         INT             NULL,  -- FK to Allotments
+    CustomerID          INT             NULL,  -- FK to Customers
+    DealerID            INT             NULL,  -- FK to Dealers
+    PMSPaymentID        INT             NULL,  -- FK to Payments (PMS)
+    -- Audit
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE(),
+    PostedBy            INT             NULL,
+    PostedAt            DATETIME2       NULL,
+    ApprovedBy          INT             NULL,
+    ApprovedAt          DATETIME2       NULL
+);
+
+CREATE TABLE VoucherLine (
+    VoucherLineID       INT IDENTITY(1,1) PRIMARY KEY,
+    VoucherID           INT             NOT NULL REFERENCES Voucher(VoucherID),
+    LineNo              SMALLINT        NOT NULL,
+    AccountHeadID       INT             NOT NULL REFERENCES AccountHead(AccountHeadID),
+    SubLedgerType       NVARCHAR(30)    NULL,   -- 'Customer' | 'Dealer' | 'Employee' | 'Vendor'
+    SubLedgerID         INT             NULL,   -- ID in respective table
+    CostCenterID        INT             NULL    REFERENCES CostCenter(CostCenterID),
+    DebitAmount         DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    CreditAmount        DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    Description         NVARCHAR(500)   NULL,
+    Reconciled          BIT             NOT NULL DEFAULT 0
+);
+
+-- ============================================================
+-- MODULE 4: BANK & CASH MANAGEMENT
+-- ============================================================
+
+CREATE TABLE BankAccount (
+    BankAccountID       INT IDENTITY(1,1) PRIMARY KEY,
+    AccountHeadID       INT             NOT NULL REFERENCES AccountHead(AccountHeadID),
+    BankName            NVARCHAR(150)   NOT NULL,
+    BranchName          NVARCHAR(150)   NULL,
+    AccountTitle        NVARCHAR(200)   NOT NULL,
+    AccountNumber       NVARCHAR(50)    NOT NULL,
+    IBAN                NVARCHAR(30)    NULL,
+    AccountType         NVARCHAR(30)    NULL,  -- Current | Savings | PLS
+    Currency            NVARCHAR(10)    NOT NULL DEFAULT 'PKR',
+    OpeningBalance      DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    IsActive            BIT             NOT NULL DEFAULT 1,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE ChequeBook (
+    ChequeBookID        INT IDENTITY(1,1) PRIMARY KEY,
+    BankAccountID       INT             NOT NULL REFERENCES BankAccount(BankAccountID),
+    SeriesFrom          NVARCHAR(20)    NOT NULL,
+    SeriesTo            NVARCHAR(20)    NOT NULL,
+    TotalLeaves         INT             NOT NULL,
+    IssuedDate          DATE            NOT NULL,
+    IsActive            BIT             NOT NULL DEFAULT 1
+);
+
+CREATE TABLE ChequeRegister (
+    ChequeRegisterID    INT IDENTITY(1,1) PRIMARY KEY,
+    BankAccountID       INT             NOT NULL REFERENCES BankAccount(BankAccountID),
+    ChequeBookID        INT             NULL     REFERENCES ChequeBook(ChequeBookID),
+    ChequeNo            NVARCHAR(30)    NOT NULL,
+    ChequeDate          DATE            NOT NULL,
+    ChequeType          NVARCHAR(20)    NOT NULL,  -- 'Issued' | 'Received'
+    Amount              DECIMAL(18,2)   NOT NULL,
+    PayableTo           NVARCHAR(200)   NULL,
+    ReceivedFrom        NVARCHAR(200)   NULL,
+    Status              NVARCHAR(30)    NOT NULL DEFAULT 'Pending',
+    -- Pending | Cleared | Bounced | Cancelled | Stopped
+    ClearanceDate       DATE            NULL,
+    VoucherID           INT             NULL REFERENCES Voucher(VoucherID),
+    SubLedgerType       NVARCHAR(30)    NULL,
+    SubLedgerID         INT             NULL,
+    Remarks             NVARCHAR(500)   NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE(),
+    CreatedBy           INT             NOT NULL
+);
+
+CREATE TABLE BankReconciliation (
+    ReconciliationID    INT IDENTITY(1,1) PRIMARY KEY,
+    BankAccountID       INT             NOT NULL REFERENCES BankAccount(BankAccountID),
+    PeriodID            INT             NOT NULL REFERENCES AccountingPeriod(PeriodID),
+    StatementDate       DATE            NOT NULL,
+    BankStatementBalance DECIMAL(18,2)  NOT NULL,
+    BookBalance         DECIMAL(18,2)   NOT NULL,
+    Difference          DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Draft',  -- Draft | Finalized
+    ReconciledBy        INT             NULL,
+    ReconciledAt        DATETIME2       NULL,
+    Notes               NVARCHAR(1000)  NULL
+);
+
+-- ============================================================
+-- MODULE 5: ACCOUNTS RECEIVABLE (linked to PMS)
+-- ============================================================
+
+CREATE TABLE ARInvoice (
+    ARInvoiceID         INT IDENTITY(1,1) PRIMARY KEY,
+    InvoiceNo           NVARCHAR(30)    NOT NULL UNIQUE,
+    InvoiceDate         DATE            NOT NULL,
+    DueDate             DATE            NOT NULL,
+    CustomerID          INT             NOT NULL,   -- FK to Customers (PMS)
+    ProjectID           INT             NULL,       -- FK to Projects (PMS)
+    AllotmentID         INT             NULL,       -- FK to Allotments (PMS)
+    AccountHeadID       INT             NOT NULL REFERENCES AccountHead(AccountHeadID),
+    InvoiceType         NVARCHAR(50)    NOT NULL,
+    -- InstallmentDue | Penalty | RegistrationFee | NDC | TransferFee | Rental | Misc
+    SubTotal            DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    TaxAmount           DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    DiscountAmount      DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    TotalAmount         DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    PaidAmount          DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    BalanceAmount       AS (TotalAmount - PaidAmount),
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Unpaid',
+    -- Unpaid | PartiallyPaid | Paid | Cancelled
+    PMSPaymentScheduleID INT            NULL,   -- FK to PaymentSchedule (PMS)
+    VoucherID           INT             NULL REFERENCES Voucher(VoucherID),
+    Notes               NVARCHAR(500)   NULL,
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE ARReceipt (
+    ARReceiptID         INT IDENTITY(1,1) PRIMARY KEY,
+    ReceiptNo           NVARCHAR(30)    NOT NULL UNIQUE,
+    ReceiptDate         DATE            NOT NULL,
+    CustomerID          INT             NOT NULL,
+    ProjectID           INT             NULL,
+    AllotmentID         INT             NULL,
+    ReceivedAmount      DECIMAL(18,2)   NOT NULL,
+    PaymentMode         NVARCHAR(30)    NOT NULL,  -- Cash | Cheque | NEFT | RTGS | Online
+    BankAccountID       INT             NULL REFERENCES BankAccount(BankAccountID),
+    ChequeNo            NVARCHAR(30)    NULL,
+    ChequeDate          DATE            NULL,
+    BankName            NVARCHAR(150)   NULL,
+    PMSPaymentID        INT             NULL,       -- FK to Payments (PMS)
+    VoucherID           INT             NULL REFERENCES Voucher(VoucherID),
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Posted',
+    Remarks             NVARCHAR(500)   NULL,
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE ARReceiptAllocation (
+    AllocationID        INT IDENTITY(1,1) PRIMARY KEY,
+    ARReceiptID         INT             NOT NULL REFERENCES ARReceipt(ARReceiptID),
+    ARInvoiceID         INT             NOT NULL REFERENCES ARInvoice(ARInvoiceID),
+    AllocatedAmount     DECIMAL(18,2)   NOT NULL,
+    AllocatedAt         DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+-- ============================================================
+-- MODULE 6: ACCOUNTS PAYABLE
+-- ============================================================
+
+CREATE TABLE Vendor (
+    VendorID            INT IDENTITY(1,1) PRIMARY KEY,
+    VendorCode          NVARCHAR(20)    NOT NULL UNIQUE,
+    VendorName          NVARCHAR(200)   NOT NULL,
+    VendorType          NVARCHAR(50)    NULL,   -- Contractor | Supplier | Utility | Government
+    NTN                 NVARCHAR(30)    NULL,
+    STRN                NVARCHAR(30)    NULL,
+    ContactPerson       NVARCHAR(100)   NULL,
+    Phone               NVARCHAR(30)    NULL,
+    Email               NVARCHAR(150)   NULL,
+    Address             NVARCHAR(500)   NULL,
+    AccountHeadID       INT             NULL REFERENCES AccountHead(AccountHeadID),
+    IsActive            BIT             NOT NULL DEFAULT 1,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE APBill (
+    APBillID            INT IDENTITY(1,1) PRIMARY KEY,
+    BillNo              NVARCHAR(30)    NOT NULL UNIQUE,
+    BillDate            DATE            NOT NULL,
+    DueDate             DATE            NOT NULL,
+    VendorID            INT             NOT NULL REFERENCES Vendor(VendorID),
+    ProjectID           INT             NULL,
+    CostCenterID        INT             NULL,
+    BillType            NVARCHAR(50)    NOT NULL,  -- Utility | Procurement | Construction | Maintenance | Misc
+    SubTotal            DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    TaxAmount           DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    TotalAmount         DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    PaidAmount          DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    BalanceAmount       AS (TotalAmount - PaidAmount),
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Unpaid',
+    VoucherID           INT             NULL REFERENCES Voucher(VoucherID),
+    Notes               NVARCHAR(500)   NULL,
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE APBillLine (
+    APBillLineID        INT IDENTITY(1,1) PRIMARY KEY,
+    APBillID            INT             NOT NULL REFERENCES APBill(APBillID),
+    LineNo              SMALLINT        NOT NULL,
+    AccountHeadID       INT             NOT NULL REFERENCES AccountHead(AccountHeadID),
+    Description         NVARCHAR(300)   NOT NULL,
+    Quantity            DECIMAL(10,3)   NULL,
+    UnitPrice           DECIMAL(18,2)   NULL,
+    Amount              DECIMAL(18,2)   NOT NULL,
+    TaxRate             DECIMAL(5,2)    NULL DEFAULT 0,
+    TaxAmount           DECIMAL(18,2)   NULL DEFAULT 0
+);
+
+CREATE TABLE APPayment (
+    APPaymentID         INT IDENTITY(1,1) PRIMARY KEY,
+    PaymentNo           NVARCHAR(30)    NOT NULL UNIQUE,
+    PaymentDate         DATE            NOT NULL,
+    VendorID            INT             NOT NULL REFERENCES Vendor(VendorID),
+    PaidAmount          DECIMAL(18,2)   NOT NULL,
+    PaymentMode         NVARCHAR(30)    NOT NULL,
+    BankAccountID       INT             NULL REFERENCES BankAccount(BankAccountID),
+    ChequeNo            NVARCHAR(30)    NULL,
+    ChequeDate          DATE            NULL,
+    VoucherID           INT             NULL REFERENCES Voucher(VoucherID),
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Posted',
+    Remarks             NVARCHAR(500)   NULL,
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE APPaymentAllocation (
+    AllocationID        INT IDENTITY(1,1) PRIMARY KEY,
+    APPaymentID         INT             NOT NULL REFERENCES APPayment(APPaymentID),
+    APBillID            INT             NOT NULL REFERENCES APBill(APBillID),
+    AllocatedAmount     DECIMAL(18,2)   NOT NULL,
+    AllocatedAt         DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+-- ============================================================
+-- MODULE 7: COST CENTERS (PROJECT/PHASE WISE)
+-- ============================================================
+
+CREATE TABLE CostCenter (
+    CostCenterID        INT IDENTITY(1,1) PRIMARY KEY,
+    CostCenterCode      NVARCHAR(20)    NOT NULL UNIQUE,
+    CostCenterName      NVARCHAR(150)   NOT NULL,
+    ParentCostCenterID  INT             NULL REFERENCES CostCenter(CostCenterID),
+    ProjectID           INT             NULL,        -- FK to Projects (PMS)
+    SubProjectID        INT             NULL,        -- FK to ProjectSubProjects (PMS)
+    CostCenterType      NVARCHAR(30)    NULL,        -- Project | Phase | Block | Department
+    BudgetAmount        DECIMAL(18,2)   NULL DEFAULT 0,
+    IsActive            BIT             NOT NULL DEFAULT 1,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+-- ============================================================
+-- MODULE 8: BUDGET
+-- ============================================================
+
+CREATE TABLE Budget (
+    BudgetID            INT IDENTITY(1,1) PRIMARY KEY,
+    BudgetName          NVARCHAR(150)   NOT NULL,
+    FiscalYearID        INT             NOT NULL REFERENCES FiscalYear(FiscalYearID),
+    BudgetType          NVARCHAR(30)    NOT NULL DEFAULT 'Annual',  -- Annual | Revised
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Draft',   -- Draft | Approved | Locked
+    ApprovedBy          INT             NULL,
+    ApprovedAt          DATETIME2       NULL,
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE BudgetLine (
+    BudgetLineID        INT IDENTITY(1,1) PRIMARY KEY,
+    BudgetID            INT             NOT NULL REFERENCES Budget(BudgetID),
+    AccountHeadID       INT             NOT NULL REFERENCES AccountHead(AccountHeadID),
+    CostCenterID        INT             NULL     REFERENCES CostCenter(CostCenterID),
+    PeriodID            INT             NULL     REFERENCES AccountingPeriod(PeriodID),
+    BudgetedAmount      DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    RevisedAmount       DECIMAL(18,2)   NULL,
+    Remarks             NVARCHAR(300)   NULL
+);
+
+-- ============================================================
+-- MODULE 9: TAX MANAGEMENT (WHT / GST)
+-- ============================================================
+
+CREATE TABLE TaxType (
+    TaxTypeID           INT IDENTITY(1,1) PRIMARY KEY,
+    TaxCode             NVARCHAR(20)    NOT NULL UNIQUE,  -- WHT-RENT, WHT-SERV, GST-17, etc.
+    TaxName             NVARCHAR(100)   NOT NULL,
+    TaxCategory         NVARCHAR(30)    NOT NULL,   -- WHT | GST | FED | Other
+    Rate                DECIMAL(7,4)    NOT NULL DEFAULT 0,
+    AccountHeadID       INT             NOT NULL REFERENCES AccountHead(AccountHeadID),
+    IsActive            BIT             NOT NULL DEFAULT 1
+);
+
+CREATE TABLE TaxTransaction (
+    TaxTransactionID    INT IDENTITY(1,1) PRIMARY KEY,
+    VoucherID           INT             NOT NULL REFERENCES Voucher(VoucherID),
+    TaxTypeID           INT             NOT NULL REFERENCES TaxType(TaxTypeID),
+    TaxableAmount       DECIMAL(18,2)   NOT NULL,
+    TaxRate             DECIMAL(7,4)    NOT NULL,
+    TaxAmount           DECIMAL(18,2)   NOT NULL,
+    SubLedgerType       NVARCHAR(30)    NULL,   -- Customer | Vendor | Dealer
+    SubLedgerID         INT             NULL,
+    PeriodID            INT             NOT NULL REFERENCES AccountingPeriod(PeriodID),
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+-- ============================================================
+-- MODULE 10: DEALER COMMISSION ACCOUNTING
+-- ============================================================
+
+CREATE TABLE DealerCommissionVoucher (
+    CommissionVoucherID INT IDENTITY(1,1) PRIMARY KEY,
+    VoucherNo           NVARCHAR(30)    NOT NULL UNIQUE,
+    VoucherDate         DATE            NOT NULL,
+    DealerID            INT             NOT NULL,   -- FK to Dealers (PMS)
+    ProjectID           INT             NULL,
+    AllotmentID         INT             NULL,
+    PMSDealerPaymentID  INT             NULL,       -- FK to DealerPayments (PMS)
+    GrossCommission     DECIMAL(18,2)   NOT NULL,
+    WHTAmount           DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    NetPayable          DECIMAL(18,2)   NOT NULL,
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Pending',
+    -- Pending | Approved | Paid
+    AccountingVoucherID INT             NULL REFERENCES Voucher(VoucherID),
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+-- ============================================================
+-- MODULE 11: REFUND ACCOUNTING (linked to PMS Refunds)
+-- ============================================================
+
+CREATE TABLE RefundVoucher (
+    RefundVoucherID     INT IDENTITY(1,1) PRIMARY KEY,
+    VoucherNo           NVARCHAR(30)    NOT NULL UNIQUE,
+    VoucherDate         DATE            NOT NULL,
+    CustomerID          INT             NOT NULL,
+    AllotmentID         INT             NULL,
+    PMSRefundID         INT             NULL,       -- FK to Refunds (PMS)
+    RefundAmount        DECIMAL(18,2)   NOT NULL,
+    DeductionAmount     DECIMAL(18,2)   NOT NULL DEFAULT 0,
+    NetRefundAmount     DECIMAL(18,2)   NOT NULL,
+    PaymentMode         NVARCHAR(30)    NOT NULL,
+    BankAccountID       INT             NULL REFERENCES BankAccount(BankAccountID),
+    ChequeNo            NVARCHAR(30)    NULL,
+    Status              NVARCHAR(20)    NOT NULL DEFAULT 'Pending',
+    -- Pending | Approved | Paid
+    AccountingVoucherID INT             NULL REFERENCES Voucher(VoucherID),
+    CreatedBy           INT             NOT NULL,
+    CreatedAt           DATETIME2       NOT NULL DEFAULT GETDATE()
+);
+
+-- ============================================================
+-- MODULE 12: AUDIT LOG (ACCOUNTING SPECIFIC)
+-- ============================================================
+
+CREATE TABLE AccountingAuditLog (
+    LogID               BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TableName           NVARCHAR(100)   NOT NULL,
+    RecordID            INT             NOT NULL,
+    Action              NVARCHAR(20)    NOT NULL,   -- Insert | Update | Delete | Post | Reverse
+    OldValues           NVARCHAR(MAX)   NULL,       -- JSON snapshot
+    NewValues           NVARCHAR(MAX)   NULL,
+    ChangedBy           INT             NT NULL,
+    ChangedAt           DATETIME2       NOT NULL DEFAULT GETDATE(),
+    IPAddress           NVARCHAR(50)    NULL
+);

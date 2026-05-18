@@ -1,0 +1,64 @@
+@model List<AccFiscalYear>
+@{
+    ViewData["Title"] = "Fiscal years";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <partial name="_AmsExportCsv" model="@("FiscalYears")" />
+
+    <div>
+        <a class="btn btn-outline-secondary btn-sm" asp-controller="AmsCoa" asp-action="Index">Chart of accounts</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-controller="AmsOpeningBalance" asp-action="Index">Opening balances</a>
+    </div>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="CreateYear">New fiscal year</a>
+    }
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Name</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var y in Model)
+            {
+                <tr>
+                    <td>@y.YearName</td>
+                    <td>@y.StartDate.ToString("yyyy-MM-dd")</td>
+                    <td>@y.EndDate.ToString("yyyy-MM-dd")</td>
+                    <td>@y.Status</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Periods" asp-route-id="@y.FiscalYearID">Periods</a>
+                        @if (ViewBag.CanEdit == true)
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="EditYear" asp-route-id="@y.FiscalYearID">Edit</a>
+                        }
+                        @if (ViewBag.CanEdit == true && y.Status == "Open" && (y.Periods?.Count ?? 0) > 0 && y.Periods!.All(p => p.Status == "Closed"))
+                        {
+                            <form asp-action="CloseYear" asp-route-id="@y.FiscalYearID" method="post" class="d-inline" onsubmit="return confirm('Close this fiscal year?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-warning">Close year</button>
+                            </form>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "fiscalyear";
+                            ViewData["AmsDeleteId"] = y.FiscalYearID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No fiscal years yet.</p>
+}

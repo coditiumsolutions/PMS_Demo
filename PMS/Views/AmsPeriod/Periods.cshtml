@@ -1,0 +1,80 @@
+@model List<AccAccountingPeriod>
+@{
+    ViewData["Title"] = "Accounting periods";
+    var fy = ViewBag.FiscalYear as AccFiscalYear;
+}
+@if (fy != null)
+{
+    <p class="lead mb-2">@fy.YearName <span class="badge bg-secondary">@fy.Status</span></p>
+    <p class="small text-muted">@fy.StartDate.ToString("yyyy-MM-dd") — @fy.EndDate.ToString("yyyy-MM-dd") · Plan §6: no posting to Closed/Locked periods; period close requires vouchers Posted, Cancelled, or Reversed.</p>
+}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+    <partial name="_AmsExportCsv" model="@("Periods")" />
+
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All fiscal years</a>
+    @if (ViewBag.CanEdit == true && fy != null)
+    {
+        <form asp-action="GenerateMonths" asp-route-id="@fy!.FiscalYearID" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-primary btn-sm">Generate monthly periods</button>
+        </form>
+    }
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Period</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td>@p.PeriodName</td>
+                    <td>@p.StartDate.ToString("yyyy-MM-dd")</td>
+                    <td>@p.EndDate.ToString("yyyy-MM-dd")</td>
+                    <td>@p.Status</td>
+                    <td>
+                        @if (ViewBag.CanEdit == true && fy != null)
+                        {
+                            if (p.Status == "Open")
+                            {
+                                <form asp-action="ClosePeriod" method="post" class="d-inline" onsubmit="return confirm('Close this period?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@p.PeriodID" />
+                                    <input type="hidden" name="fiscalYearId" value="@fy.FiscalYearID" />
+                                    <button type="submit" class="btn btn-sm btn-warning">Close</button>
+                                </form>
+                            }
+                            else if (p.Status == "Closed" && fy.Status == "Open")
+                            {
+                                <form asp-action="ReopenPeriod" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@p.PeriodID" />
+                                    <input type="hidden" name="fiscalYearId" value="@fy.FiscalYearID" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Reopen</button>
+                                </form>
+                            }
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "period";
+                            ViewData["AmsDeleteId"] = p.PeriodID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("Periods", new { id = fy!.FiscalYearID });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No periods. Use &quot;Generate monthly periods&quot;.</p>
+}

@@ -33,6 +33,13 @@ namespace PMS.Models
 
         public bool IsActive { get; set; } = true;
 
+        /// <summary>When true, user must enter TOTP after password (or after completing setup if Enforce2FA).</summary>
+        public bool TwoFactorEnabled { get; set; }
+
+        /// <summary>Data Protection–protected TOTP shared secret (Base32), never store raw secret.</summary>
+        [StringLength(500)]
+        public string? TwoFactorSecret { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         // Navigation properties

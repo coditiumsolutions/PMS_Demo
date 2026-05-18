@@ -8,6 +8,7 @@ using PMS.Services;
 using System.Security.Claims;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace PMS.Controllers
 {
@@ -413,13 +414,8 @@ namespace PMS.Controllers
                         .ThenBy(p => p.PropertyID)
                         .ToList()
                 })
-                .OrderBy(f =>
-                {
-                    if (f.FloorName == "G") return 0;
-                    if (int.TryParse(f.FloorName, out var n)) return n;
-                    if (f.FloorName == "No floor mentioned") return 1000;
-                    return 999;
-                })
+                .OrderBy(f => GetFloorSortOrder(f.FloorName))
+                .ThenBy(f => f.FloorName)
                 .ToList();
 
             var model = new FloorPlanViewModel
@@ -436,6 +432,32 @@ namespace PMS.Controllers
         private bool ProjectExists(string id)
         {
             return _context.Projects.Any(e => e.ProjectID == id);
+        }
+
+        private static int GetFloorSortOrder(string? floorName)
+        {
+            var raw = (floorName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(raw) || string.Equals(raw, "No floor mentioned", StringComparison.OrdinalIgnoreCase))
+                return 10000;
+
+            var normalized = raw.ToLowerInvariant().Replace("-", " ").Replace("_", " ");
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+
+            // Desired sequence: Basement -> Lower Ground -> Ground -> 1st -> 2nd -> ...
+            if (normalized == "basement" || normalized == "bsmt")
+                return -100;
+            if (normalized == "lower ground" || normalized == "lg")
+                return -50;
+            if (normalized == "ground" || normalized == "g" || normalized == "gf" || normalized == "ground floor")
+                return 0;
+
+            // Parse ordinals / numeric floors like "24th", "26th", "12", "Floor 12", etc.
+            var match = Regex.Match(normalized, @"\d+");
+            if (match.Success && int.TryParse(match.Value, out var n))
+                return n;
+
+            // Unknown text floors come after numbered floors and before "No floor mentioned".
+            return 9000;
         }
 
         private sealed class SubProjectPrefixMapping

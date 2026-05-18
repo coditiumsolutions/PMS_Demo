@@ -1,0 +1,83 @@
+@model List<AmsPostedVoucherRowVm>
+@{
+    ViewData["Title"] = "Posted vouchers";
+    var from = (DateTime)ViewBag.FromDate;
+    var to = (DateTime)ViewBag.ToDate;
+    var vtList = ViewBag.VoucherTypes as List<AccVoucherType> ?? new List<AccVoucherType>();
+    var vtSel = ViewBag.VoucherTypeId as int?;
+}
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label small mb-0">From</label>
+        <input type="date" name="fromDate" class="form-control form-control-sm" value="@from.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">To</label>
+        <input type="date" name="toDate" class="form-control form-control-sm" value="@to.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">Type</label>
+        <select name="voucherTypeId" class="form-select form-select-sm">
+            <option value="">All types</option>
+            @foreach (var t in vtList)
+            {
+                if (vtSel == t.VoucherTypeID)
+                {
+                    <option value="@t.VoucherTypeID" selected>@t.TypeCode — @t.TypeName</option>
+                }
+                else
+                {
+                    <option value="@t.VoucherTypeID">@t.TypeCode — @t.TypeName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("PostedVouchers")" />
+    </div>
+</form>
+<p class="small text-muted">Latest 500 vouchers in the date range (all statuses).</p>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>No.</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th class="text-end">Debit</th>
+                <th class="text-end">Credit</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td class="text-nowrap">@r.VoucherDate.ToString("yyyy-MM-dd")</td>
+                    <td><code>@r.VoucherNo</code></td>
+                    <td>@r.TypeCode <span class="text-muted small">@r.TypeName</span></td>
+                    <td>@r.Status</td>
+                    <td class="text-end">@r.TotalDebit.ToString("N2")</td>
+                    <td class="text-end">@r.TotalCredit.ToString("N2")</td>
+                    <td class="text-nowrap">
+                        @{
+                            var detailController = r.TypeCode is "JV" or "RV" ? "AmsJv" : "AmsBankVoucher";
+                        }
+                        <a class="btn btn-sm btn-outline-primary" asp-controller="@detailController" asp-action="Details" asp-route-id="@r.VoucherID">Open</a>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "voucher";
+                            ViewData["AmsDeleteId"] = r.VoucherID;
+                            ViewData["AmsDeleteReturnUrl"] = $"{Context.Request.Path}{Context.Request.QueryString}";
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

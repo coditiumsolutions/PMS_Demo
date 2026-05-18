@@ -1,0 +1,17 @@
+@model string
+@{
+    var exportAction = Model ?? ViewData["AmsExportAction"] as string ?? "";
+    var route = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var key in Context.Request.Query.Keys)
+        route[key] = Context.Request.Query[key].ToString();
+    var idVal = ViewContext.RouteData.Values["id"]?.ToString();
+    if (!string.IsNullOrEmpty(idVal) && !route.ContainsKey("id"))
+        route["id"] = idVal;
+}
+@if (!string.IsNullOrWhiteSpace(exportAction))
+{
+    <a asp-controller="AmsExport" asp-action="@exportAction" asp-all-route-data="route"
+       class="btn btn-outline-success btn-sm">
+        <i class="fas fa-file-csv me-1"></i>Export CSV
+    </a>
+}

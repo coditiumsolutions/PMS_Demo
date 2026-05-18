@@ -1,0 +1,57 @@
+@model List<AccTaxTransaction>
+@{
+    ViewData["Title"] = "Tax transactions";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("TaxTransactions")" />
+
+    <p class="mb-0 text-muted small">Rows in <code>acc.TaxTransaction</code> linked to <strong>posted</strong> vouchers.</p>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="CreateTransaction"><i class="fas fa-plus me-1"></i>New tax line</a>
+    }
+    <a class="btn btn-outline-secondary btn-sm" asp-action="WhtSummary">WHT summary</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="GstInputOutput">GST summary</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Voucher</th>
+                <th>Tax</th>
+                <th class="text-end">Taxable</th>
+                <th class="text-end">Rate</th>
+                <th class="text-end">Tax</th>
+                <th>Period</th>
+                <th>Sub-ledger</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td class="text-nowrap">@(t.Voucher?.VoucherNo)</td>
+                    <td>@(t.TaxType?.TaxCode)</td>
+                    <td class="text-end">@t.TaxableAmount.ToString("N2")</td>
+                    <td class="text-end">@t.TaxRate.ToString("N4")</td>
+                    <td class="text-end">@t.TaxAmount.ToString("N2")</td>
+                    <td class="small">@(t.Period?.PeriodName)</td>
+                    <td class="small">@(t.SubLedgerType) @(t.SubLedgerID)</td>
+                    <td>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "taxtransaction";
+                            ViewData["AmsDeleteId"] = t.TaxTransactionID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No tax transactions yet.</p>
+}

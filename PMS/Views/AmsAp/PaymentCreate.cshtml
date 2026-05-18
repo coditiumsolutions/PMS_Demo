@@ -1,0 +1,118 @@
+@model AmsApPaymentCreateVm
+@{
+    ViewData["Title"] = "AP payment";
+    var vendors = ViewBag.Vendors as IEnumerable<AccVendor> ?? Array.Empty<AccVendor>();
+    var banks = ViewBag.BankAccounts as IEnumerable<AccBankAccount> ?? Array.Empty<AccBankAccount>();
+    var open = ViewBag.OpenBills as List<AccAPBill> ?? new List<AccAPBill>();
+    var curVid = Model.VendorID;
+}
+<p class="text-muted small mb-3">Select vendor, then allocate payment to approved bills. Check <strong>Retention release</strong> only for releasing held retention (not vendor cash).</p>
+<form asp-action="CreatePayment" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label asp-for="VendorID" class="form-label">Vendor</label>
+            <select asp-for="VendorID" class="form-select" id="vendSel" onchange="location='@Url.Action("CreatePayment", "AmsAp")?vendorId='+this.value">
+                <option value="0">— Select —</option>
+                @foreach (var v in vendors)
+                {
+                    if (v.VendorID == curVid)
+                    {
+                        <option value="@v.VendorID" selected="selected">@v.VendorCode — @v.VendorName</option>
+                    }
+                    else
+                    {
+                        <option value="@v.VendorID">@v.VendorCode — @v.VendorName</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="PaymentDate" class="form-label"></label>
+            <input asp-for="PaymentDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="PaidAmount" class="form-label"></label>
+            <input asp-for="PaidAmount" class="form-control" type="number" step="0.01" min="0.01" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="PaymentMode" class="form-label"></label>
+            <select asp-for="PaymentMode" class="form-select">
+                <option value="Bank">Bank</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="BankAccountID" class="form-label">Bank (optional)</label>
+            <select asp-for="BankAccountID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var b in banks)
+                {
+                    <option value="@b.BankAccountID">@b.BankName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Remarks" class="form-label"></label>
+            <input asp-for="Remarks" class="form-control" maxlength="500" />
+        </div>
+    </div>
+    @if (!open.Any())
+    {
+        <p class="text-warning">No payable bills for this vendor (approve bills first).</p>
+    }
+    else
+    {
+        <h6 class="text-muted">Allocate</h6>
+        <div class="table-responsive mb-3">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Bill</th>
+                        <th>Due</th>
+                        <th class="text-end">Payable bal.</th>
+                        <th class="text-end">Amount</th>
+                        <th>Retention release</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var byId = Model.Allocations.ToDictionary(a => a.APBillID, a => (a.Amount, a.IsRetentionRelease));
+                    }
+                    @{ var i = 0; }
+                    @foreach (var b in open)
+                    {
+                        var bal = b.TotalAmount - b.RetentionAmount - b.PaidAmount;
+                        var t = byId.TryGetValue(b.APBillID, out var p) ? p : (0m, false);
+                        <tr>
+                            <td>
+                                @b.BillNo
+                                <input type="hidden" name="Allocations[@i].APBillID" value="@b.APBillID" />
+                            </td>
+                            <td>@b.DueDate.ToString("yyyy-MM-dd")</td>
+                            <td class="text-end">@bal.ToString("N2")</td>
+                            <td style="max-width:8rem">
+                                <input name="Allocations[@i].Amount" class="form-control form-control-sm text-end" type="number" step="0.01" min="0" value="@t.Item1.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                            </td>
+                            <td class="text-center">
+                                <input type="hidden" name="Allocations[@i].IsRetentionRelease" value="false" />
+                                <input name="Allocations[@i].IsRetentionRelease" class="form-check-input" type="checkbox" value="true" @(t.Item2 ? "checked" : null) />
+                            </td>
+                        </tr>
+                        i++;
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <div asp-validation-summary="All" class="text-danger"></div>
+    @if (open.Any())
+    {
+        <button type="submit" class="btn btn-primary">Save payment</button>
+    }
+    <a asp-action="IndexBills" class="btn btn-outline-secondary">Back</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

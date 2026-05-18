@@ -1,0 +1,85 @@
+=== 1. Schema acc exists ===
+OK
+=== 2. Table inventory (must match DDL: 30 user tables) ===
+Issue TableName
+----- ---------
+Issue TableName
+----- ---------
+acc user table count: 30 (expected 30)
+=== 3. Foreign keys touching acc schema (count) ===
+AccForeignKeyCount
+------------------
+61
+=== 4. Seed row counts ===
+T C
+- -
+VoucherType 8
+AccountCategory 5
+TaxType 6
+AccountHead(seed 2160/2170) 2
+=== 5. VoucherType codes (expect 8) ===
+TypeCode TypeName
+-------- --------
+BPV Bank Payment Voucher
+BRV Bank Receipt Voucher
+CPV Cash Payment Voucher
+CRV Cash Receipt Voucher
+JV Journal Voucher
+OBV Opening Balance Voucher
+PDC Post-Dated Cheque
+RV Reversal Voucher
+=== 6. Critical column types (PMS / user alignment ADR-004) ===
+TABLE_NAME COLUMN_NAME DATA_TYPE CharLen IS_NULLABLE
+---------- ----------- --------- ------- -----------
+AccountHead CreatedBy nvarchar 10 NO
+ARInvoice CreatedBy nvarchar 10 NO
+ARInvoice CustomerID nvarchar 10 NO
+ARInvoice PMSPaymentScheduleID nvarchar 10 YES
+Voucher ApprovedBy nvarchar 10 YES
+Voucher CreatedBy nvarchar 10 NO
+Voucher PMSCustomerID nvarchar 10 YES
+Voucher PMSDealerID int NULL YES
+Voucher PMSPaymentID nvarchar 10 YES
+Voucher PMSProjectID nvarchar 10 YES
+Voucher PMSRentalPaymentID nvarchar 50 YES
+Voucher PMSTransferID nvarchar 50 YES
+Voucher PostedBy nvarchar 10 YES
+VoucherLine LineNumber smallint NULL NO
+VoucherLine SubLedgerID nvarchar 10 YES
+=== 7. Any INT columns named CreatedBy / PostedBy / PMSCustomerID under acc (should be zero rows) ===
+TableName ColumnName SqlType
+--------- ---------- -------
+=== 8. Indexes on acc tables (summary) ===
+TableName IndexCount
+--------- ----------
+AccountCategory 1
+AccountHead 2
+AccountingAuditLog 1
+AccountingPeriod 1
+APBill 2
+APBillLine 1
+APPayment 2
+APPaymentAllocation 1
+ARInvoice 2
+ARReceipt 2
+ARReceiptAllocation 1
+BankAccount 1
+BankReconciliation 1
+BankReconciliationLine 1
+Budget 1
+BudgetLine 1
+ChequeBook 1
+ChequeRegister 1
+CostCenter 2
+DealerCommissionVoucher 2
+FiscalYear 1
+OpeningBalance 1
+RefundVoucher 2
+TaxTransaction 1
+TaxType 2
+Vendor 2
+Voucher 2
+VoucherLine 1
+VoucherType 2
+WHTCertificate 2
+=== Done ===

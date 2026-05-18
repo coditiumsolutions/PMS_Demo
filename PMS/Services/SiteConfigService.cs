@@ -57,36 +57,6 @@ namespace PMS.Services
 
         public async Task SaveAsync(SiteConfig config)
         {
-            // #region agent log
-            try
-            {
-                var logPayload = new
-                {
-                    sessionId = "78c481",
-                    runId = "pre-fix",
-                    hypothesisId = "H3",
-                    location = "SiteConfigService.SaveAsync",
-                    message = "Saving SiteConfig",
-                    data = new
-                    {
-                        config.ProjectName,
-                        config.Tagline,
-                        config.WebsiteUrl,
-                        config.Email,
-                        config.LogoPath
-                    },
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                };
-                var logJson = JsonSerializer.Serialize(logPayload);
-                var logPath = @"C:\Users\User\.cursor\projects\d-PMS-PMS-PMS\debug-78c481.log";
-                File.AppendAllText(logPath, logJson + Environment.NewLine);
-            }
-            catch
-            {
-                // Swallow logging errors
-            }
-            // #endregion
-
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true

@@ -17,11 +17,13 @@ namespace PMS.Controllers
 
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
+        private readonly IAmsPmsIntegrationService _amsPmsIntegration;
 
-        public RefundController(PMSDbContext context, IModulePermissionService modulePermission)
+        public RefundController(PMSDbContext context, IModulePermissionService modulePermission, IAmsPmsIntegrationService amsPmsIntegration)
         {
             _context = context;
             _modulePermission = modulePermission;
+            _amsPmsIntegration = amsPmsIntegration;
         }
 
         private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
@@ -678,6 +680,8 @@ namespace PMS.Controllers
                 RefID     = refundId,
                 CreatedAt = DateTime.Now
             });
+
+            await _amsPmsIntegration.TryCreateRefundVoucherOnApprovalAsync(refund, userId);
 
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = $"Refund {refundId} approved. All payments for customer {refund.CustomerID} are now marked as Refunded, and customer status is Refunded.";

@@ -1,0 +1,57 @@
+@model AccBankReconciliation
+@{
+    ViewData["Title"] = "Edit bank reconciliation";
+    var banks = ViewBag.Banks as IEnumerable<AccBankAccount> ?? Array.Empty<AccBankAccount>();
+    var periods = ViewBag.Periods as IEnumerable<AccAccountingPeriod> ?? Array.Empty<AccAccountingPeriod>();
+}
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ReconciliationID" />
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="BankAccountID" class="form-label">Bank account</label>
+            <select asp-for="BankAccountID" class="form-select" required>
+                @foreach (var b in banks)
+                {
+                    <option value="@b.BankAccountID">@b.BankName — @b.AccountNumber</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="PeriodID" class="form-label">Accounting period</label>
+            <select asp-for="PeriodID" class="form-select" required>
+                @foreach (var p in periods)
+                {
+                    <option value="@p.PeriodID">@p.PeriodName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="StatementDate" class="form-label"></label>
+            <input asp-for="StatementDate" class="form-control" type="date" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="BankStatementBalance" class="form-label"></label>
+            <input asp-for="BankStatementBalance" class="form-control" type="number" step="0.01" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="BookBalance" class="form-label"></label>
+            <input asp-for="BookBalance" class="form-control" type="number" step="0.01" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select">
+                <option value="Draft">Draft</option>
+                <option value="Reconciled">Reconciled</option>
+            </select>
+        </div>
+        <div class="col-md-12">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="2" maxlength="1000"></textarea>
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Details" asp-route-id="@Model.ReconciliationID" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

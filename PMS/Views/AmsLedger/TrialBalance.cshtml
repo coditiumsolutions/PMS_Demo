@@ -1,0 +1,67 @@
+@model List<AmsTbRowVm>
+@{
+    ViewData["Title"] = "Trial balance";
+    var asOf = (DateTime)ViewBag.AsOfDate;
+    var fyList = ViewBag.FiscalYears as IEnumerable<AmsFiscalYearOptionVm> ?? Array.Empty<AmsFiscalYearOptionVm>();
+    var fySel = ViewBag.FiscalYearId as int?;
+}
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label small mb-0">As of</label>
+        <input type="date" name="asOfDate" class="form-control form-control-sm" value="@asOf.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">Fiscal year (optional)</label>
+        <select name="fiscalYearId" class="form-select form-select-sm">
+            <option value="">All years</option>
+            @foreach (var y in fyList)
+            {
+                if (fySel == y.FiscalYearID)
+                {
+                    <option value="@y.FiscalYearID" selected="selected">@y.YearName</option>
+                }
+                else
+                {
+                    <option value="@y.FiscalYearID">@y.YearName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("TrialBalance")" />
+    </div>
+</form>
+<p class="small text-muted">Posted vouchers only; reversed originals excluded.</p>
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                <th>Account</th>
+                <th class="text-end">Debit</th>
+                <th class="text-end">Credit</th>
+                <th class="text-end">Net</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                var net = r.TotalDebit - r.TotalCredit;
+                <tr>
+                    <td>@r.AccountCode</td>
+                    <td>@r.AccountName</td>
+                    <td class="text-end">@r.TotalDebit.ToString("N2")</td>
+                    <td class="text-end">@r.TotalCredit.ToString("N2")</td>
+                    <td class="text-end">@net.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (Model.Any())
+{
+    <p class="small"><strong>Check:</strong> Total debit @Model.Sum(x => x.TotalDebit).ToString("N2") — Total credit @Model.Sum(x => x.TotalCredit).ToString("N2")</p>
+}

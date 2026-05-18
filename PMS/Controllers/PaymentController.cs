@@ -21,15 +21,18 @@ namespace PMS.Controllers
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
         private readonly ISurchargeService _surchargeService;
+        private readonly IAmsPmsIntegrationService _amsPmsIntegration;
 
         public PaymentController(
             PMSDbContext context,
             IModulePermissionService modulePermission,
-            ISurchargeService surchargeService)
+            ISurchargeService surchargeService,
+            IAmsPmsIntegrationService amsPmsIntegration)
         {
             _context = context;
             _modulePermission = modulePermission;
             _surchargeService = surchargeService;
+            _amsPmsIntegration = amsPmsIntegration;
         }
 
         private async Task<IActionResult?> EnsurePermissionAsync(string requiredLevel)
@@ -464,7 +467,7 @@ namespace PMS.Controllers
                     totalDueSurcharge = totalDueSurcharge
                 });
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
@@ -687,6 +690,11 @@ namespace PMS.Controllers
                 };
                 _context.Payments.Add(extraPayment);
             }
+
+            var amsUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            await _amsPmsIntegration.TryCreateArReceiptForCustomerPaymentAsync(payment, amsUserId);
+            if (extraPayment != null)
+                await _amsPmsIntegration.TryCreateArReceiptForCustomerPaymentAsync(extraPayment, amsUserId);
 
             await _context.SaveChangesAsync();
 
@@ -911,6 +919,7 @@ namespace PMS.Controllers
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
                 var savedIds = new List<string>();
+                var stagedForAms = new List<Payment>();
 
                 foreach (var row in rows)
                 {
@@ -941,6 +950,7 @@ namespace PMS.Controllers
 
                     _context.Payments.Add(payment);
                     savedIds.Add(payment.PaymentID);
+                    stagedForAms.Add(payment);
                 }
 
                 if (extraAmount > 0m)
@@ -963,7 +973,11 @@ namespace PMS.Controllers
                     };
                     _context.Payments.Add(extraPayment);
                     savedIds.Add(extraPayment.PaymentID);
+                    stagedForAms.Add(extraPayment);
                 }
+
+                foreach (var p in stagedForAms)
+                    await _amsPmsIntegration.TryCreateArReceiptForCustomerPaymentAsync(p, userId);
 
                 await _context.SaveChangesAsync();
 

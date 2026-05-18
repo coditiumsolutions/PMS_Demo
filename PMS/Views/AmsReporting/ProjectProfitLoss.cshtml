@@ -1,0 +1,44 @@
+@model List<AmsProjectPlRowVm>
+@{
+    ViewData["Title"] = "Project P&L";
+    var pid = ViewBag.ProjectId as string;
+}
+<p class="text-muted small mb-3">Posted voucher lines where <code>Voucher.PMSProjectID</code> matches; net = <strong>Debit − Credit</strong> by account category.</p>
+<form method="get" asp-action="ProjectProfitLoss" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4">
+        <label class="form-label">PMS project ID</label>
+        <input name="projectId" class="form-control" maxlength="10" value="@pid" placeholder="e.g. PRJ0000001" />
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Run</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("ProjectProfitLoss")" />
+    </div>
+</form>
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Category</th>
+                    <th class="text-end">Net (Dr − Cr)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.CategoryName</td>
+                        <td class="text-end">@r.NetAmount.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(pid))
+{
+    <p class="text-muted">No posted lines for project <strong>@pid</strong>.</p>
+}

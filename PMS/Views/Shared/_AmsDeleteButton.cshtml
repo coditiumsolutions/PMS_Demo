@@ -1,0 +1,14 @@
+@* Shown when ViewBag.CanDelete (UserType = Admin). Set ViewData: AmsDeleteEntity, AmsDeleteId; optional AmsDeleteConfirm, AmsDeleteLabel, AmsDeleteReturnUrl *@
+@if (ViewBag.CanDelete == true && ViewData["AmsDeleteId"] != null && ViewData["AmsDeleteEntity"] != null)
+{
+    var entity = ViewData["AmsDeleteEntity"]!.ToString();
+    var confirm = ViewData["AmsDeleteConfirm"] as string ?? "Delete this record permanently?";
+    var label = ViewData["AmsDeleteLabel"] as string ?? "Delete";
+    var returnUrl = ViewData["AmsDeleteReturnUrl"] as string ?? $"{Context.Request.Path}{Context.Request.QueryString}";
+    <form asp-controller="AmsAdminDelete" asp-action="Remove" method="post" class="d-inline"
+          asp-route-entity="@entity" asp-route-id="@ViewData["AmsDeleteId"]" asp-route-returnUrl="@returnUrl"
+          onsubmit="return confirm(@System.Text.Json.JsonSerializer.Serialize(confirm));">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-sm btn-outline-danger">@label</button>
+    </form>
+}

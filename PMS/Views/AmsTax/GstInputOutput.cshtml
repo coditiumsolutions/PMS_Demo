@@ -1,0 +1,50 @@
+@model List<AmsTaxSummaryRowVm>
+@{
+    ViewData["Title"] = "GST summary";
+    var totalTax = Model.Sum(r => r.TotalTax);
+    var totalBase = Model.Sum(r => r.TotalTaxable);
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("GstInputOutput")" />
+
+    <p class="mb-0 text-muted small">Aggregates for GST tax types. <strong>Applies to</strong> uses seed values (Payable / Receivable / Both) as a simple input vs output hint.</p>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="IndexTransactions">All tax lines</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Applies to</th>
+                <th class="text-end">Lines</th>
+                <th class="text-end">Taxable</th>
+                <th class="text-end">Tax</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.TaxCode</td>
+                    <td>@r.TaxName</td>
+                    <td>@r.AppliesTo</td>
+                    <td class="text-end">@r.LineCount</td>
+                    <td class="text-end">@r.TotalTaxable.ToString("N2")</td>
+                    <td class="text-end">@r.TotalTax.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="table-light fw-semibold">
+                <td colspan="4">Total</td>
+                <td class="text-end">@totalBase.ToString("N2")</td>
+                <td class="text-end">@totalTax.ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No GST transactions yet.</p>
+}

@@ -1,0 +1,69 @@
+@model AccTaxType
+@{
+    ViewData["Title"] = "Edit tax type " + Model.TaxCode;
+    var heads = ViewBag.AccountHeads as IEnumerable<AccAccountHead> ?? Array.Empty<AccAccountHead>();
+}
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="TaxTypeID" />
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label asp-for="TaxCode" class="form-label"></label>
+            <input asp-for="TaxCode" class="form-control" maxlength="20" required />
+            <span asp-validation-for="TaxCode" class="text-danger"></span>
+        </div>
+        <div class="col-md-5">
+            <label asp-for="TaxName" class="form-label"></label>
+            <input asp-for="TaxName" class="form-control" maxlength="100" required />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="TaxCategory" class="form-label"></label>
+            <select asp-for="TaxCategory" class="form-select">
+                <option value="WHT">WHT</option>
+                <option value="GST">GST</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label asp-for="AppliesTo" class="form-label"></label>
+            <select asp-for="AppliesTo" class="form-select">
+                <option value="Payable">Payable</option>
+                <option value="Receivable">Receivable</option>
+                <option value="Both">Both</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label asp-for="Rate" class="form-label">Rate %</label>
+            <input asp-for="Rate" class="form-control" type="number" step="0.0001" min="0" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="AccountHeadID" class="form-label">Liability / control GL</label>
+            <select asp-for="AccountHeadID" class="form-select ams-ledger-select" required data-placeholder="Search GL…" data-allow-clear="false">
+                <option value="0">— Select —</option>
+                @foreach (var h in heads)
+                {
+                    <option value="@h.AccountHeadID">@h.AccountCode — @h.AccountName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Active</label>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="EffectiveFrom" class="form-label"></label>
+            <input asp-for="EffectiveFrom" class="form-control" type="date" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="EffectiveTo" class="form-label"></label>
+            <input asp-for="EffectiveTo" class="form-control" type="date" />
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Clear chart of accounts";
+    var count = ViewBag.AccountCount as int? ?? 0;
+}
+
+<h5 class="mb-3">Clear all accounts for fresh import</h5>
+
+<div class="alert alert-warning">
+    <p class="mb-2">This removes <strong>@count</strong> account(s) from the chart of accounts, plus:</p>
+    <ul class="mb-2 small">
+        <li>Opening balances and budget lines tied to those accounts</li>
+        <li>Tax types and bank accounts linked to COA (you can set these up again after import)</li>
+    </ul>
+    <p class="mb-0 small">
+        <strong>Blocked</strong> if any voucher lines, AR invoices, or AP bills exist — posted accounting data must be removed first.
+    </p>
+</div>
+
+<form asp-action="ClearAll" method="post" class="mt-3" style="max-width: 420px;">
+    @Html.AntiForgeryToken()
+    <label class="form-label" for="confirmText">Type <strong>DELETE COA</strong> to confirm</label>
+    <input type="text" id="confirmText" name="confirmText" class="form-control mb-3" placeholder="DELETE COA" autocomplete="off" />
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger" id="btnSubmit" disabled>Clear all accounts</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        document.getElementById('confirmText').addEventListener('input', function () {
+            document.getElementById('btnSubmit').disabled = this.value.trim() !== 'DELETE COA';
+        });
+    </script>
+}

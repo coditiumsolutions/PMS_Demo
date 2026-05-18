@@ -1,0 +1,66 @@
+@model List<AmsCashFlowMonthVm>
+@{
+    ViewData["Title"] = "Cash flow (posted vouchers)";
+    var fys = ViewBag.FiscalYears as IEnumerable<AccFiscalYear> ?? Array.Empty<AccFiscalYear>();
+    var sel = ViewBag.SelectedFiscalYearId as int?;
+}
+<p class="text-muted small mb-3">Proxy report: posted <code>acc.Voucher</code> totals by calendar month within the fiscal year. Not a full indirect cash flow statement.</p>
+<form method="get" asp-action="CashFlow" class="row g-2 align-items-end mb-3">
+    <div class="col-md-6">
+        <label class="form-label">Fiscal year</label>
+        <select name="fiscalYearId" class="form-select">
+            <option value="">— Select —</option>
+            @foreach (var f in fys)
+            {
+                if (sel == f.FiscalYearID)
+                {
+                    <option value="@f.FiscalYearID" selected>@f.YearName</option>
+                }
+                else
+                {
+                    <option value="@f.FiscalYearID">@f.YearName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Run</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("CashFlow")" />
+    </div>
+</form>
+@if (ViewBag.FiscalYearName != null)
+{
+    <p class="small fw-semibold">@ViewBag.FiscalYearName</p>
+}
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Month</th>
+                    <th class="text-end">Posted debits</th>
+                    <th class="text-end">Posted credits</th>
+                    <th class="text-end">Net (Dr − Cr)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.Label</td>
+                        <td class="text-end">@r.PostedDebits.ToString("N2")</td>
+                        <td class="text-end">@r.PostedCredits.ToString("N2")</td>
+                        <td class="text-end">@r.NetMovement.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (sel.HasValue)
+{
+    <p class="text-muted">No posted vouchers in this fiscal year.</p>
+}

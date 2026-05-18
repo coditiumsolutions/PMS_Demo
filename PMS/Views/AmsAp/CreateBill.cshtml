@@ -1,0 +1,113 @@
+@model AmsApBillCreateVm
+@{
+    ViewData["Title"] = "New AP bill";
+    var vendors = ViewBag.Vendors as IEnumerable<AccVendor> ?? Array.Empty<AccVendor>();
+    var heads = ViewBag.AccountHeads as IEnumerable<AccAccountHead> ?? Array.Empty<AccAccountHead>();
+    var projects = ViewBag.Projects as IEnumerable<Project> ?? Array.Empty<Project>();
+}
+<form asp-action="CreateBill" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <label asp-for="BillNo" class="form-label"></label>
+            <input asp-for="BillNo" class="form-control" maxlength="30" required />
+            <span asp-validation-for="BillNo" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="VendorID" class="form-label">Vendor</label>
+            <select asp-for="VendorID" class="form-select" required>
+                <option value="0">— Select —</option>
+                @foreach (var v in vendors)
+                {
+                    <option value="@v.VendorID">@v.VendorCode — @v.VendorName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="BillDate" class="form-label"></label>
+            <input asp-for="BillDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="DueDate" class="form-label"></label>
+            <input asp-for="DueDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="BillType" class="form-label"></label>
+            <input asp-for="BillType" class="form-control" maxlength="50" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="ProjectID" class="form-label">Project (optional)</label>
+            <select asp-for="ProjectID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var p in projects)
+                {
+                    var pid = p.ProjectID ?? "";
+                    <option value="@pid">@pid — @p.ProjectName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label asp-for="WHTAmount" class="form-label">WHT</label>
+            <input asp-for="WHTAmount" class="form-control" type="number" step="0.01" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="GSTAmount" class="form-label">GST</label>
+            <input asp-for="GSTAmount" class="form-control" type="number" step="0.01" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="OtherTaxAmount" class="form-label">Other tax</label>
+            <input asp-for="OtherTaxAmount" class="form-control" type="number" step="0.01" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="RetentionAmount" class="form-label">Retention</label>
+            <input asp-for="RetentionAmount" class="form-control" type="number" step="0.01" />
+        </div>
+        <div class="col-12">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="2" maxlength="500"></textarea>
+        </div>
+    </div>
+    <p class="small text-muted">Lines: sum of amounts = sub-total; total = sub-total + WHT + GST + other tax.</p>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:40%">Account</th>
+                    <th>Description</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Lines.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <select name="Lines[@i].AccountHeadID" class="form-select form-select-sm ams-ledger-select" data-placeholder="Search account code or name…">
+                                <option value="0">—</option>
+                                @foreach (var h in heads)
+                                {
+                                    if (Model.Lines[i].AccountHeadID == h.AccountHeadID)
+                                    {
+                                        <option value="@h.AccountHeadID" selected="selected">@h.AccountCode — @h.AccountName</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@h.AccountHeadID">@h.AccountCode — @h.AccountName</option>
+                                    }
+                                }
+                            </select>
+                        </td>
+                        <td><input name="Lines[@i].Description" class="form-control form-control-sm" maxlength="300" value="@Model.Lines[i].Description" /></td>
+                        <td><input name="Lines[@i].Amount" class="form-control form-control-sm text-end" type="number" step="0.01" value="@Model.Lines[i].Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <button type="submit" class="btn btn-primary">Save draft</button>
+    <a asp-action="IndexBills" class="btn btn-outline-secondary">Cancel</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

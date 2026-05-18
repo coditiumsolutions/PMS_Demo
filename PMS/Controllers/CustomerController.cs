@@ -1370,7 +1370,7 @@ namespace PMS.Controllers
             try
             {
                 var tableExists = await _context.Database
-                    .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
+                    .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
                     .FirstOrDefaultAsync();
                 paymentsTableExists = tableExists > 0;
             }
@@ -1466,6 +1466,11 @@ namespace PMS.Controllers
             if (customer.Allotments == null || !customer.Allotments.Any())
             {
                 TempData["ErrorMessage"] = "Allotment letter is only available for customers who have been allotted a property.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            if (!customer.Allotments.Any(a => string.Equals(a.WorkFlowStatus, "Approved", StringComparison.OrdinalIgnoreCase)))
+            {
+                TempData["ErrorMessage"] = "Allotment letter is only available after the allotment is approved.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
@@ -1627,17 +1632,7 @@ namespace PMS.Controllers
                     await LogActivity(userId, actionDetail, "Customer", customer.CustomerID);
                 }
 
-                if (!string.IsNullOrWhiteSpace(selectedPropertyID))
-                {
-                    try
-                    {
-                        await AssignCustomerPropertyAsync(customer.CustomerID, selectedPropertyID);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        TempData["ErrorMessage"] = ex.Message;
-                    }
-                }
+                // Allotment is handled by Allotment module workflow (not from Customer Create/Edit).
 
                 // Redirect to Edit page and open attachments tab first time after create.
                 return RedirectToAction(nameof(Edit), new { id = customer.CustomerID, showAttachments = true });
@@ -1838,17 +1833,7 @@ namespace PMS.Controllers
                         await LogActivity(userId, actionDetail, "Customer", customer.CustomerID);
                     }
 
-                    if (!string.IsNullOrWhiteSpace(selectedPropertyID))
-                    {
-                        try
-                        {
-                            await AssignCustomerPropertyAsync(customer.CustomerID, selectedPropertyID);
-                        }
-                        catch (InvalidOperationException ex)
-                        {
-                            TempData["ErrorMessage"] = ex.Message;
-                        }
-                    }
+                    // Allotment is handled by Allotment module workflow (not from Customer Create/Edit).
                 }
                 catch (DbUpdateConcurrencyException)
                 {

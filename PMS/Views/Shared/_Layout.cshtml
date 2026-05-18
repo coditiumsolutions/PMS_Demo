@@ -298,6 +298,17 @@
             font-weight: 500;
         }
 
+        /* Prevent accidental value changes on numeric inputs */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+            appearance: textfield;
+        }
+
         .sidebar .nav-item h6 {
             font-size: 11px;
             font-weight: 600;
@@ -305,6 +316,10 @@
             padding: 10px 0 5px 0;
             letter-spacing: 1px;
             color: var(--primary-light);
+        }
+
+        .sidebar.sidebar--ams {
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
         }
 
         .main-content {
@@ -1282,8 +1297,13 @@
         </button>
         <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
         <div class="row">
+                    @{
+                        var layoutCtrl = ViewContext.RouteData.Values["Controller"]?.ToString();
+                        var isAmsSidebarShell = string.Equals(layoutCtrl, "AccountsManagement", StringComparison.Ordinal)
+                            || (!string.IsNullOrEmpty(layoutCtrl) && layoutCtrl.StartsWith("Ams", StringComparison.Ordinal));
+                    }
                     <!-- Sidebar -->
-                    <nav id="appSidebar" class="col-md-3 col-lg-3 d-md-block sidebar collapse">
+                    <nav id="appSidebar" class="col-md-3 col-lg-3 d-md-block sidebar collapse@(isAmsSidebarShell ? " sidebar--ams" : "")">
                 <div class="position-sticky pt-3">
                     <div class="brand-section" style="background: var(--sidebar-bg);">
                         @{
@@ -1294,10 +1314,94 @@
                         }
                         <img src="@Url.Content(logoPath)" alt="@projectName" class="brand-logo-img mb-2" />
                         <div class="brand-logo">@projectName</div>
-                        <div class="brand-subtitle">@tagline</div>
+                        @if (isAmsSidebarShell)
+                        {
+                            <div class="brand-subtitle">Accounting (AMS)</div>
+                        }
+                        else
+                        {
+                            <div class="brand-subtitle">@tagline</div>
+                        }
                     </div>
                     
                     <ul class="nav flex-column">
+                        @{
+                            var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
+                            var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
+                            var isAmsArea = string.Equals(currentController, "AccountsManagement", StringComparison.Ordinal)
+                                || (!string.IsNullOrEmpty(currentController) && currentController.StartsWith("Ams", StringComparison.Ordinal));
+                            var isCustomersSectionActive = currentController == "Registration" || currentController == "Customer";
+                            var isOperationsSectionActive = currentController == "Transfer" || currentController == "TransferFee" || currentController == "NDC" || currentController == "Refund" || currentController == "DuplicateFileTransfer" || currentController == "Waiver" || currentController == "Rental" || currentController == "Allotment" || currentController == "Possession";
+                            var isPropertySectionActive = currentController == "Property" || currentController == "Project";
+                            var isPaymentsSectionActive = currentController == "Payment" && (currentAction == "CustomerPayments" || currentAction == "PaymentPlans" || currentAction == "CreatePaymentPlan");
+                            var isSalesSectionActive = currentController == "SalesInquiry" || currentController == "Ticket";
+                            var isAccountsMgmtNavActive = currentController == "AccountsManagement"
+                                || (!string.IsNullOrEmpty(currentController) && currentController.StartsWith("Ams"));
+                            var isReportsSectionActive = ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports";
+                            var isUserSectionActive = currentController == "Account" && currentAction == "Profile";
+                            ViewData["AmsNavCollapsePrefix"] = isAmsArea ? "amsSA" : "amsMain";
+                            ViewData["AmsNavStandalone"] = isAmsArea;
+                        }
+@if (isAmsArea)
+{
+                        <li class="nav-item mb-2">
+                            <a class="nav-link fw-semibold" asp-controller="Home" asp-action="Workspace">
+                                <i class="fas fa-arrow-left me-2"></i>Back to PMS workspace
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Home" && currentAction == "Index" ? "active" : "")" asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "AccountsManagement" ? "active" : "")" asp-controller="AccountsManagement" asp-action="Index">
+                                <i class="fas fa-calculator me-2"></i>Accounts Management
+                            </a>
+                        </li>
+                        <li class="nav-item mt-3">
+                            <h6 class="px-3 text-white mb-0">Accounting</h6>
+                            <p class="px-3 small text-white-50 mb-0" style="opacity:.85">Chart of accounts, vouchers, AR/AP, tax, reporting, and audit.</p>
+                        </li>
+                        <partial name="_AmsSidebarPlanLinks" />
+                        @if (User.IsInRole("Admin"))
+                        {
+                        <li class="nav-item mt-3">
+                            <h6 class="px-3 text-white">Administration</h6>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Account" ? "active" : "")" asp-controller="Account" asp-action="Users">
+                                <i class="fas fa-user-cog me-2"></i>User management
+                            </a>
+                        </li>
+                        }
+                        <li class="nav-item mt-4">
+                            <a class="nav-link submenu-toggle @(isUserSectionActive ? "active" : "")"
+                               data-bs-toggle="collapse"
+                               href="#userSubmenuAms"
+                               role="button"
+                               aria-expanded="@(isUserSectionActive.ToString().ToLowerInvariant())"
+                               aria-controls="userSubmenuAms">
+                                <i class="fas fa-user-circle"></i>
+                                @User.Identity?.Name
+                                <i class="fas fa-chevron-down submenu-caret"></i>
+                            </a>
+                            <ul class="collapse sidebar-submenu @(isUserSectionActive ? "show" : "")" id="userSubmenuAms">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Account" && currentAction == "Profile" ? "active" : "")" asp-controller="Account" asp-action="Profile">
+                                        <i class="fas fa-user me-2"></i>Profile
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-danger" asp-controller="Account" asp-action="Logout">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+}
+else
+{
                         <li class="nav-item">
                             <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")" 
                                asp-controller="Home" asp-action="Index">
@@ -1314,15 +1418,6 @@
                             </a>
                         </li>
                         
-                        @{
-                            var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
-                            var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
-                            var isCustomersSectionActive = currentController == "Registration" || currentController == "Customer";
-                            var isOperationsSectionActive = currentController == "Transfer" || currentController == "TransferFee" || currentController == "NDC" || currentController == "Refund" || currentController == "DuplicateFileTransfer" || currentController == "Waiver" || currentController == "Rental";
-                            var isPropertySectionActive = currentController == "Property" || currentController == "Project";
-                            var isPaymentsSectionActive = currentController == "Payment" && (currentAction == "CustomerPayments" || currentAction == "PaymentPlans" || currentAction == "CreatePaymentPlan");
-                            var isSalesSectionActive = currentController == "SalesInquiry" || currentController == "Ticket";
-                        }
                         <li class="nav-item">
                             <a class="nav-link submenu-toggle @(isCustomersSectionActive ? "active" : "")"
                                data-bs-toggle="collapse"
@@ -1383,6 +1478,18 @@
                                     <a class="nav-link @(currentController == "Refund" ? "active" : "")"
                                        asp-controller="Refund" asp-action="Index">
                                         <i class="fas fa-undo-alt me-2"></i>Refund
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Possession" ? "active" : "")"
+                                       asp-controller="Possession" asp-action="Index">
+                                        <i class="fas fa-key me-2"></i>Possession
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Allotment" ? "active" : "")"
+                                       asp-controller="Allotment" asp-action="Index">
+                                        <i class="fas fa-hand-holding me-2"></i>Allotment
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -1499,14 +1606,22 @@
                             </ul>
                         </li>
                         
+                        <!-- Accounts Management — collections dashboard & AMS (one sidebar entry; AMS submenu stays inside AMS layout branch only) -->
+                        <li class="nav-item mt-3">
+                            <h6 class="px-3 text-white">Accounting</h6>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(isAccountsMgmtNavActive ? "active" : "")"
+                               asp-controller="AccountsManagement" asp-action="Index">
+                                <i class="fas fa-calculator me-2"></i>Accounts Management
+                            </a>
+                        </li>
+                        
                         <!-- Reports Section -->
                         <li class="nav-item mt-3">
                             <h6 class="px-3 text-white">Reports & Analytics</h6>
                         </li>
                         
-                        @{
-                            var isReportsSectionActive = ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports";
-                        }
                         <li class="nav-item">
                             <a class="nav-link submenu-toggle @(isReportsSectionActive ? "active" : "")"
                                data-bs-toggle="collapse"
@@ -1611,11 +1726,7 @@
                             </li>
 
                         }
-                        
-                        @{
-                            var isUserSectionActive = ViewContext.RouteData.Values["Controller"]?.ToString() == "Account"
-                                && ViewContext.RouteData.Values["Action"]?.ToString() == "Profile";
-                        }
+
                         <li class="nav-item mt-4">
                             <a class="nav-link submenu-toggle @(isUserSectionActive ? "active" : "")"
                                data-bs-toggle="collapse"
@@ -1641,6 +1752,7 @@
                                 </li>
                             </ul>
                         </li>
+}
                     </ul>
                 </div>
             </nav>
@@ -1672,6 +1784,62 @@
                                         case "AccountsManagement":
                                             icon = "fas fa-calculator";
                                             break;
+                                        case "AmsCoa":
+                                        case "AmsPeriod":
+                                        case "AmsOpeningBalance":
+                                            icon = "fas fa-book";
+                                            break;
+                                        case "AmsBank":
+                                            icon = "fas fa-university";
+                                            break;
+                                        case "AmsJv":
+                                            icon = "fas fa-file-invoice";
+                                            break;
+                                        case "AmsLedger":
+                                            icon = "fas fa-book-open";
+                                            break;
+                                        case "AmsBankVoucher":
+                                            icon = "fas fa-money-check-alt";
+                                            break;
+                                        case "AmsAr":
+                                            icon = "fas fa-file-invoice-dollar";
+                                            break;
+                                        case "AmsChequeRegister":
+                                            icon = "fas fa-money-check-alt";
+                                            break;
+                                        case "AmsVendor":
+                                            icon = "fas fa-truck";
+                                            break;
+                                        case "AmsAp":
+                                            icon = "fas fa-file-contract";
+                                            break;
+                                        case "AmsTaxType":
+                                            icon = "fas fa-percent";
+                                            break;
+                                        case "AmsTax":
+                                            icon = "fas fa-receipt";
+                                            break;
+                                        case "AmsDealerCommission":
+                                            icon = "fas fa-hand-holding-usd";
+                                            break;
+                                        case "AmsRefundVoucher":
+                                            icon = "fas fa-undo-alt";
+                                            break;
+                                        case "AmsBudget":
+                                            icon = "fas fa-coins";
+                                            break;
+                                        case "AmsBankReconciliation":
+                                            icon = "fas fa-balance-scale-right";
+                                            break;
+                                        case "AmsReporting":
+                                            icon = "fas fa-chart-area";
+                                            break;
+                                        case "AmsAudit":
+                                            icon = "fas fa-history";
+                                            break;
+                                        case "AmsMasters":
+                                            icon = "fas fa-database";
+                                            break;
                                         case "Rental":
                                             icon = "fas fa-key";
                                             break;
@@ -1680,6 +1848,9 @@
                                             break;
                                         case "Property":
                                             icon = "fas fa-home";
+                                            break;
+                                        case "Possession":
+                                            icon = "fas fa-file-signature";
                                             break;
                                         case "Allotment":
                                             icon = "fas fa-hand-holding";
@@ -1775,6 +1946,18 @@
         });
     </script>
     <script>
+        // Disable mouse wheel changing number inputs while focused (common accidental change).
+        (function () {
+            document.addEventListener('wheel', function (e) {
+                var el = document.activeElement;
+                if (!el) return;
+                if (el.tagName === 'INPUT' && el.type === 'number') {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        })();
+    </script>
+    <script>
         (function () {
             var mobileToggle = document.getElementById('mobileMenuToggle');
             var sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -1817,6 +2000,16 @@
         })();
     </script>
     
+    @{
+        var amsCtrl = ViewContext.RouteData.Values["controller"]?.ToString();
+        var loadAmsLedgerSelect = !string.IsNullOrEmpty(amsCtrl)
+            && amsCtrl.StartsWith("Ams", StringComparison.OrdinalIgnoreCase);
+    }
+    @if (loadAmsLedgerSelect)
+    {
+        <partial name="_AmsLedgerSelectAssets" />
+    }
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -18,7 +18,7 @@ Reports | Defaulters, blocked customers, property report, and other analytics.
 Account | Login, user management (Users), profile, logout.
 Settings | System configuration (key-value store) management.
 ActivityLog | Audit trail of user actions by ref type and ref ID.
-AccountsManagement | Accounts-specific operations and views.
+AccountsManagement | Accounts dashboard (collections/receivables) plus AMS: COA, fiscal periods, vouchers, ledger, AR/AP, tax, reconciliation (acc schema).
 Ticket | Support or task tickets (if used).
 TesSQL | Test SQL / ad-hoc query execution (admin/dev).
 InquiryApi | API endpoint(s) for external inquiry submission.

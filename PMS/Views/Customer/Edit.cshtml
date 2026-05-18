@@ -312,7 +312,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
-                                    <input asp-for="RegisteredSize" id="RegisteredSize" class="form-control" list="RegisteredSizeOptions" placeholder="Select or type size" />
+                                    <input asp-for="RegisteredSize" id="RegisteredSize" class="form-control" type="number" step="0.01" inputmode="decimal" placeholder="Enter size" />
                                     <datalist id="RegisteredSizeOptions"></datalist>
                                     <small class="text-muted">Sizes are suggested from selected project, or type your own value.</small>
                                 </div>
@@ -379,12 +379,11 @@
                                         <small class="text-muted">Sub projects are loaded from the selected project (same as Create).</small>
                                     </div>
                                 <div class="col-md-4">
-                                    <label for="selectedPropertyEdit" class="form-label">Available Properties</label>
-                                    <select id="selectedPropertyEdit" name="SelectedPropertyID" class="form-select" data-selected="@ViewBag.SelectedPropertyID">
-                                        <option value="">Select project, size, and dealer to view available properties</option>
-                                        </select>
-                                    <small id="selectedPropertyEditMessage" class="text-muted">Properties are filtered by the selected project, size, and dealer.</small>
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Allotment is managed from the Allotment module</strong> (workflow).
                                     </div>
+                                </div>
                                 </div>
 
                             <div class="mb-4">
@@ -464,7 +463,7 @@
                         {
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>No allotment found.</strong> Select a matching property above and click <em>Save Changes</em> to create one automatically.
+                                    <strong>No allotment found.</strong> Create a new allotment from the <em>Allotment</em> module.
                                 </div>
                             }
                         </div>
@@ -830,17 +829,6 @@
             $('#ProjectID').on('change', function() {
                 loadSizesForProject($(this).val(), '');
                 loadSubProjects($(this).val(), '');
-                loadProperties();
-            });
-
-            // Load properties when tab is shown
-            $('#allotments-tab').on('shown.bs.tab', function() {
-                loadProperties();
-            });
-
-            // Refresh hidden filters when project/size change
-            $('#ProjectID, #RegisteredSize, #DealerID').on('change', function() {
-                loadProperties();
             });
 
             function toggleDealerFields() {
@@ -848,7 +836,6 @@
                 $('#dealerDropdownWrap').toggle(isYes);
                 $('#dealerNameWrap').toggle(!isYes);
                 if (isYes) { $('#DealerName').val(''); } else { $('#DealerID').val(''); }
-                loadProperties();
             }
             $('#dealerRegYes, #dealerRegNo').on('change', toggleDealerFields);
             toggleDealerFields();
@@ -957,11 +944,7 @@
             }
             $('#DOBDisplay').on('change blur', function() { syncDobForSubmit(true); });
 
-            $('#selectedPropertyEdit').on('change', function() {
-                $(this).data('selected', $(this).val());
-            });
-
-            loadProperties();
+            // Property selection (allotment) has moved to Allotment module workflow.
 
             // Load attachments when attachments tab is shown
             $('#attachments-tab').on('shown.bs.tab', function() {
@@ -1345,95 +1328,6 @@
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
 
-        function loadProperties() {
-            var customerID = customerId;
-            if (!customerID) return;
-
-            var selectedProject = $('#ProjectID').val();
-            var selectedSize = $('#RegisteredSize').val();
-            var propertySelect = $('#selectedPropertyEdit');
-            var message = $('#selectedPropertyEditMessage');
-            var dealerId = $('#dealerRegYes').is(':checked') ? $('#DealerID').val() : null;
-
-            if (!propertySelect.length) return;
-
-            if (!selectedProject || !selectedSize) {
-                propertySelect.html('<option value="">Select project and size to view available properties</option>').data('selected', '');
-                if (message.length) {
-                    message.removeClass('text-danger').addClass('text-muted').text('Properties are filtered by the selected project, size, and dealer.');
-                }
-                return;
-            }
-
-            propertySelect.html('<option value="">Loading properties...</option>');
-            propertySelect.data('selected', '');
-            propertySelect.val('');
-            if (message.length) {
-                message.removeClass('text-danger').addClass('text-muted').text('Loading properties for the selected project, size, and dealer...');
-            }
-
-            $.ajax({
-                url: '@Url.Action("GetAvailablePropertiesForCustomer", "Customer")',
-                method: 'POST',
-                data: { 
-                    customerID: customerID,
-                    projectID: selectedProject,
-                    registeredSize: selectedSize,
-                    dealerID: dealerId || ''
-                },
-                success: function(response) {
-                    if (response.success && response.properties.length > 0) {
-                        var previousSelection = propertySelect.data('selected') || null;
-                        propertySelect.html('<option value="">Select a Property</option>');
-                        $.each(response.properties, function(index, property) {
-                            var optionText = property.plotNo;
-                            if (property.block) optionText += ' - Block ' + property.block;
-                            if (property.street) optionText += ' - ' + property.street;
-                            optionText += ' (' + property.size + ')';
-                            if (property.isCurrent) optionText += ' (Current)';
-                            
-                            var option = $('<option></option>')
-                                    .attr('value', property.propertyID)
-                                .text(optionText);
-
-                            if (property.isCurrent) {
-                                option.attr('data-current', 'true');
-                            }
-
-                            propertySelect.append(option);
-                        });
-
-                        if (previousSelection) {
-                            propertySelect.val(previousSelection);
-                        }
-                        if (!propertySelect.val()) {
-                            var currentOption = propertySelect.find('option[data-current="true"]').first();
-                            if (currentOption.length) {
-                                propertySelect.val(currentOption.val());
-                            }
-                        }
-
-                        propertySelect.data('selected', propertySelect.val());
-
-                        if (message.length) {
-                            var projectName = response.projectName ? response.projectName : 'selected project';
-                            message.removeClass('text-danger').addClass('text-muted').text('Showing ' + response.properties.length + ' properties for ' + projectName + ' (' + response.registeredSize + '). Dealer filter applied if selected.');
-                        }
-                    } else {
-                        var msg = response.message || 'No available properties found for the selected project, size, and dealer.';
-                        propertySelect.html('<option value="">' + msg + '</option>').data('selected', '');
-                        if (message.length) {
-                            message.removeClass('text-muted').addClass('text-danger').text(msg);
-                        }
-                    }
-                },
-                error: function() {
-                    propertySelect.html('<option value="">Error loading properties</option>').data('selected', '');
-                    if (message.length) {
-                        message.removeClass('text-muted').addClass('text-danger').text('Error loading properties.');
-                    }
-                }
-            });
-        }
+        // (intentionally removed loadProperties() and selectedPropertyEdit handlers)
     </script>
 }

@@ -1,0 +1,91 @@
+@model AccVoucher
+@{
+    ViewData["Title"] = "Voucher " + Model.VoucherNo;
+    var isJv = Model.VoucherType?.TypeCode == "JV";
+}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All JVs</a>
+    @if (isJv && ViewBag.CanEdit == true && string.Equals(Model.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+    {
+        <a class="btn btn-outline-primary btn-sm" asp-action="Edit" asp-route-id="@Model.VoucherID">Edit draft</a>
+    }
+</div>
+<dl class="row small">
+    <dt class="col-sm-2">Type</dt><dd class="col-sm-4">@Model.VoucherType?.TypeCode — @Model.VoucherType?.TypeName</dd>
+    <dt class="col-sm-2">Date</dt><dd class="col-sm-4">@Model.VoucherDate.ToString("yyyy-MM-dd")</dd>
+    <dt class="col-sm-2">Period</dt><dd class="col-sm-4">@Model.Period?.PeriodName</dd>
+    <dt class="col-sm-2">Status</dt><dd class="col-sm-4"><span class="badge bg-secondary">@Model.Status</span></dd>
+    <dt class="col-sm-2">Reference</dt><dd class="col-sm-10">@Model.ReferenceNo</dd>
+    <dt class="col-sm-2">Narration</dt><dd class="col-sm-10">@Model.Narration</dd>
+    <dt class="col-sm-2">Totals</dt><dd class="col-sm-10">Dr @Model.TotalDebit.ToString("N2") / Cr @Model.TotalCredit.ToString("N2")</dd>
+</dl>
+<div class="table-responsive mb-4">
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr><th>#</th><th>Account</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model.Lines.OrderBy(x => x.LineNumber))
+            {
+                <tr>
+                    <td>@l.LineNumber</td>
+                    <td>@(l.AccountHead?.AccountCode) — @(l.AccountHead?.AccountName)</td>
+                    <td class="text-end">@l.DebitAmount.ToString("N2")</td>
+                    <td class="text-end">@l.CreditAmount.ToString("N2")</td>
+                    <td>@l.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (!isJv && Model.VoucherType?.TypeCode == "RV" && Model.ReversalVoucherID.HasValue)
+{
+    <p class="small"><a asp-action="Details" asp-route-id="@Model.ReversalVoucherID.Value">Open source voucher</a></p>
+}
+
+@if (isJv && ViewBag.CanEdit == true)
+{
+    <div class="d-flex flex-wrap gap-2">
+        @if (string.Equals(Model.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-action="Submit" asp-route-id="@Model.VoucherID" method="post" class="d-inline" onsubmit="return confirm('Submit for approval?');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-primary">Submit</button>
+            </form>
+            @if (ViewBag.CanDelete == true)
+            {
+                <form asp-action="Delete" asp-route-id="@Model.VoucherID" method="post" class="d-inline" onsubmit="return confirm('Delete this voucher permanently?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            }
+        }
+        else if (ViewBag.CanDelete == true)
+        {
+            ViewData["AmsDeleteEntity"] = "voucher";
+            ViewData["AmsDeleteId"] = Model.VoucherID;
+            ViewData["AmsDeleteReturnUrl"] = Url.Action("Details", new { id = Model.VoucherID });
+            ViewData["AmsDeleteConfirm"] = $"Delete posted voucher {Model.VoucherNo}?";
+            <partial name="_AmsDeleteButton" />
+        }
+        @if (string.Equals(Model.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-action="Approve" asp-route-id="@Model.VoucherID" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+            </form>
+        }
+        @if (string.Equals(Model.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-action="Post" asp-route-id="@Model.VoucherID" method="post" class="d-inline" onsubmit="return confirm('Post to ledger?');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-success">Post</button>
+            </form>
+        }
+        @if (string.Equals(Model.Status, "Posted", StringComparison.OrdinalIgnoreCase) && !Model.IsReversed)
+        {
+            <a class="btn btn-sm btn-warning" asp-action="Reverse" asp-route-id="@Model.VoucherID">Reverse (RV)</a>
+        }
+    </div>
+}

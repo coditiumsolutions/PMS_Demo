@@ -99,7 +99,9 @@
                 <div class="a4-info-block">
                     <h6>Project / Plan Information</h6>
                     @{
-                        var property = Model.Allotments?.FirstOrDefault()?.Property;
+                        var property = Model.Allotments?
+                            .FirstOrDefault(a => string.Equals(a.WorkFlowStatus, "Approved", StringComparison.OrdinalIgnoreCase))?
+                            .Property;
                     }
                     <div class="a4-info-row">
                         <span class="a4-info-label">Project Name:</span>

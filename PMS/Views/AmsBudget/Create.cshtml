@@ -1,0 +1,43 @@
+@model AccBudget
+@{
+    ViewData["Title"] = "New budget";
+    var fys = ViewBag.FiscalYears as IEnumerable<AccFiscalYear> ?? Array.Empty<AccFiscalYear>();
+}
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="BudgetName" class="form-label"></label>
+            <input asp-for="BudgetName" class="form-control" maxlength="150" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="FiscalYearID" class="form-label">Fiscal year</label>
+            <select asp-for="FiscalYearID" class="form-select" required>
+                @foreach (var f in fys)
+                {
+                    <option value="@f.FiscalYearID">@f.YearName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="BudgetType" class="form-label"></label>
+            <input asp-for="BudgetType" class="form-control" maxlength="30" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select">
+                <option value="Draft">Draft</option>
+                <option value="Approved">Approved</option>
+                <option value="Closed">Closed</option>
+            </select>
+        </div>
+        <div class="col-md-12">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="2" maxlength="500"></textarea>
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

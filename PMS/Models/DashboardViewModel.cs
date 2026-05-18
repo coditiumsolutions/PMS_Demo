@@ -10,6 +10,7 @@ namespace PMS.Models
         public int PendingWaivers { get; set; }
         public int PendingTransfers { get; set; }
         public int PendingRefunds { get; set; }
+        public int PendingAllotments { get; set; }
         public string PendingWaiverStatusFilter { get; set; } = "Initiated";
         public bool ShowPendingTasks { get; set; }
         public int TotalProjects { get; set; }

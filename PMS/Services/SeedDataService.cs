@@ -34,19 +34,60 @@ namespace PMS.Services
             // Seed NDC section in Configuration (if missing)
             await SeedNDCConfiguration();
             await SeedWaiverConfiguration();
+            await SeedPossessionConfiguration();
+
+            await SeedEnforce2FAConfiguration();
 
             // Seed Users category in Configuration (Departments, Designations)
             await SeedUsersConfiguration();
 
             // Seed default module permissions for Admin users (full access)
             await SeedUserModulePermissionsAsync();
+
+            // Legacy: merge AMS module rows into AccountsManagement (single accounting permission)
+            await MigrateLegacyAmsModulePermissionsAsync();
+        }
+
+        private static readonly string[] PermissionRank = { "NoAccess", "Read", "Author", "Edit", "Admin" };
+
+        private static int PermissionStrength(string? permission)
+        {
+            var i = Array.IndexOf(PermissionRank, permission ?? "NoAccess");
+            return i < 0 ? 0 : i;
+        }
+
+        private static string StrongerPermission(string? a, string? b) =>
+            PermissionStrength(a) >= PermissionStrength(b) ? (a ?? "NoAccess") : (b ?? "NoAccess");
+
+        /// <summary>Moves UserModulePermission rows from ModuleKey AMS → AccountsManagement (keeps stronger of both).</summary>
+        private async Task MigrateLegacyAmsModulePermissionsAsync()
+        {
+            while (await _context.UserModulePermissions.AnyAsync(p => p.ModuleKey == "AMS"))
+            {
+                var ams = await _context.UserModulePermissions.FirstAsync(p => p.ModuleKey == "AMS");
+                var mgmt = await _context.UserModulePermissions.FirstOrDefaultAsync(p => p.UserID == ams.UserID && p.ModuleKey == "AccountsManagement");
+                if (mgmt == null)
+                {
+                    _context.UserModulePermissions.Add(new UserModulePermission
+                    {
+                        UserID = ams.UserID,
+                        ModuleKey = "AccountsManagement",
+                        Permission = ams.Permission
+                    });
+                }
+                else
+                    mgmt.Permission = StrongerPermission(mgmt.Permission, ams.Permission);
+
+                _context.UserModulePermissions.Remove(ams);
+                await _context.SaveChangesAsync();
+            }
         }
 
         private static readonly string[] ModuleKeys = new[]
         {
             "Home", "Registration", "Customer", "Transfer", "TransferFee", "NDC", "Project", "Dealer", "Property", "Payment",
             "Allotment", "Rental", "SalesInquiry", "Reports", "Account", "Settings", "ActivityLog",
-            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "DuplicateFileTransfer", "Waiver", "PaymentAudit"
+            "AccountsManagement", "Ticket", "TesSQL", "InquiryApi", "Refund", "DuplicateFileTransfer", "Waiver", "PaymentAudit", "Possession"
         };
 
         private async Task SeedUserModulePermissionsAsync()
@@ -175,6 +216,38 @@ namespace PMS.Services
                 });
             }
             await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedPossessionConfiguration()
+        {
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "possessionworkflow"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "possessionworkflow",
+                    Category = "Possession",
+                    ConfigValue = "Initiated,Operations Desk,Approved,Declined",
+                    Description = "Possession workflow statuses (comma-separated)",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedEnforce2FAConfiguration()
+        {
+            if (!await _context.Configurations.AnyAsync(c => c.ConfigKey == "Enforce2FA"))
+            {
+                _context.Configurations.Add(new Configuration
+                {
+                    ConfigKey = "Enforce2FA",
+                    Category = "Security",
+                    ConfigValue = "false",
+                    Description = "When true, all users must complete Google Authenticator (TOTP) after password. When false, only users with TwoFactorEnabled are prompted.",
+                    CreatedAt = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+            }
         }
 
         private async Task SeedRoles()

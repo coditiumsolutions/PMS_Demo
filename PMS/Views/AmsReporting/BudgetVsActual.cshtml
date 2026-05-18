@@ -1,0 +1,64 @@
+@model List<AmsBudgetVsActualRowVm>
+@{
+    ViewData["Title"] = "Budget vs actual";
+    var budgets = ViewBag.Budgets as IEnumerable<AccBudget> ?? Array.Empty<AccBudget>();
+    var sel = ViewBag.SelectedBudgetId as int?;
+}
+<p class="text-muted small mb-3">Actual = sum of <strong>(Debit − Credit)</strong> on posted voucher lines for each budget account (same spirit as <code>acc.vw_BudgetVsActual</code>; optional DB script <code>Scripts/AMS_vw_BudgetVsActual.sql</code>).</p>
+<form method="get" asp-action="BudgetVsActual" class="row g-2 align-items-end mb-3">
+    <div class="col-md-6">
+        <label class="form-label">Budget</label>
+        <select name="budgetId" class="form-select">
+            <option value="">— Select —</option>
+            @foreach (var b in budgets)
+            {
+                if (sel == b.BudgetID)
+                {
+                    <option value="@b.BudgetID" selected>@b.BudgetName</option>
+                }
+                else
+                {
+                    <option value="@b.BudgetID">@b.BudgetName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Run</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("BudgetVsActual")" />
+    </div>
+</form>
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Account</th>
+                    <th>Period</th>
+                    <th class="text-end">Budget</th>
+                    <th class="text-end">Actual</th>
+                    <th class="text-end">Variance</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.AccountCode — @r.AccountName</td>
+                        <td class="small">@(r.PeriodName ?? "—")</td>
+                        <td class="text-end">@r.BudgetAmount.ToString("N2")</td>
+                        <td class="text-end">@r.ActualAmount.ToString("N2")</td>
+                        <td class="text-end">@r.Variance.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (sel.HasValue)
+{
+    <p class="text-muted">No budget lines for this budget.</p>
+}

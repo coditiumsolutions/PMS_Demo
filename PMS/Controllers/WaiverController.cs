@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PMS.Data;
 using PMS.Models;
 using PMS.Services;
+using System.Data;
 using System.Security.Claims;
 
 namespace PMS.Controllers
@@ -28,19 +29,84 @@ namespace PMS.Controllers
             _surchargeService = surchargeService;
         }
 
+        private sealed class ApprovalPaymentResult
+        {
+            public bool IsSuccess { get; init; }
+            public bool IsCreatedNow { get; init; }
+            public string Message { get; init; } = string.Empty;
+        }
+
         private async Task<bool> IsTableExistsAsync(string tableName)
         {
             try
             {
-                // Used to prevent EF from querying missing tables (e.g., Payments)
-                var count = await _context.Database
-                    .SqlQueryRaw<int>($"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'")
-                    .FirstOrDefaultAsync();
-                return count > 0;
+                // Do NOT dispose this connection — it is owned by DbContext. Disposing it breaks EF queries afterward.
+                var connection = _context.Database.GetDbConnection();
+                var wasClosed = connection.State != ConnectionState.Open;
+                if (wasClosed)
+                {
+                    await connection.OpenAsync();
+                }
+
+                try
+                {
+                    await using var command = connection.CreateCommand();
+                    command.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @tableName";
+                    var tableNameParam = command.CreateParameter();
+                    tableNameParam.ParameterName = "@tableName";
+                    tableNameParam.Value = tableName;
+                    command.Parameters.Add(tableNameParam);
+
+                    var scalar = await command.ExecuteScalarAsync();
+                    var count = Convert.ToInt32(scalar ?? 0);
+                    return count > 0;
+                }
+                finally
+                {
+                    if (wasClosed && connection.State == ConnectionState.Open)
+                    {
+                        await connection.CloseAsync();
+                    }
+                }
             }
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Avoid <c>ThenInclude(ps =&gt; ps.Payments)</c> on waiver search/create — it has caused runtime SQL/EF failures on some deployments.
+        /// </summary>
+        private async Task AttachPaymentsToSchedulesAsync(string customerIdTrimmed, IEnumerable<PaymentSchedule>? schedules)
+        {
+            if (schedules == null) return;
+            var scheduleList = schedules as IList<PaymentSchedule> ?? schedules.ToList();
+            if (scheduleList.Count == 0) return;
+
+            var scheduleIds = scheduleList
+                .Select(s => s.ScheduleID)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+            if (scheduleIds.Count == 0) return;
+
+            var paymentsList = await _context.Payments.AsNoTracking()
+                .Where(p => p.CustomerID == customerIdTrimmed
+                    && p.ScheduleID != null
+                    && scheduleIds.Contains(p.ScheduleID))
+                .ToListAsync();
+
+            var bySchedule = paymentsList
+                .GroupBy(p => p.ScheduleID!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var s in scheduleList)
+            {
+                if (!string.IsNullOrWhiteSpace(s.ScheduleID) && bySchedule.TryGetValue(s.ScheduleID, out var plist))
+                    s.Payments = plist;
+                else
+                    s.Payments = new List<Payment>();
             }
         }
 
@@ -187,67 +253,70 @@ namespace PMS.Controllers
             });
         }
 
-        [HttpPost]
+        [AcceptVerbs("GET", "POST")]
         public async Task<IActionResult> SearchCustomerForWaiver(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
                 return Json(new { success = false, message = "Enter a Customer ID." });
 
-            var paymentsTableExists = await IsTableExistsAsync("Payments");
-
-            var customerQuery = _context.Customers
-                .Include(c => c.PaymentPlan)
-                    .ThenInclude(p => p!.Project)
-                .Include(c => c.PaymentPlan)
-                    .ThenInclude(p => p!.PaymentSchedules)
-                .AsNoTracking();
-
-            if (paymentsTableExists)
+            try
             {
-                customerQuery = customerQuery
+                var paymentsTableExists = await IsTableExistsAsync("Payments");
+
+                var customerQuery = _context.Customers
+                    .Include(c => c.PaymentPlan)
+                        .ThenInclude(p => p!.Project)
                     .Include(c => c.PaymentPlan)
                         .ThenInclude(p => p!.PaymentSchedules)
-                            .ThenInclude(ps => ps.Payments);
-            }
+                    .AsNoTracking();
 
-            var customer = await customerQuery
-                .FirstOrDefaultAsync(c => c.CustomerID == customerId.Trim());
+                var customer = await customerQuery
+                    .FirstOrDefaultAsync(c => c.CustomerID == customerId.Trim());
 
-            if (customer == null)
-                return Json(new { success = false, message = "Customer not found." });
+                if (customer == null)
+                    return Json(new { success = false, message = "Customer not found." });
 
-            var schedules = customer.PaymentPlan?.PaymentSchedules?.OrderBy(x => x.InstallmentNo ?? int.MaxValue).ToList()
-                ?? new List<PaymentSchedule>();
+                if (paymentsTableExists)
+                    await AttachPaymentsToSchedulesAsync(customer.CustomerID.Trim(), customer.PaymentPlan?.PaymentSchedules);
 
-            var surchargeMap = _surchargeService.ComputeBySchedule(schedules, customer.CustomerID, DateTime.Now.Date);
-            var lines = schedules.Select(s =>
-            {
-                surchargeMap.TryGetValue(s.ScheduleID, out var row);
-                return new
+                var schedules = customer.PaymentPlan?.PaymentSchedules?.OrderBy(x => x.InstallmentNo ?? int.MaxValue).ToList()
+                    ?? new List<PaymentSchedule>();
+
+                var surchargeMap = _surchargeService.ComputeBySchedule(schedules, customer.CustomerID, DateTime.Now.Date);
+                var lines = schedules.Select(s =>
                 {
-                    scheduleId = s.ScheduleID,
-                    installmentNo = s.InstallmentNo,
-                    dueDate = s.DueDate.ToString("MMM dd, yyyy"),
-                    amount = s.Amount,
-                    paid = row?.AmountPaid ?? 0m,
-                    outstanding = row?.Outstanding ?? s.Amount,
-                    surcharge = row?.Surcharge ?? 0m
-                };
-            }).ToList();
+                    surchargeMap.TryGetValue(s.ScheduleID, out var row);
+                    return new
+                    {
+                        scheduleId = s.ScheduleID,
+                        installmentNo = s.InstallmentNo,
+                        dueDate = s.DueDate.ToString("MMM dd, yyyy"),
+                        amount = s.Amount,
+                        paid = row?.AmountPaid ?? 0m,
+                        outstanding = row?.Outstanding ?? s.Amount,
+                        surcharge = row?.Surcharge ?? 0m
+                    };
+                }).ToList();
 
-            var totalSurcharge = surchargeMap.Values.Sum(x => x.Surcharge);
-            return Json(new
+                var totalSurcharge = surchargeMap.Values.Sum(x => x.Surcharge);
+
+                return Json(new
+                {
+                    success = true,
+                    customerID = customer.CustomerID,
+                    fullName = customer.FullName ?? "—",
+                    cnic = customer.CNIC ?? "—",
+                    phone = customer.Phone ?? "—",
+                    project = customer.PaymentPlan?.Project?.ProjectName ?? "—",
+                    plan = customer.PaymentPlan?.PlanName ?? "—",
+                    lines,
+                    totalSurcharge
+                });
+            }
+            catch
             {
-                success = true,
-                customerID = customer.CustomerID,
-                fullName = customer.FullName ?? "—",
-                cnic = customer.CNIC ?? "—",
-                phone = customer.Phone ?? "—",
-                project = customer.PaymentPlan?.Project?.ProjectName ?? "—",
-                plan = customer.PaymentPlan?.PlanName ?? "—",
-                lines,
-                totalSurcharge
-            });
+                return Json(new { success = false, message = "Unable to load customer payment data. Try again." });
+            }
         }
 
         [HttpPost]
@@ -269,14 +338,6 @@ namespace PMS.Controllers
                     .ThenInclude(p => p!.PaymentSchedules)
                 .AsNoTracking();
 
-            if (paymentsTableExists)
-            {
-                customerQuery = customerQuery
-                    .Include(c => c.PaymentPlan)
-                        .ThenInclude(p => p!.PaymentSchedules)
-                            .ThenInclude(ps => ps.Payments);
-            }
-
             var customer = await customerQuery
                 .FirstOrDefaultAsync(c => c.CustomerID == model.CustomerID);
 
@@ -286,6 +347,9 @@ namespace PMS.Controllers
             decimal totalSurcharge = 0m;
             if (customer != null)
             {
+                if (paymentsTableExists)
+                    await AttachPaymentsToSchedulesAsync(customer.CustomerID.Trim(), customer.PaymentPlan?.PaymentSchedules);
+
                 var schedules = customer.PaymentPlan?.PaymentSchedules ?? new List<PaymentSchedule>();
                 var surchargeMap = _surchargeService.ComputeBySchedule(schedules, customer.CustomerID, DateTime.Now.Date);
                 totalSurcharge = surchargeMap.Values.Sum(x => x.Surcharge);
@@ -566,17 +630,31 @@ namespace PMS.Controllers
                 waiver.Comments = AppendComment(waiver.Comments, $"{label}: {trimmed}");
             }
 
-            waiver.Status = resolvedTargetStatus;
-
+            string? approvalPaymentNote = null;
             if (isFinalApproved)
             {
-                await ApplyApprovedStateAsync(waiver);
+                var paymentResult = await ApplyApprovedStateAsync(waiver);
+                if (!paymentResult.IsSuccess)
+                {
+                    TempData["ErrorMessage"] = paymentResult.Message;
+                    return RedirectToAction(nameof(Edit), new { id = waiver.WaiverID });
+                }
+
+                waiver.Status = resolvedTargetStatus;
+                approvalPaymentNote = paymentResult.IsCreatedNow
+                    ? " Negative waiver payment recorded."
+                    : " Matching waiver payment was already on file.";
             }
             else if (isFinalDeclined)
             {
                 // Ensure approval fields aren't accidentally set.
+                waiver.Status = resolvedTargetStatus;
                 waiver.ApprovedBy = null;
                 waiver.ApprovedAt = null;
+            }
+            else
+            {
+                waiver.Status = resolvedTargetStatus;
             }
 
             _context.ActivityLogs.Add(new ActivityLog
@@ -589,7 +667,7 @@ namespace PMS.Controllers
             });
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = $"Waiver {waiver.WaiverID} moved to {resolvedTargetStatus}.";
+            TempData["SuccessMessage"] = $"Waiver {waiver.WaiverID} moved to {resolvedTargetStatus}.{approvalPaymentNote ?? string.Empty}";
             return string.Equals(resolvedTargetStatus, approvedStatus, StringComparison.OrdinalIgnoreCase)
                 ? RedirectToAction(nameof(Details), new { id = waiver.WaiverID })
                 : RedirectToAction(nameof(Edit), new { id = waiver.WaiverID });
@@ -634,13 +712,17 @@ namespace PMS.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private async Task ApplyApprovedStateAsync(Waiver waiver)
+        private async Task<ApprovalPaymentResult> ApplyApprovedStateAsync(Waiver waiver)
         {
             var paymentsTableExists = await IsTableExistsAsync("Payments");
             if (!paymentsTableExists)
             {
-                // Payments table is missing in some environments; still allow status change without failing.
-                return;
+                return new ApprovalPaymentResult
+                {
+                    IsSuccess = false,
+                    IsCreatedNow = false,
+                    Message = "Approval blocked: Payments table check failed. Negative waiver payment could not be created."
+                };
             }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -654,7 +736,12 @@ namespace PMS.Controllers
                 && p.Method == "Waiver");
             if (alreadyExists)
             {
-                return;
+                return new ApprovalPaymentResult
+                {
+                    IsSuccess = true,
+                    IsCreatedNow = false,
+                    Message = "Matching waiver payment already exists."
+                };
             }
 
             var payment = new Payment
@@ -672,6 +759,12 @@ namespace PMS.Controllers
                 AuditStatus = "Approved"
             };
             _context.Payments.Add(payment);
+            return new ApprovalPaymentResult
+            {
+                IsSuccess = true,
+                IsCreatedNow = true,
+                Message = "Negative waiver payment staged."
+            };
         }
 
         private async Task<string> GenerateWaiverIdAsync()

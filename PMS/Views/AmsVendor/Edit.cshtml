@@ -1,0 +1,56 @@
+@model AccVendor
+@{
+    ViewData["Title"] = "Edit vendor " + Model.VendorCode;
+    var heads = ViewBag.AccountHeads as IEnumerable<AccAccountHead> ?? Array.Empty<AccAccountHead>();
+}
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="VendorID" />
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="VendorCode" class="form-label"></label>
+            <input asp-for="VendorCode" class="form-control" maxlength="20" required />
+            <span asp-validation-for="VendorCode" class="text-danger"></span>
+        </div>
+        <div class="col-md-8">
+            <label asp-for="VendorName" class="form-label"></label>
+            <input asp-for="VendorName" class="form-control" maxlength="200" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="VendorType" class="form-label"></label>
+            <input asp-for="VendorType" class="form-control" maxlength="50" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="AccountHeadID" class="form-label">Default AP GL (optional)</label>
+            <select asp-for="AccountHeadID" class="form-select ams-ledger-select" data-placeholder="Search AP GL…">
+                <option value="">— None —</option>
+                @foreach (var h in heads)
+                {
+                    <option value="@h.AccountHeadID">@h.AccountCode — @h.AccountName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Active</label>
+            </div>
+        </div>
+        <div class="col-md-4"><label asp-for="NTN" class="form-label"></label><input asp-for="NTN" class="form-control" maxlength="30" /></div>
+        <div class="col-md-4"><label asp-for="STRN" class="form-label"></label><input asp-for="STRN" class="form-control" maxlength="30" /></div>
+        <div class="col-md-4"><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" maxlength="30" /></div>
+        <div class="col-md-6"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" maxlength="150" /></div>
+        <div class="col-md-6"><label asp-for="ContactPerson" class="form-label"></label><input asp-for="ContactPerson" class="form-control" maxlength="100" /></div>
+        <div class="col-12"><label asp-for="Address" class="form-label"></label><textarea asp-for="Address" class="form-control" rows="2" maxlength="500"></textarea></div>
+        <div class="col-md-6"><label asp-for="BankName" class="form-label"></label><input asp-for="BankName" class="form-control" maxlength="150" /></div>
+        <div class="col-md-6"><label asp-for="BankAccountTitle" class="form-label"></label><input asp-for="BankAccountTitle" class="form-control" maxlength="200" /></div>
+        <div class="col-md-6"><label asp-for="BankAccountNumber" class="form-label"></label><input asp-for="BankAccountNumber" class="form-control" maxlength="50" /></div>
+        <div class="col-md-6"><label asp-for="IBAN" class="form-label"></label><input asp-for="IBAN" class="form-control" maxlength="34" /></div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

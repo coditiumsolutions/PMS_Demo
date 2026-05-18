@@ -1,0 +1,25 @@
+@model AccVoucher
+@{
+    ViewData["Title"] = "Reverse " + Model.VoucherNo;
+}
+<p>This will create a posted <strong>RV</strong> voucher with swapped debits/credits and mark this JV as reversed.</p>
+<div class="table-responsive mb-3">
+    <table class="table table-sm">
+        <thead><tr><th>Account</th><th class="text-end">Dr→Cr</th><th class="text-end">Cr→Dr</th></tr></thead>
+        <tbody>
+            @foreach (var l in Model.Lines.OrderBy(x => x.LineNumber))
+            {
+                <tr>
+                    <td>@l.AccountHead?.AccountCode</td>
+                    <td class="text-end">@l.CreditAmount.ToString("N2")</td>
+                    <td class="text-end">@l.DebitAmount.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<form asp-action="ReverseConfirm" asp-route-id="@Model.VoucherID" method="post" onsubmit="return confirm('Create and post reversal voucher?');">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-danger">Confirm reversal</button>
+    <a asp-action="Details" asp-route-id="@Model.VoucherID" class="btn btn-outline-secondary">Cancel</a>
+</form>

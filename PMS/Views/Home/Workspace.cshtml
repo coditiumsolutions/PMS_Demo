@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Workspace - Juba Smart City PMS";
+    ViewData["Title"] = "Workspace - ZKB Eclipse";
 }
 
 <!-- Workspace Header -->
@@ -9,7 +9,12 @@
             <h3 class="workspace-title">
                 <i class="fas fa-th-large me-2"></i>Workspace
             </h3>
-            <p class="workspace-subtitle">Quick access to all modules</p>
+            <p class="workspace-subtitle mb-2">Quick access to all modules</p>
+            <p class="mb-0">
+                <a href="@Url.Action("Index", "AccountsManagement")" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-calculator me-1"></i>Accounts Management
+                </a>
+            </p>
         </div>
         <div class="workspace-search-wrap">
             <div class="input-group">

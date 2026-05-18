@@ -1,0 +1,71 @@
+@model List<AmsGlRowVm>
+@{
+    ViewData["Title"] = "General ledger & account statement";
+    var from = (DateTime)ViewBag.FromDate;
+    var to = (DateTime)ViewBag.ToDate;
+    var heads = ViewBag.AccountHeads as IEnumerable<AccAccountHead> ?? Array.Empty<AccAccountHead>();
+    var sel = ViewBag.AccountHeadId as int?;
+}
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-5">
+        <label class="form-label small mb-0">Account</label>
+        <select name="accountHeadId" class="form-select form-select-sm ams-ledger-select" required data-placeholder="Search account…" data-allow-clear="false">
+            <option value="">— Select —</option>
+            @foreach (var h in heads)
+            {
+                if (sel == h.AccountHeadID)
+                {
+                    <option value="@h.AccountHeadID" selected="selected">@h.AccountCode — @h.AccountName</option>
+                }
+                else
+                {
+                    <option value="@h.AccountHeadID">@h.AccountCode — @h.AccountName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">From</label>
+        <input type="date" name="fromDate" class="form-control form-control-sm" value="@from.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">To</label>
+        <input type="date" name="toDate" class="form-control form-control-sm" value="@to.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Run</button>
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <partial name="_AmsExportCsv" model="@("GeneralLedger")" />
+    </div>
+</form>
+<p class="small text-muted">Posted lines only for the selected account and date range.</p>
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Voucher</th>
+                <th>Type</th>
+                <th>#</th>
+                <th>Description</th>
+                <th class="text-end">Debit</th>
+                <th class="text-end">Credit</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.VoucherDate.ToString("yyyy-MM-dd")</td>
+                    <td>@r.VoucherNo</td>
+                    <td>@r.TypeCode</td>
+                    <td>@r.LineNumber</td>
+                    <td>@r.Description</td>
+                    <td class="text-end">@r.DebitAmount.ToString("N2")</td>
+                    <td class="text-end">@r.CreditAmount.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

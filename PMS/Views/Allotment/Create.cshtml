@@ -26,6 +26,13 @@
     <small>If a customer wants another property, create a new customer entry with a new Registration ID and Payment Plan.</small>
 </div>
 
+<div class="alert alert-secondary mb-4">
+    <i class="fas fa-route me-2"></i>
+    <strong>Workflow (like Refund):</strong> After you submit, the request is <strong>Initiated</strong> → <strong>Operations Desk</strong> → <strong>Approved</strong> or <strong>Declined</strong>.
+    The customer is only allotted on <strong>Approved</strong> (the plot is <strong>reserved</strong> until then).
+    You will be taken to the workflow screen to track status.
+</div>
+
 <div class="row">
     <!-- Step 1: Search Customer -->
     <div class="col-12">
@@ -45,7 +52,7 @@
                                 <i class="fas fa-search me-2"></i>Search
                             </button>
                         </div>
-                        <small class="text-muted">Enter the Customer ID and click Search to validate</small>
+                        <small class="text-muted">Search loads matching plots for this customer’s project and registered size. Then pick a plot and use <strong>Submit allotment request</strong> below.</small>
                     </div>
                 </div>
 
@@ -166,7 +173,7 @@
         <div class="card" id="allotmentFormSection" style="display: none;">
             <div class="card-header bg-warning text-dark">
                 <h5 class="mb-0">
-                    <i class="fas fa-file-contract me-2"></i>Step 3: Complete Allotment
+                    <i class="fas fa-file-contract me-2"></i>Step 3: Submit request (starts as Initiated)
                 </h5>
             </div>
             <div class="card-body">
@@ -206,7 +213,7 @@
                             <i class="fas fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-hand-holding me-2"></i>Allot Property
+                            <i class="fas fa-paper-plane me-2"></i>Submit allotment request
                         </button>
                     </div>
                 </form>
@@ -242,24 +249,34 @@
 
 @section Scripts {
     <script>
+    $(function () {
         let selectedCustomerData = null;
         let availableProperties = [];
 
+        function showCustomerSearchError(msg) {
+            $('#customerErrorMessage').text(msg);
+            $('#customerErrorSection').show();
+            $('#customerInfoSection').hide();
+            $('#propertySelectionSection').hide();
+            $('#allotmentFormSection').hide();
+            $('#noPropertiesSection').hide();
+        }
+
         // Search Customer
-        $('#searchCustomerBtn').click(function() {
+        $('#searchCustomerBtn').on('click', function () {
             var customerID = $('#customerIDInput').val().trim();
-            
+
             if (!customerID) {
                 alert('Please enter a Customer ID');
                 return;
             }
 
-            // Show loading
-            $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Searching...').prop('disabled', true);
+            $('#customerErrorSection').hide();
+            var $btn = $(this);
+            $btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Searching...').prop('disabled', true);
 
-            $.post('@Url.Action("SearchCustomer", "Allotment")', { customerID: customerID }, function(response) {
+            $.post('@Url.Action("SearchCustomer", "Allotment")', { customerID: customerID }, function (response) {
                 if (response.success) {
-                    // Display customer info
                     selectedCustomerData = response.customer;
                     $('#displayCustomerID').text(response.customer.customerID);
                     $('#displayFullName').text(response.customer.fullName);
@@ -272,67 +289,75 @@
                     $('#customerErrorSection').hide();
                     $('#selectedCustomerID').val(response.customer.customerID);
 
-                    // Load available properties
                     loadAvailableProperties(customerID);
                 } else {
-                    // Show error
-                    $('#customerErrorMessage').text(response.message);
-                    $('#customerErrorSection').show();
-                    $('#customerInfoSection').hide();
-                    $('#propertySelectionSection').hide();
-                    $('#allotmentFormSection').hide();
+                    showCustomerSearchError(response.message || 'Customer could not be validated.');
                 }
-            }).always(function() {
-                $('#searchCustomerBtn').html('<i class="fas fa-search me-2"></i>Search').prop('disabled', false);
+            }).fail(function () {
+                showCustomerSearchError('Could not reach the server. Check your connection and try again.');
+            }).always(function () {
+                $btn.html('<i class="fas fa-search me-2"></i>Search').prop('disabled', false);
             });
         });
 
         // Load Available Properties
         function loadAvailableProperties(customerID) {
-            $.post('@Url.Action("GetAvailableProperties", "Allotment")', { customerID: customerID }, function(response) {
-                if (response.success) {
+            $.post('@Url.Action("GetAvailableProperties", "Allotment")', { customerID: customerID }, function (response) {
+                var $select = $('#propertySelect');
+                $select.empty().append('<option value="">Select a property...</option>');
+                $('#propertyDetailsSection').hide();
+                $('#allotmentFormSection').hide();
+
+                if (response.success && response.properties && response.properties.length) {
                     availableProperties = response.properties;
-                    
-                    // Populate dropdown
-                    var $select = $('#propertySelect');
-                    $select.empty().append('<option value="">Select a property...</option>');
-                    
-                    $.each(response.properties, function(i, prop) {
+
+                    $.each(response.properties, function (i, prop) {
+                        var typeLabel = prop.propertyType != null && prop.propertyType !== '' ? prop.propertyType : '—';
                         $select.append($('<option>', {
                             value: prop.propertyID,
-                            text: `${prop.plotNo} - Block ${prop.block} - ${prop.size} - ${prop.propertyType}`,
+                            text: prop.plotNo + ' - Block ' + prop.block + ' - ' + prop.size + ' - ' + typeLabel,
                             'data-property': JSON.stringify(prop)
                         }));
                     });
 
-                    $('#propertySelectionSection').show();
                     $('#noPropertiesSection').hide();
+                    $('#propertySelectionSection').show();
                 } else {
-                    $('#noPropertiesMessage').text(response.message);
+                    availableProperties = [];
+                    $('#noPropertiesMessage').text(response.message || 'No matching plots found.');
                     $('#noPropertiesSection').show();
-                    $('#propertySelectionSection').hide();
-                    $('#allotmentFormSection').hide();
+                    $('#propertySelectionSection').show();
                 }
+            }).fail(function () {
+                availableProperties = [];
+                $('#noPropertiesMessage').text('Could not load properties. Try again or contact support.');
+                $('#noPropertiesSection').show();
+                $('#propertySelectionSection').show();
             });
         }
 
         // Property Selection Change
-        $('#propertySelect').change(function() {
+        $('#propertySelect').on('change', function () {
             var selectedOption = $(this).find('option:selected');
             var propertyID = $(this).val();
+            var raw = selectedOption.attr('data-property');
 
-            if (propertyID) {
-                var propertyData = JSON.parse(selectedOption.attr('data-property'));
-                
-                // Display property details
-                $('#displayPlotNo').text(propertyData.plotNo);
-                $('#displayBlock').text(propertyData.block);
-                $('#displayPropertySize').text(propertyData.size);
-                $('#displayPropertyType').text(propertyData.propertyType);
+            if (propertyID && raw) {
+                try {
+                    var propertyData = JSON.parse(raw);
+                    $('#displayPlotNo').text(propertyData.plotNo);
+                    $('#displayBlock').text(propertyData.block);
+                    $('#displayPropertySize').text(propertyData.size);
+                    $('#displayPropertyType').text(propertyData.propertyType || '—');
 
-                $('#selectedPropertyID').val(propertyID);
-                $('#propertyDetailsSection').show();
-                $('#allotmentFormSection').show();
+                    $('#selectedPropertyID').val(propertyID);
+                    $('#propertyDetailsSection').show();
+                    $('#allotmentFormSection').show();
+                } catch (e) {
+                    $('#propertyDetailsSection').hide();
+                    $('#allotmentFormSection').hide();
+                    alert('Could not read property details. Please re-select the plot.');
+                }
             } else {
                 $('#propertyDetailsSection').hide();
                 $('#allotmentFormSection').hide();
@@ -340,23 +365,24 @@
         });
 
         // Reset Form
-        function resetForm() {
+        window.resetForm = function () {
             $('#customerIDInput').val('');
             $('#customerInfoSection').hide();
             $('#customerErrorSection').hide();
             $('#propertySelectionSection').hide();
             $('#allotmentFormSection').hide();
+            $('#noPropertiesSection').hide();
             selectedCustomerData = null;
             availableProperties = [];
-        }
+        };
 
-        // Enter key support for customer search
-        $('#customerIDInput').keypress(function(e) {
-            if (e.which == 13) {
+        $('#customerIDInput').on('keypress', function (e) {
+            if (e.which === 13) {
                 e.preventDefault();
-                $('#searchCustomerBtn').click();
+                $('#searchCustomerBtn').trigger('click');
             }
         });
+    });
     </script>
 }
 

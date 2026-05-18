@@ -1,0 +1,56 @@
+@model AccAPBill
+@{
+    ViewData["Title"] = "Bill " + Model.BillNo;
+    var bal = Model.TotalAmount - Model.RetentionAmount - Model.PaidAmount;
+}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="IndexBills">All bills</a>
+    @if (ViewBag.CanEdit == true && string.Equals(Model.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+    {
+        <form asp-action="ApproveBill" asp-route-id="@Model.APBillID" method="post" class="d-inline" onsubmit="return confirm('Approve this bill for payment?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-success">Approve for payment</button>
+        </form>
+    }
+    @if (ViewBag.CanDelete == true)
+    {
+        ViewData["AmsDeleteEntity"] = "apbill";
+        ViewData["AmsDeleteId"] = Model.APBillID;
+        ViewData["AmsDeleteReturnUrl"] = Url.Action("IndexBills");
+        <partial name="_AmsDeleteButton" />
+    }
+</div>
+<dl class="row small">
+    <dt class="col-sm-2">Vendor</dt><dd class="col-sm-4">@(Model.Vendor?.VendorCode) — @(Model.Vendor?.VendorName)</dd>
+    <dt class="col-sm-2">Dates</dt><dd class="col-sm-4">Bill @Model.BillDate.ToString("yyyy-MM-dd") · Due @Model.DueDate.ToString("yyyy-MM-dd")</dd>
+    <dt class="col-sm-2">Status</dt><dd class="col-sm-4"><span class="badge bg-secondary">@Model.Status</span></dd>
+    <dt class="col-sm-2">Sub-total</dt><dd class="col-sm-4">@Model.SubTotal.ToString("N2")</dd>
+    <dt class="col-sm-2">Taxes</dt><dd class="col-sm-4">WHT @Model.WHTAmount.ToString("N2") · GST @Model.GSTAmount.ToString("N2") · Other @Model.OtherTaxAmount.ToString("N2")</dd>
+    <dt class="col-sm-2">Total</dt><dd class="col-sm-4">@Model.TotalAmount.ToString("N2")</dd>
+    <dt class="col-sm-2">Retention</dt><dd class="col-sm-4">Held @Model.RetentionAmount.ToString("N2") · Released @Model.RetentionReleased.ToString("N2")</dd>
+    <dt class="col-sm-2">Paid</dt><dd class="col-sm-4">@Model.PaidAmount.ToString("N2")</dd>
+    <dt class="col-sm-2">Payable balance</dt><dd class="col-sm-4"><strong>@bal.ToString("N2")</strong></dd>
+    <dt class="col-sm-2">Notes</dt><dd class="col-sm-10">@Model.Notes</dd>
+    @if (Model.ApprovedAt.HasValue)
+    {
+        <dt class="col-sm-2">Approved</dt><dd class="col-sm-4">@Model.ApprovedBy at @Model.ApprovedAt.Value.ToString("u")</dd>
+    }
+</dl>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr><th>#</th><th>Account</th><th class="text-end">Amount</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model.Lines.OrderBy(x => x.LineNumber))
+            {
+                <tr>
+                    <td>@l.LineNumber</td>
+                    <td>@(l.AccountHead?.AccountCode) — @(l.AccountHead?.AccountName)</td>
+                    <td class="text-end">@l.Amount.ToString("N2")</td>
+                    <td>@l.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

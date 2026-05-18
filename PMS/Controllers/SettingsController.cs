@@ -69,70 +69,8 @@ namespace PMS.Controllers
             var denied = await EnsurePermissionAsync("Admin");
             if (denied != null) return denied;
 
-            // #region agent log
-            try
-            {
-                var logPayload = new
-                {
-                    sessionId = "78c481",
-                    runId = "pre-fix",
-                    hypothesisId = "H1",
-                    location = "SettingsController.SiteConfig(POST)",
-                    message = "Entered SiteConfig POST",
-                    data = new
-                    {
-                        ModelStateIsValid = ModelState.IsValid,
-                        HasLogo = logo != null && logo.Length > 0
-                    },
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                };
-                var logJson = System.Text.Json.JsonSerializer.Serialize(logPayload);
-                var logPath = @"C:\Users\User\.cursor\projects\d-PMS-PMS-PMS\debug-78c481.log";
-                System.IO.File.AppendAllText(logPath, logJson + Environment.NewLine);
-            }
-            catch
-            {
-                // ignore logging failures
-            }
-            // #endregion
-
             if (!ModelState.IsValid)
             {
-                // #region agent log
-                try
-                {
-                    var errors = ModelState.Where(kvp => kvp.Value != null && kvp.Value.Errors.Count > 0)
-                        .Select(kvp => new
-                        {
-                            Field = kvp.Key,
-                            Errors = kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
-                        })
-                        .ToArray();
-
-                    var logPayloadInvalid = new
-                    {
-                        sessionId = "78c481",
-                        runId = "pre-fix",
-                        hypothesisId = "H2",
-                        location = "SettingsController.SiteConfig(POST)",
-                        message = "ModelState invalid on SiteConfig POST",
-                        data = new
-                        {
-                            ErrorCount = errors.Length,
-                            Errors = errors
-                        },
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    };
-                    var logJsonInvalid = System.Text.Json.JsonSerializer.Serialize(logPayloadInvalid);
-                    var logPathInvalid = @"C:\Users\User\.cursor\projects\d-PMS-PMS-PMS\debug-78c481.log";
-                    System.IO.File.AppendAllText(logPathInvalid, logJsonInvalid + Environment.NewLine);
-                }
-                catch
-                {
-                    // ignore logging failures
-                }
-                // #endregion
-
                 return View(model);
             }
 

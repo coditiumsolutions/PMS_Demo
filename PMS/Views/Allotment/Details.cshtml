@@ -4,6 +4,18 @@
 @{
     ViewData["Title"] = "Allotment Details";
     var attachments = ViewBag.Attachments as IList<Attachment> ?? new List<Attachment>();
+    var initiatedStatus = (string?)ViewBag.InitiatedStatus ?? "Initiated";
+    var operationsDeskStatus = (string?)ViewBag.OperationsDeskStatus ?? "Operations Desk";
+    var approvedStatus = (string?)ViewBag.ApprovedStatus ?? "Approved";
+    var declinedStatus = (string?)ViewBag.DeclinedStatus ?? "Declined";
+    var wf = Model.WorkFlowStatus ?? initiatedStatus;
+    var badgeClass = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
+        ? "bg-success"
+        : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase)
+            ? "bg-danger"
+            : string.Equals(wf, operationsDeskStatus, StringComparison.OrdinalIgnoreCase)
+                ? "bg-info"
+                : "bg-warning text-dark";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -14,7 +26,21 @@
         <a asp-action="Index" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-2"></i>Back to List
         </a>
+        @if (ViewBag.CanEdit == true
+            && !string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.AllotmentID" class="btn btn-primary ms-2">
+                <i class="fas fa-route me-2"></i>Workflow
+            </a>
+        }
     </div>
+</div>
+
+<div class="alert @(string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase) ? "alert-success" : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase) ? "alert-danger" : "alert-warning") d-flex align-items-center gap-2 mb-4">
+    <i class="fas @(string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase) ? "fa-check-circle" : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase) ? "fa-times-circle" : "fa-clock") fa-lg"></i>
+    <div><strong>Status: @wf</strong></div>
+    <span class="ms-auto badge @badgeClass fs-6">@wf</span>
 </div>
 
 <div class="row">
@@ -53,18 +79,7 @@
                                 <div class="detail-field">
                                     <label><i class="fas fa-info-circle me-2"></i>Status</label>
                                     <p>
-                                        @if (Model.WorkFlowStatus == "Approved")
-                                        {
-                                            <span class="badge bg-success">@Model.WorkFlowStatus</span>
-                                        }
-                                        else if (Model.WorkFlowStatus == "Pending" || Model.WorkFlowStatus == "Pending Approval")
-                                        {
-                                            <span class="badge bg-warning">@Model.WorkFlowStatus</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">@Model.WorkFlowStatus</span>
-                                        }
+                                        <span class="badge @badgeClass">@wf</span>
                                     </p>
                                 </div>
                             </div>

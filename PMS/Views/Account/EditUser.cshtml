@@ -172,6 +172,8 @@
                                         {
                                             "PaymentAudit" => "Audit",
                                             "DuplicateFileTransfer" => "Duplicate file transfer",
+                                            "Account" => "User profile & login screens",
+                                            "AccountsManagement" => "Accounts Management",
                                             _ => key
                                         };
                                         <tr>
@@ -244,6 +246,29 @@
                                     <i class="fas fa-key me-1"></i>Reset password
                                 </button>
                             </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-3 border-info mt-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-mobile-screen me-2"></i>Authenticator (Google Authenticator)</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small mb-2">
+                            Status: <strong>@(Model.TwoFactorEnabled ? "Registered" : "Not registered")</strong>
+                            @if (Model.TwoFactorEnabled)
+                            {
+                                <span class="text-muted">— user will be prompted for a code after password when 2FA is required.</span>
+                            }
+                        </p>
+                        <p class="small text-muted mb-3">If the user lost their phone, reset 2FA here so they can scan a new QR code on next login (when enforcement is on).</p>
+                        <form asp-action="ResetTwoFactor" method="post" onsubmit="return confirm('Reset authenticator for this user?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="userId" value="@Model.UserID" />
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-undo me-1"></i>Reset 2FA
+                            </button>
                         </form>
                     </div>
                 </div>

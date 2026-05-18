@@ -1,0 +1,61 @@
+@model List<AccAPBill>
+@{
+    ViewData["Title"] = "AP bills";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("ApBills")" />
+
+    <p class="mb-0 text-muted small">Vendor bills. Approve before recording payment.</p>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="CreateBill"><i class="fas fa-plus me-1"></i>New bill</a>
+    }
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Aging">AP aging</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="CreatePayment">Record payment</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Bill</th>
+                <th>Vendor</th>
+                <th>Date</th>
+                <th>Due</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Paid</th>
+                <th class="text-end">Balance</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var b in Model)
+            {
+                var bal = b.TotalAmount - b.RetentionAmount - b.PaidAmount;
+                <tr>
+                    <td class="text-nowrap">@b.BillNo</td>
+                    <td>@(b.Vendor?.VendorName)</td>
+                    <td>@b.BillDate.ToString("yyyy-MM-dd")</td>
+                    <td>@b.DueDate.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end">@b.TotalAmount.ToString("N2")</td>
+                    <td class="text-end">@b.PaidAmount.ToString("N2")</td>
+                    <td class="text-end">@bal.ToString("N2")</td>
+                    <td>@b.Status</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="BillDetails" asp-route-id="@b.APBillID">Open</a>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "apbill";
+                            ViewData["AmsDeleteId"] = b.APBillID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No AP bills yet.</p>
+}

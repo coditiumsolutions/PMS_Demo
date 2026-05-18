@@ -1,0 +1,66 @@
+@model List<AccVoucher>
+@{
+    var type = (ViewBag.TypeCode as string ?? "BPV").ToUpperInvariant();
+    ViewData["Title"] = $"{type} vouchers";
+}
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-warning">@ViewBag.Error</div>
+}
+<ul class="nav nav-pills flex-wrap gap-1 mb-3">
+    @foreach (var code in new[] { "BPV", "BRV", "CPV", "CRV" })
+    {
+        <li class="nav-item">
+            <a class="nav-link @(type == code ? "active" : "") py-1 px-2" asp-action="Index" asp-route-type="@code">@code</a>
+        </li>
+    }
+</ul>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("BankVouchers")" />
+
+    <p class="mb-0 text-muted small">Bank and cash vouchers. Cheques link on save; cheque status moves to <strong>Cleared</strong> when the voucher is posted.</p>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="Create" asp-route-type="@type"><i class="fas fa-plus me-1"></i>New @type</a>
+    }
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>No.</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th class="text-end">Debit</th>
+                <th class="text-end">Credit</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in Model)
+            {
+                <tr>
+                    <td class="text-nowrap">@v.VoucherNo</td>
+                    <td>@v.VoucherDate.ToString("yyyy-MM-dd")</td>
+                    <td>@v.Status</td>
+                    <td class="text-end">@v.TotalDebit.ToString("N2")</td>
+                    <td class="text-end">@v.TotalCredit.ToString("N2")</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@v.VoucherID">Open</a>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "voucher";
+                            ViewData["AmsDeleteId"] = v.VoucherID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("Index", new { type = ViewBag.VoucherTypeCode });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any() && ViewBag.Error == null)
+{
+    <p class="text-muted">No @type vouchers yet.</p>
+}

@@ -1,0 +1,55 @@
+@model List<AccTaxType>
+@{
+    ViewData["Title"] = "Tax types";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("TaxTypes")" />
+
+    <p class="mb-0 text-muted small">WHT / GST definitions. Rate is a percentage (e.g. 15 = 15%).</p>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="Create"><i class="fas fa-plus me-1"></i>New tax type</a>
+    }
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Applies</th>
+                <th class="text-end">Rate %</th>
+                <th>GL</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td>@t.TaxCode</td>
+                    <td>@t.TaxName</td>
+                    <td>@t.TaxCategory</td>
+                    <td>@t.AppliesTo</td>
+                    <td class="text-end">@t.Rate.ToString("N4")</td>
+                    <td class="small">@(t.AccountHead != null ? t.AccountHead.AccountCode : "—")</td>
+                    <td>@(t.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        @if (ViewBag.CanEdit == true)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@t.TaxTypeID">Edit</a>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "taxtype";
+                            ViewData["AmsDeleteId"] = t.TaxTypeID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

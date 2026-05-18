@@ -1,0 +1,123 @@
+@model AmsOpeningBalanceIndexVm
+@{
+    ViewData["Title"] = "Opening balances";
+    var years = ViewBag.FiscalYears as List<AccFiscalYear> ?? new List<AccFiscalYear>();
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("OpeningBalances")" />
+
+    <form method="get" class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0">Fiscal year</label>
+        <select name="fiscalYearId" class="form-select form-select-sm" style="width:260px" onchange="this.form.submit()">
+            @foreach (var y in years)
+            {
+                if (Model.FiscalYearID == y.FiscalYearID)
+                {
+                    <option value="@y.FiscalYearID" selected="selected">@y.YearName (@y.Status)</option>
+                }
+                else
+                {
+                    <option value="@y.FiscalYearID">@y.YearName (@y.Status)</option>
+                }
+            }
+        </select>
+    </form>
+    <div>
+        <a class="btn btn-outline-secondary btn-sm" asp-controller="AmsCoa" asp-action="Index">Chart of accounts</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-controller="AmsPeriod" asp-action="Index">Fiscal years</a>
+    </div>
+</div>
+
+@if (Model.FiscalYearID == 0)
+{
+    <p class="text-muted">Create a fiscal year first.</p>
+}
+else
+{
+    <form asp-action="Save" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="FiscalYearID" />
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Code</th>
+                        <th>Account</th>
+                        <th style="width:120px">Debit</th>
+                        <th style="width:120px">Credit</th>
+                        <th>Notes</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Rows.Count; i++)
+                    {
+                        var r = Model.Rows[i];
+                        <tr>
+                            <td>
+                                @r.AccountCode
+                                <input type="hidden" asp-for="Rows[i].AccountHeadID" />
+                                <input type="hidden" asp-for="Rows[i].OpeningBalanceID" />
+                                <input type="hidden" asp-for="Rows[i].IsPosted" />
+                            </td>
+                            <td>@r.AccountName</td>
+                            <td>
+                                @if (r.IsPosted)
+                                {
+                                    <span class="text-muted">@r.DebitAmount.ToString("N2")</span>
+                                    <input type="hidden" asp-for="Rows[i].DebitAmount" />
+                                }
+                                else
+                                {
+                                    <input asp-for="Rows[i].DebitAmount" class="form-control form-control-sm" type="number" step="0.01" min="0" />
+                                }
+                            </td>
+                            <td>
+                                @if (r.IsPosted)
+                                {
+                                    <span class="text-muted">@r.CreditAmount.ToString("N2")</span>
+                                    <input type="hidden" asp-for="Rows[i].CreditAmount" />
+                                }
+                                else
+                                {
+                                    <input asp-for="Rows[i].CreditAmount" class="form-control form-control-sm" type="number" step="0.01" min="0" />
+                                }
+                            </td>
+                            <td>
+                                @if (r.IsPosted)
+                                {
+                                    <span class="text-muted small">Posted</span>
+                                    <input type="hidden" asp-for="Rows[i].Notes" />
+                                }
+                                else
+                                {
+                                    <input asp-for="Rows[i].Notes" class="form-control form-control-sm" maxlength="300" />
+                                }
+                            </td>
+                            <td>
+                                @if (ViewBag.CanDelete == true && r.OpeningBalanceID.HasValue && !r.IsPosted)
+                                {
+                                    var obId = r.OpeningBalanceID!.Value;
+                                    var delFormId = $"del-ob-{obId}";
+                                    <form id="@delFormId" asp-controller="AmsAdminDelete" asp-action="Remove" method="post" class="d-none">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="entity" value="openingbalance" />
+                                        <input type="hidden" name="id" value="@obId" />
+                                        <input type="hidden" name="returnUrl" value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
+                                    </form>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" form="@delFormId"
+                                            onclick="return confirm('Remove this opening balance row?');">Delete</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (ViewBag.CanEdit == true)
+        {
+            <button type="submit" class="btn btn-primary">Save opening balances</button>
+        }
+        <p class="small text-muted mt-2">One-sided amounts per account (debit <em>or</em> credit). Cleared debit and credit remove the row. Posted rows are read-only.</p>
+    </form>
+}

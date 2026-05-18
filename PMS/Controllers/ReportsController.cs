@@ -67,7 +67,7 @@ namespace PMS.Controllers
             try
             {
                 var paymentsTableExists = await _context.Database
-                    .SqlQueryRaw<int>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
+                    .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Payments'")
                     .FirstOrDefaultAsync();
 
                 if (paymentsTableExists > 0)

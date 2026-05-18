@@ -1,0 +1,239 @@
+@{
+    var prefix = ViewData["AmsNavCollapsePrefix"] as string ?? "amsNav";
+    var standalone = ViewData["AmsNavStandalone"] as bool? ?? true;
+    var currentController = ViewContext.RouteData.Values["Controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["Action"]?.ToString() ?? "";
+    var liClass = standalone ? "nav-item" : "nav-item";
+    var headingClass = standalone ? "nav-item mt-2" : "nav-item mt-1";
+    var subOutlineClass = "px-3 py-1 mt-2 mb-0 small text-white-50 text-uppercase";
+    var subOutlineFirstClass = "px-3 py-1 mb-0 small text-white-50 text-uppercase";
+}
+
+<li class="@(standalone ? "nav-item mt-2" : "nav-item mt-1")">
+    <a class="nav-link @(currentController == "AccountsManagement" ? "active" : "")" asp-controller="AccountsManagement" asp-action="Index">
+        <i class="fas fa-th-large me-2"></i>AMS overview
+    </a>
+</li>
+
+<li class="@headingClass">
+    <a class="nav-link submenu-toggle" data-bs-toggle="collapse" href="#@(prefix)-setup" role="button" aria-expanded="true" aria-controls="@(prefix)-setup">
+        <i class="fas fa-sliders-h me-1"></i>Setup
+        <i class="fas fa-chevron-down submenu-caret"></i>
+    </a>
+    <ul class="collapse sidebar-submenu show" id="@(prefix)-setup">
+        <li class="nav-item"><div class="@subOutlineFirstClass">Fiscal &amp; GL</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsCoa" ? "active" : "")" asp-controller="AmsCoa" asp-action="Index">
+                <i class="fas fa-sitemap me-2"></i>Chart of accounts
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsPeriod" ? "active" : "")" asp-controller="AmsPeriod" asp-action="Index">
+                <i class="fas fa-calendar-alt me-2"></i>Fiscal year &amp; periods
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsBank" ? "active" : "")" asp-controller="AmsBank" asp-action="Index">
+                <i class="fas fa-university me-2"></i>Bank accounts
+            </a>
+        </li>
+        <li class="@liClass">
+            <span class="nav-link disabled pb-0 small" tabindex="-1" title="Open a bank account, then use Cheque books from that bank.">
+                <i class="fas fa-book me-2"></i>Cheque books <span class="badge bg-secondary bg-opacity-50 ms-1">via bank</span>
+            </span>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsOpeningBalance" ? "active" : "")" asp-controller="AmsOpeningBalance" asp-action="Index">
+                <i class="fas fa-balance-scale me-2"></i>Opening balances
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Masters &amp; config</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsVendor" ? "active" : "")" asp-controller="AmsVendor" asp-action="Index">
+                <i class="fas fa-truck me-2"></i>Vendor master (AP)
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsMasters" && currentAction == "CostCenters" ? "active" : "")" asp-controller="AmsMasters" asp-action="CostCenters">
+                <i class="fas fa-layer-group me-2"></i>Cost centers
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsTaxType" ? "active" : "")" asp-controller="AmsTaxType" asp-action="Index">
+                <i class="fas fa-percent me-2"></i>Tax types (WHT / GST)
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsBudget" ? "active" : "")" asp-controller="AmsBudget" asp-action="Index">
+                <i class="fas fa-coins me-2"></i>Budgets
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsMasters" && currentAction == "VoucherTypes" ? "active" : "")" asp-controller="AmsMasters" asp-action="VoucherTypes">
+                <i class="fas fa-tags me-2"></i>Voucher types
+            </a>
+        </li>
+    </ul>
+</li>
+
+<li class="@(standalone ? "nav-item mt-2" : "nav-item mt-1")">
+    <a class="nav-link submenu-toggle collapsed" data-bs-toggle="collapse" href="#@(prefix)-txn" role="button" aria-expanded="false" aria-controls="@(prefix)-txn">
+        <i class="fas fa-exchange-alt me-1"></i>Transactions
+        <i class="fas fa-chevron-down submenu-caret"></i>
+    </a>
+    <ul class="collapse sidebar-submenu" id="@(prefix)-txn">
+        <li class="nav-item"><div class="@subOutlineFirstClass">Vouchers &amp; bank</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsJv" ? "active" : "")" asp-controller="AmsJv" asp-action="Index">
+                <i class="fas fa-file-invoice me-2"></i>Journal voucher (JV)
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsBankVoucher" ? "active" : "")" asp-controller="AmsBankVoucher" asp-action="Index" asp-route-type="BPV">
+                <i class="fas fa-money-check-alt me-2"></i>Bank / cash vouchers (BPV–CRV)
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Receivables (AR)</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAr" && currentAction == "IndexInvoices" ? "active" : "")" asp-controller="AmsAr" asp-action="IndexInvoices">
+                <i class="fas fa-file-invoice-dollar me-2"></i>AR invoices
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAr" && currentAction == "CreateInvoice" ? "active" : "")" asp-controller="AmsAr" asp-action="CreateInvoice">
+                <i class="fas fa-plus-circle me-2"></i>New AR invoice
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAr" && currentAction == "CreateReceipt" ? "active" : "")" asp-controller="AmsAr" asp-action="CreateReceipt">
+                <i class="fas fa-hand-holding-usd me-2"></i>AR receipt &amp; allocation
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAr" && currentAction == "IntegrationSketch" ? "active" : "")" asp-controller="AmsAr" asp-action="IntegrationSketch">
+                <i class="fas fa-project-diagram me-2"></i>AR / PMS integration
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Payables (AP)</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAp" && (currentAction == "IndexBills" || currentAction == "BillDetails") ? "active" : "")" asp-controller="AmsAp" asp-action="IndexBills">
+                <i class="fas fa-file-contract me-2"></i>AP bills
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAp" && currentAction == "CreateBill" ? "active" : "")" asp-controller="AmsAp" asp-action="CreateBill">
+                <i class="fas fa-plus-circle me-2"></i>New AP bill
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAp" && currentAction == "CreatePayment" ? "active" : "")" asp-controller="AmsAp" asp-action="CreatePayment">
+                <i class="fas fa-money-bill-wave me-2"></i>AP payment &amp; allocation
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Tax</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsTax" && currentAction == "IndexTransactions" ? "active" : "")" asp-controller="AmsTax" asp-action="IndexTransactions">
+                <i class="fas fa-receipt me-2"></i>Tax transactions
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsTax" && currentAction == "CreateTransaction" ? "active" : "")" asp-controller="AmsTax" asp-action="CreateTransaction">
+                <i class="fas fa-plus-circle me-2"></i>New tax line
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Registers &amp; other</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsChequeRegister" ? "active" : "")" asp-controller="AmsChequeRegister" asp-action="Index">
+                <i class="fas fa-list-alt me-2"></i>Cheque / PDC register
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsBankReconciliation" ? "active" : "")" asp-controller="AmsBankReconciliation" asp-action="Index">
+                <i class="fas fa-balance-scale-right me-2"></i>Bank reconciliation
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsDealerCommission" ? "active" : "")" asp-controller="AmsDealerCommission" asp-action="Index">
+                <i class="fas fa-hand-holding-usd me-2"></i>Dealer commission vouchers
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsRefundVoucher" ? "active" : "")" asp-controller="AmsRefundVoucher" asp-action="Index">
+                <i class="fas fa-undo-alt me-2"></i>Refund vouchers
+            </a>
+        </li>
+    </ul>
+</li>
+
+<li class="@(standalone ? "nav-item mt-2" : "nav-item mt-1")">
+    <a class="nav-link submenu-toggle collapsed" data-bs-toggle="collapse" href="#@(prefix)-rpt" role="button" aria-expanded="false" aria-controls="@(prefix)-rpt">
+        <i class="fas fa-chart-pie me-1"></i>Reports
+        <i class="fas fa-chevron-down submenu-caret"></i>
+    </a>
+    <ul class="collapse sidebar-submenu" id="@(prefix)-rpt">
+        <li class="nav-item"><div class="@subOutlineFirstClass">Ledger</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsLedger" && currentAction == "TrialBalance" ? "active" : "")" asp-controller="AmsLedger" asp-action="TrialBalance">
+                <i class="fas fa-balance-scale me-2"></i>Trial balance
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsLedger" && currentAction == "GeneralLedger" ? "active" : "")" asp-controller="AmsLedger" asp-action="GeneralLedger">
+                <i class="fas fa-book me-2"></i>General ledger &amp; account statement
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsLedger" && currentAction == "PostedVouchers" ? "active" : "")" asp-controller="AmsLedger" asp-action="PostedVouchers">
+                <i class="fas fa-list me-2"></i>Voucher listing
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">A/R &amp; A/P</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAr" && currentAction == "Aging" ? "active" : "")" asp-controller="AmsAr" asp-action="Aging">
+                <i class="fas fa-hourglass-half me-2"></i>AR aging
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAp" && currentAction == "Aging" ? "active" : "")" asp-controller="AmsAp" asp-action="Aging">
+                <i class="fas fa-hourglass-end me-2"></i>AP aging
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Cash &amp; analysis</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsReporting" && currentAction == "CashFlow" ? "active" : "")" asp-controller="AmsReporting" asp-action="CashFlow">
+                <i class="fas fa-water me-2"></i>Cash flow (posted vouchers)
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsReporting" && currentAction == "ProjectProfitLoss" ? "active" : "")" asp-controller="AmsReporting" asp-action="ProjectProfitLoss">
+                <i class="fas fa-chart-line me-2"></i>Project P&amp;L
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsChequeRegister" && currentAction == "Index" ? "active" : "")" asp-controller="AmsChequeRegister" asp-action="Index" asp-route-pdcOnly="true" asp-route-status="Pending">
+                <i class="fas fa-calendar-day me-2"></i>PDC due (pending post-dated)
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsTax" && currentAction == "WhtSummary" ? "active" : "")" asp-controller="AmsTax" asp-action="WhtSummary">
+                <i class="fas fa-file-invoice me-2"></i>WHT summary
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsTax" && currentAction == "GstInputOutput" ? "active" : "")" asp-controller="AmsTax" asp-action="GstInputOutput">
+                <i class="fas fa-balance-scale me-2"></i>GST input / output
+            </a>
+        </li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsReporting" && currentAction == "BudgetVsActual" ? "active" : "")" asp-controller="AmsReporting" asp-action="BudgetVsActual">
+                <i class="fas fa-percentage me-2"></i>Budget vs actual
+            </a>
+        </li>
+        <li class="nav-item"><div class="@subOutlineClass">Audit</div></li>
+        <li class="@liClass">
+            <a class="nav-link @(currentController == "AmsAudit" ? "active" : "")" asp-controller="AmsAudit" asp-action="Index">
+                <i class="fas fa-history me-2"></i>Accounting audit log
+            </a>
+        </li>
+    </ul>
+</li>

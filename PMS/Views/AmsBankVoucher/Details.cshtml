@@ -1,0 +1,107 @@
+@model AccVoucher
+@{
+    ViewData["Title"] = Model.VoucherType?.TypeCode + " " + Model.VoucherNo;
+    var tc = Model.VoucherType?.TypeCode ?? "";
+    var linked = ViewBag.LinkedCheques as IEnumerable<AccChequeRegister> ?? Array.Empty<AccChequeRegister>();
+    var bankTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "BPV", "BRV", "CPV", "CRV" };
+    var isBank = bankTypes.Contains(tc);
+}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-type="@tc">All @tc</a>
+</div>
+@if (Model.BankAccount != null)
+{
+    <p class="small text-muted mb-2">Bank: <strong>@Model.BankAccount.BankName</strong> (@Model.BankAccount.AccountNumber)</p>
+}
+<dl class="row small">
+    <dt class="col-sm-2">Type</dt><dd class="col-sm-4">@Model.VoucherType?.TypeCode — @Model.VoucherType?.TypeName</dd>
+    <dt class="col-sm-2">Date</dt><dd class="col-sm-4">@Model.VoucherDate.ToString("yyyy-MM-dd")</dd>
+    <dt class="col-sm-2">Period</dt><dd class="col-sm-4">@Model.Period?.PeriodName</dd>
+    <dt class="col-sm-2">Status</dt><dd class="col-sm-4"><span class="badge bg-secondary">@Model.Status</span></dd>
+    <dt class="col-sm-2">Reference</dt><dd class="col-sm-10">@Model.ReferenceNo</dd>
+    <dt class="col-sm-2">Narration</dt><dd class="col-sm-10">@Model.Narration</dd>
+    <dt class="col-sm-2">Totals</dt><dd class="col-sm-10">Dr @Model.TotalDebit.ToString("N2") / Cr @Model.TotalCredit.ToString("N2")</dd>
+</dl>
+<div class="table-responsive mb-3">
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr><th>#</th><th>Account</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model.Lines.OrderBy(x => x.LineNumber))
+            {
+                <tr>
+                    <td>@l.LineNumber</td>
+                    <td>@(l.AccountHead?.AccountCode) — @(l.AccountHead?.AccountName)</td>
+                    <td class="text-end">@l.DebitAmount.ToString("N2")</td>
+                    <td class="text-end">@l.CreditAmount.ToString("N2")</td>
+                    <td>@l.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (linked.Any())
+{
+    <h6 class="text-muted">Linked cheques</h6>
+    <div class="table-responsive mb-4">
+        <table class="table table-sm">
+            <thead class="table-light">
+                <tr><th>No.</th><th>Date</th><th>Amount</th><th>Status</th><th>PDC</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in linked)
+                {
+                    <tr>
+                        <td>@c.ChequeNo</td>
+                        <td>@c.ChequeDate.ToString("yyyy-MM-dd")</td>
+                        <td class="text-end">@c.Amount.ToString("N2")</td>
+                        <td>@c.Status</td>
+                        <td>@(c.IsPostDated ? "Yes" : "No")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (isBank && ViewBag.CanEdit == true)
+{
+    <div class="d-flex flex-wrap gap-2">
+        @if (string.Equals(Model.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-action="Submit" asp-route-id="@Model.VoucherID" method="post" class="d-inline" onsubmit="return confirm('Submit for approval?');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-primary">Submit</button>
+            </form>
+            @if (ViewBag.CanDelete == true)
+            {
+                <form asp-action="Delete" asp-route-id="@Model.VoucherID" method="post" class="d-inline" onsubmit="return confirm('Delete this voucher permanently?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            }
+        }
+        else if (ViewBag.CanDelete == true)
+        {
+            ViewData["AmsDeleteEntity"] = "voucher";
+            ViewData["AmsDeleteId"] = Model.VoucherID;
+            ViewData["AmsDeleteReturnUrl"] = Url.Action("Details", new { id = Model.VoucherID });
+            <partial name="_AmsDeleteButton" />
+        }
+        @if (string.Equals(Model.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-action="Approve" asp-route-id="@Model.VoucherID" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+            </form>
+        }
+        @if (string.Equals(Model.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-action="Post" asp-route-id="@Model.VoucherID" method="post" class="d-inline" onsubmit="return confirm('Post to ledger? Cheques will be marked cleared.');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-success">Post</button>
+            </form>
+        }
+    </div>
+}

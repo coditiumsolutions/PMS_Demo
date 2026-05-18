@@ -1,0 +1,86 @@
+@model List<AccAccountingAuditLog>
+@{
+    ViewData["Title"] = "Accounting audit log";
+    var page = (int)(ViewBag.Page ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var total = (int)(ViewBag.Total ?? 0);
+    var ft = ViewBag.FilterTable as string ?? "";
+    var fa = ViewBag.FilterAction as string ?? "";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("AuditLog")" />
+
+    <p class="mb-0 text-muted small">Read-only log of inserts, updates, and deletes on <code>acc</code> tables.</p>
+</div>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4">
+        <label class="form-label small mb-0">Table name contains</label>
+        <input class="form-control form-control-sm" name="table" value="@ft" placeholder="e.g. Voucher" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-0">Action</label>
+        <select class="form-select form-select-sm" name="action">
+            <option value="" selected="@(string.IsNullOrEmpty(fa) ? "selected" : null)">(any)</option>
+            <option value="INSERT" selected="@(string.Equals(fa, "INSERT", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">INSERT</option>
+            <option value="UPDATE" selected="@(string.Equals(fa, "UPDATE", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">UPDATE</option>
+            <option value="DELETE" selected="@(string.Equals(fa, "DELETE", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">DELETE</option>
+        </select>
+    </div>
+    <div class="col-md-auto">
+        <input type="hidden" name="page" value="1" />
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i>Filter</button>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Clear</a>
+    </div>
+</form>
+<p class="small text-muted">@total row(s) total — page @(page) of @Math.Max(1, totalPages)</p>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>When (UTC)</th>
+                <th>Table</th>
+                <th>Record</th>
+                <th>Action</th>
+                <th>By</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.LogID</td>
+                    <td class="text-nowrap small">@r.ChangedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td class="small">@r.TableName</td>
+                    <td class="small text-truncate" style="max-width:8rem" title="@r.RecordID">@r.RecordID</td>
+                    <td><span class="badge bg-secondary">@r.Action</span></td>
+                    <td class="small">@r.ChangedBy</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@r.LogID">JSON</a>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "auditlog";
+                            ViewData["AmsDeleteId"] = r.LogID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("Index", new { page, table = ft, action = fa });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (totalPages > 1)
+{
+    <nav class="mt-2">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(page <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-page="@(page - 1)" asp-route-table="@ft" asp-route-action="@fa">Previous</a>
+            </li>
+            <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-page="@(page + 1)" asp-route-table="@ft" asp-route-action="@fa">Next</a>
+            </li>
+        </ul>
+    </nav>
+}

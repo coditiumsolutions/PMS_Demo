@@ -1,0 +1,58 @@
+@model AmsTaxTransactionCreateVm
+@{
+    ViewData["Title"] = "New tax transaction";
+    var types = ViewBag.TaxTypes as IEnumerable<AccTaxType> ?? Array.Empty<AccTaxType>();
+    var vouchers = ViewBag.PostedVouchers as IEnumerable<AccVoucher> ?? Array.Empty<AccVoucher>();
+}
+<p class="text-muted small mb-3">Tax amount = taxable × (tax type rate ÷ 100). Voucher must already be <strong>Posted</strong>.</p>
+<form asp-action="CreateTransaction" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="VoucherID" class="form-label">Posted voucher</label>
+            <select asp-for="VoucherID" class="form-select" required>
+                <option value="0">— Select —</option>
+                @foreach (var v in vouchers)
+                {
+                    <option value="@v.VoucherID">@v.VoucherNo · @(v.VoucherType?.TypeCode) · @v.VoucherDate.ToString("yyyy-MM-dd")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="TaxTypeID" class="form-label">Tax type</label>
+            <select asp-for="TaxTypeID" class="form-select" required>
+                <option value="0">— Select —</option>
+                @foreach (var t in types)
+                {
+                    <option value="@t.TaxTypeID">@t.TaxCode — @t.TaxName (@t.Rate.ToString("N2")%)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="TaxableAmount" class="form-label"></label>
+            <input asp-for="TaxableAmount" class="form-control" type="number" step="0.01" min="0.01" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="ChallanNo" class="form-label"></label>
+            <input asp-for="ChallanNo" class="form-control" maxlength="50" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="DepositedDate" class="form-label"></label>
+            <input asp-for="DepositedDate" class="form-control" type="date" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="SubLedgerType" class="form-label"></label>
+            <input asp-for="SubLedgerType" class="form-control" maxlength="30" placeholder="Vendor / Customer" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="SubLedgerID" class="form-label"></label>
+            <input asp-for="SubLedgerID" class="form-control" maxlength="10" />
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="IndexTransactions" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -38,7 +38,27 @@ TABLE Payments
 TABLE PaymentSchedule
 TABLE Penalties
 TABLE Possession
-TABLE Possessions
+  PossessionID nvarchar(40) NOT NULL (PK)
+  PropertyID char(10) NULL FK -> Property
+  CustomerID char(10) NULL FK -> Customers
+  PossessionDate datetime NOT NULL
+  WorkFlowStatus nvarchar(100) NULL
+  Comments nvarchar(max) NULL
+  Remarks nvarchar(255) NULL
+  PossessionDueCharges decimal(18,2) NOT NULL
+  PossessionPaidCharges decimal(18,2) NOT NULL
+  BankName nvarchar(200) NULL
+  PaidDate datetime2(0) NULL
+  InstrumentNo nvarchar(100) NULL
+  PaymentMethod nvarchar(100) NULL
+  CreatedAt datetime2(0) NULL
+  CreatedBy char(10) NULL
+  ModifiedAt datetime2(0) NULL
+  ModifiedBy char(10) NULL
+  ApprovedBy char(10) NULL
+  ApprovedAt datetime2(0) NULL
+  DeclinedBy char(10) NULL
+  DeclinedAt datetime2(0) NULL
 TABLE Projects
 TABLE ProjectSubProjects
 TABLE Property
@@ -58,9 +78,14 @@ TABLE Transfers
 TABLE UserMacWhitelist
 TABLE UserModulePermission
 TABLE Users
+  TwoFactorEnabled bit NOT NULL (default 0)
+  TwoFactorSecret nvarchar(500) NULL (Data Protection–wrapped TOTP shared secret)
 TABLE UserSessions
 TABLE Waiver
 
+-- AMS / accounting tables are under schema **acc** (see Scripts/AMS_Create_acc_schema.sql).
+-- They are not listed in this dbo-focused snapshot; refresh acc.* separately on zkbeclipse.pk if diagnosing AMS errors.
+--
 -- Important recent additions in live DB:
 -- 1) Payments
 -- 2) DealerPayments
@@ -68,3 +93,8 @@ TABLE Waiver
 -- 4) CustomerUpdateRequestChanges
 -- 5) BlockedMacLoginAttempt
 -- 6) ProjectSubProjects
+-- 7) Possession (single table): workflow, PossessionDueCharges/PossessionPaidCharges, BankName, PaidDate,
+--    InstrumentNo, PaymentMethod, CreatedAt/CreatedBy/ModifiedAt/ModifiedBy, ApprovedBy/ApprovedAt, DeclinedBy/DeclinedAt.
+--    Legacy dbo.Possessions merged and dropped — see Scripts/Sql/20260208_Possession_Module.sql
+-- 8) Users TOTP 2FA + Configuration.Enforce2FA — see Scripts/Sql/20260213_Users_TwoFactor_Enforce2FA.sql
+-- 9) ActivityLog.RefID nvarchar(100) on live DBs (legacy char(10) truncates Possession POS-* IDs) — same Possession script batch 5

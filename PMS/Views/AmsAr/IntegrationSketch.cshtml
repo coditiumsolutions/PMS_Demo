@@ -1,0 +1,11 @@
+@{
+    ViewData["Title"] = "AR / PMS integration";
+}
+<p class="text-muted small">How AR can tie to PMS payment schedules and penalties via <code>acc.ARInvoice</code> and cash/bank vouchers.</p>
+<ul>
+    <li>Payment plan installment due → AR invoice line or standalone invoice with <code>PMSPaymentScheduleID</code>.</li>
+    <li>Penalty rule triggered → invoice with <code>PMSPenaltyID</code> and link to source schedule.</li>
+    <li>Customer payment recorded in PMS → optional mirror receipt + allocation in AMS (or single source of truth in AMS only).</li>
+    <li>Posting to GL remains on approved AMS vouchers (BPV/BRV/JV).</li>
+</ul>
+<p class="small"><a asp-action="IndexInvoices">Back to AR invoices</a></p>

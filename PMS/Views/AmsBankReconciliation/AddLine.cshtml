@@ -1,0 +1,54 @@
+@model AccBankReconciliationLine
+@{
+    ViewData["Title"] = "Add reconciliation line";
+    var vlines = ViewBag.VoucherLinePick as IEnumerable<AccVoucherLine> ?? Array.Empty<AccVoucherLine>();
+    var cheques = ViewBag.ChequePick as IEnumerable<AccChequeRegister> ?? Array.Empty<AccChequeRegister>();
+}
+<form asp-action="AddLine" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ReconciliationID" />
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label asp-for="TransactionDate" class="form-label"></label>
+            <input asp-for="TransactionDate" class="form-control" type="date" required />
+        </div>
+        <div class="col-md-5">
+            <label asp-for="Description" class="form-label"></label>
+            <input asp-for="Description" class="form-control" maxlength="300" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Amount" class="form-label"></label>
+            <input asp-for="Amount" class="form-control" type="number" step="0.01" required />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="VoucherLineID" class="form-label">Posted voucher line (optional)</label>
+            <select asp-for="VoucherLineID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var vl in vlines)
+                {
+                    <option value="@vl.VoucherLineID">#@vl.VoucherLineID · @(vl.Voucher?.VoucherNo) · Dr @vl.DebitAmount.ToString("N0") Cr @vl.CreditAmount.ToString("N0")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="ChequeRegisterID" class="form-label">Cheque register (optional)</label>
+            <select asp-for="ChequeRegisterID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var c in cheques)
+                {
+                    <option value="@c.ChequeRegisterID">@c.ChequeNo · @c.ChequeDate.ToString("yyyy-MM-dd")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-12">
+            <div class="form-check">
+                <input asp-for="IsReconciled" class="form-check-input" />
+                <label asp-for="IsReconciled" class="form-check-label">Marked reconciled</label>
+            </div>
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Details" asp-route-id="@Model.ReconciliationID" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

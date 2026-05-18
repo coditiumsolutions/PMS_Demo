@@ -2,6 +2,11 @@
 
 @{
     ViewData["Title"] = "Allotment Management";
+    var workflowStatuses = ViewBag.WorkflowStatuses as List<string> ?? new List<string> { "Initiated", "Operations Desk", "Approved", "Declined" };
+    var initiatedStatus = (string?)ViewBag.InitiatedStatus ?? "Initiated";
+    var operationsDeskStatus = (string?)ViewBag.OperationsDeskStatus ?? "Operations Desk";
+    var approvedStatus = (string?)ViewBag.ApprovedStatus ?? "Approved";
+    var declinedStatus = (string?)ViewBag.DeclinedStatus ?? "Declined";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -83,8 +88,8 @@
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 text-muted">Pending Approval</h6>
-                        <h4 class="mb-0">@ViewBag.PendingApproval</h4>
+                        <h6 class="mb-1 text-muted">@operationsDeskStatus</h6>
+                        <h4 class="mb-0">@(ViewBag.OperationsDeskCount ?? 0)</h4>
                     </div>
                 </div>
             </div>
@@ -122,9 +127,10 @@
                     <label class="form-label fw-bold">Filter by Status</label>
                     <select name="statusFilter" class="form-select" onchange="this.form.submit()">
                         <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
-                        <option value="Pending Approval" selected="@(ViewBag.StatusFilter == "Pending Approval")">Pending Approval</option>
-                        <option value="Approved" selected="@(ViewBag.StatusFilter == "Approved")">Approved</option>
-                        <option value="Rejected" selected="@(ViewBag.StatusFilter == "Rejected")">Rejected</option>
+                        @foreach (var s in workflowStatuses)
+                        {
+                            <option value="@s" selected="@(ViewBag.StatusFilter == s)">@s</option>
+                        }
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -159,6 +165,7 @@
                             <th>Customer</th>
                             <th>Project</th>
                             <th>Type</th>
+                            <th>Status</th>
                             <th>Date</th>
                             <th>Actions</th>
                         </tr>
@@ -208,6 +215,19 @@
                                     <span class="badge bg-secondary">@allotment.AllottmentType</span>
                                 </td>
                                 <td>
+                                    @{
+                                        var wf = allotment.WorkFlowStatus ?? initiatedStatus;
+                                        var badge = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
+                                            ? "bg-success"
+                                            : string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase)
+                                                ? "bg-danger"
+                                                : string.Equals(wf, operationsDeskStatus, StringComparison.OrdinalIgnoreCase)
+                                                    ? "bg-info"
+                                                    : "bg-warning text-dark";
+                                    }
+                                    <span class="badge @badge">@wf</span>
+                                </td>
+                                <td>
                                     @allotment.AllotmentDate.ToString("MMM dd, yyyy")
                                     <br>
                                     <small class="text-muted">@allotment.AllotmentDate.ToString("hh:mm tt")</small>
@@ -220,6 +240,15 @@
                                            title="View allotment (full page)">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        @if (ViewBag.CanEdit == true && !string.Equals((allotment.WorkFlowStatus ?? ""), approvedStatus, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <a asp-action="Edit"
+                                               asp-route-id="@allotment.AllotmentID"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Workflow">
+                                                <i class="fas fa-route"></i>
+                                            </a>
+                                        }
                                         <a asp-controller="Property" 
                                            asp-action="Details" 
                                            asp-route-id="@allotment.PropertyID" 

@@ -18,6 +18,56 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
+        @if (ViewBag.MissingSubProjects != null || ViewBag.SubProjectsMissingPrefix != null)
+        {
+            var missing = ViewBag.MissingSubProjects as List<string> ?? new List<string>();
+            var missingPrefix = ViewBag.SubProjectsMissingPrefix as List<string> ?? new List<string>();
+            var selectedProjectId = ViewBag.SelectedProjectID as string ?? "";
+            if (missing.Count > 0 || missingPrefix.Count > 0)
+            {
+                <div class="alert alert-warning">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="fw-semibold mb-1">
+                                <i class="fas fa-exclamation-circle me-2"></i>SubProject validation failed
+                            </div>
+                            <div class="small text-muted">
+                                Please add the missing subprojects (and their prefixes) in the selected project before importing.
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(selectedProjectId))
+                        {
+                            <a class="btn btn-sm btn-outline-primary" target="_blank"
+                               asp-controller="Project" asp-action="Edit" asp-route-id="@selectedProjectId">
+                                <i class="fas fa-external-link-alt me-2"></i>Open Project (Edit)
+                            </a>
+                        }
+                    </div>
+                    @if (missing.Count > 0)
+                    {
+                        <hr />
+                        <div class="small fw-semibold">Missing subprojects in mapping:</div>
+                        <ul class="mb-0">
+                            @foreach (var m in missing)
+                            {
+                                <li><code>@m</code></li>
+                            }
+                        </ul>
+                    }
+                    @if (missingPrefix.Count > 0)
+                    {
+                        <hr />
+                        <div class="small fw-semibold">Subprojects missing prefix:</div>
+                        <ul class="mb-0">
+                            @foreach (var m in missingPrefix)
+                            {
+                                <li><code>@m</code></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        }
 
         <div class="card">
             <div class="card-header bg-primary text-white">
@@ -33,8 +83,9 @@
                             <li>Data starts from row 2</li>
                         </ul>
 
-                        <h6 class="text-primary mt-3">Columns sequence (A to G, optional ProjectID in column A):</h6>
+                        <h6 class="text-primary mt-3">Columns sequence (A to H, optional ProjectID in column A):</h6>
                         <ol>
+                            <li><strong>SubProject</strong> - Subproject name (required, must exist in selected project's subproject mappings)</li>
                             <li><strong>Tower</strong> - Tower identifier (required)</li>
                             <li><strong>Size</strong> - Property size (required)</li>
                             <li><strong>Unit No</strong> - Unit number (required)</li>
@@ -50,6 +101,7 @@
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
                                     <tr>
+                                        <th>SubProject</th>
                                         <th>Tower</th>
                                         <th>Size</th>
                                         <th>Unit No</th>
@@ -61,6 +113,7 @@
                                 </thead>
                                 <tbody>
                                     <tr>
+                                        <td>Phase 1</td>
                                         <td>A</td>
                                         <td>10 Marla</td>
                                         <td>1</td>
@@ -85,7 +138,7 @@
                                 <li>All imported properties will be assigned to the selected dealer</li>
                                 <li>CreatedAt will be set automatically</li>
                                 <li>Duplicate properties (same selected project + Unit No + Tower) will be skipped</li>
-                                <li>SubProject is selected on this page and applied to all imported rows</li>
+                                <li>SubProject is read from the uploaded file (first column)</li>
                             </ul>
                         </div>
                     </div>
@@ -128,19 +181,10 @@
                         </div>
                         <div class="col-md-3">
                             <div class="mb-3">
-                                <label for="subProject" class="form-label">SubProject *</label>
-                                <select class="form-select" id="subProject" name="subProject" required disabled>
-                                    @if (!string.IsNullOrWhiteSpace((string?)ViewBag.SelectedSubProject))
-                                    {
-                                        <option value="@ViewBag.SelectedSubProject" selected>@ViewBag.SelectedSubProject</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="">Select project first</option>
-                                    }
-                                </select>
-                                <small class="form-text text-muted">Selected subproject will be applied to all imported properties</small>
-                                <span class="text-danger field-validation-valid" data-valmsg-for="subProject" data-valmsg-replace="true"></span>
+                                <label class="form-label">SubProject</label>
+                                <div class="form-control-plaintext text-muted small">
+                                    Read from uploaded file (first column).
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -184,55 +228,6 @@
 
 @section Scripts {
     <script>
-        function loadSubProjectsForImport(projectId, selectedSubProject) {
-            var $subProject = $('#subProject');
-            $subProject.html('<option value="">Select SubProject</option>').prop('disabled', !projectId);
-            if (!projectId) {
-                $subProject.html('<option value="">Select project first</option>').prop('disabled', true);
-                return;
-            }
-
-            $.get('@Url.Action("GetProjectDetails", "Property")', { projectId: projectId })
-                .done(function(resp) {
-                    var subProjects = (resp && resp.subProjects) ? resp.subProjects : [];
-                    if (!subProjects.length) {
-                        $subProject.html('<option value="">No subprojects found for project</option>').prop('disabled', true);
-                        return;
-                    }
-
-                    var selectedNormalized = (selectedSubProject || '').toString().trim().toLowerCase();
-                    var matched = false;
-                    subProjects.forEach(function(sp) {
-                        var value = (sp || '').toString();
-                        var opt = $('<option></option>').val(value).text(value);
-                        if (!matched && value.trim().toLowerCase() === selectedNormalized) {
-                            opt.prop('selected', true);
-                            matched = true;
-                        }
-                        $subProject.append(opt);
-                    });
-                    if (!matched && selectedSubProject) {
-                        $subProject.append($('<option></option>').val(selectedSubProject).text(selectedSubProject + ' (current)').prop('selected', true));
-                    }
-                    $subProject.prop('disabled', false);
-                })
-                .fail(function() {
-                    $subProject.html('<option value="">Could not load subprojects</option>').prop('disabled', true);
-                });
-        }
-
-        $('#projectId').on('change', function() {
-            loadSubProjectsForImport($(this).val(), '');
-        });
-
-        $(function() {
-            var initialProjectId = $('#projectId').val();
-            var initialSubProject = '@(ViewBag.SelectedSubProject ?? "")';
-            if (initialProjectId) {
-                loadSubProjectsForImport(initialProjectId, initialSubProject);
-            }
-        });
-
         // File size validation
         document.getElementById('file').addEventListener('change', function(e) {
             var file = e.target.files[0];

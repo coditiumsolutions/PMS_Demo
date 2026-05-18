@@ -1,0 +1,47 @@
+@model AccChequeBook
+@{
+    ViewData["Title"] = "New cheque book";
+    var bankId = (int)ViewBag.BankAccountId;
+    var label = ViewBag.BankLabel as string ?? "";
+}
+<p class="text-muted small mb-3">@label</p>
+<form asp-action="ChequeBookCreate" asp-route-bankAccountId="@bankId" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="SeriesFrom" class="form-label"></label>
+            <input asp-for="SeriesFrom" class="form-control" maxlength="20" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="SeriesTo" class="form-label"></label>
+            <input asp-for="SeriesTo" class="form-control" maxlength="20" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="IssuedDate" class="form-label"></label>
+            <input asp-for="IssuedDate" class="form-control" type="date" required />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="TotalLeaves" class="form-label"></label>
+            <input asp-for="TotalLeaves" class="form-control" type="number" min="0" required />
+            <span asp-validation-for="TotalLeaves" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="UsedLeaves" class="form-label"></label>
+            <input asp-for="UsedLeaves" class="form-control" type="number" min="0" />
+            <span asp-validation-for="UsedLeaves" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Active</label>
+            </div>
+        </div>
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a asp-action="ChequeBooks" asp-route-bankAccountId="@bankId" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

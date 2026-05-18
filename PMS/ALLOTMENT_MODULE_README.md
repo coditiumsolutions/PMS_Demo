@@ -373,3 +373,19 @@ For questions or issues with the Allotment Module:
 **Version:** 1.0
 **Last Updated:** October 13, 2025
 
+
+
+
+
+Level Number	COA Level Wise
+Level 1	X-00-000-0000-00000
+       Level 2	X-XX-000-0000-00000
+            Level 3	X-XX-XXX-0000-00000
+                 Level 4	X-XX-XXX-XXXX-00000
+                        Level 5 is Posting/Entry Account	X-XX-XXX-XXXX-XXXXX
+
+
+S No	COA Code	Narration	Level #
+
+
+1	1-00-000-0000-00000	ASSET	1

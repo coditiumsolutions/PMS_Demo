@@ -1,0 +1,79 @@
+@model AccDealerCommissionVoucher
+@{
+    ViewData["Title"] = "New dealer commission voucher";
+    var vouchers = ViewBag.PostedVouchers as IEnumerable<AccVoucher> ?? Array.Empty<AccVoucher>();
+    var apPayments = ViewBag.APPayments as IEnumerable<AccAPPayment> ?? Array.Empty<AccAPPayment>();
+}
+<p class="text-muted small mb-3">WHT amount and net payable are calculated on save: <strong>gross × (WHT rate ÷ 100)</strong>, then net = gross − WHT.</p>
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label asp-for="VoucherNo" class="form-label"></label>
+            <input asp-for="VoucherNo" class="form-control" maxlength="30" required />
+            <span asp-validation-for="VoucherNo" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="VoucherDate" class="form-label"></label>
+            <input asp-for="VoucherDate" class="form-control" type="date" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="DealerID" class="form-label">Dealer ID (PMS)</label>
+            <input asp-for="DealerID" class="form-control" type="number" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select">
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Posted">Posted</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="ProjectID" class="form-label"></label>
+            <input asp-for="ProjectID" class="form-control" maxlength="10" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="AllotmentID" class="form-label"></label>
+            <input asp-for="AllotmentID" class="form-control" maxlength="10" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="PMSDealerPaymentID" class="form-label">PMS dealer payment ID</label>
+            <input asp-for="PMSDealerPaymentID" class="form-control" maxlength="10" placeholder="Optional bridge key" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="GrossCommission" class="form-label"></label>
+            <input asp-for="GrossCommission" class="form-control" type="number" step="0.01" min="0" required />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="WHTRate" class="form-label">WHT rate %</label>
+            <input asp-for="WHTRate" class="form-control" type="number" step="0.01" min="0" max="100" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="AccountingVoucherID" class="form-label">Posted accounting voucher (optional)</label>
+            <select asp-for="AccountingVoucherID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var v in vouchers)
+                {
+                    <option value="@v.VoucherID">@v.VoucherNo · @(v.VoucherType?.TypeCode) · @v.VoucherDate.ToString("yyyy-MM-dd")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="APPaymentID" class="form-label">AP payment (optional)</label>
+            <select asp-for="APPaymentID" class="form-select">
+                <option value="">— None —</option>
+                @foreach (var p in apPayments)
+                {
+                    <option value="@p.APPaymentID">@p.PaymentNo · @(p.Vendor?.VendorCode) · @p.PaymentDate.ToString("yyyy-MM-dd")</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+    <a asp-action="Index" class="btn btn-outline-secondary mt-2">Cancel</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

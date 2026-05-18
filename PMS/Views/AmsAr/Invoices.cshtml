@@ -1,0 +1,64 @@
+@model List<AccARInvoice>
+@{
+    ViewData["Title"] = "AR invoices";
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("ArInvoices")" />
+
+    <p class="mb-0 text-muted small">Manual AR invoices. Schedule and penalty IDs are optional PMS links.</p>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="CreateInvoice"><i class="fas fa-plus me-1"></i>New invoice</a>
+    }
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Aging">AR aging</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="CreateReceipt">Record receipt</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Due</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Paid</th>
+                <th class="text-end">Balance</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var i in Model)
+            {
+                var bal = i.TotalAmount - i.PaidAmount;
+                <tr>
+                    <td class="text-nowrap">@i.InvoiceNo</td>
+                    <td>@i.CustomerID</td>
+                    <td>@i.InvoiceDate.ToString("yyyy-MM-dd")</td>
+                    <td>@i.DueDate.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end">@i.TotalAmount.ToString("N2")</td>
+                    <td class="text-end">@i.PaidAmount.ToString("N2")</td>
+                    <td class="text-end">@bal.ToString("N2")</td>
+                    <td>@i.Status</td>
+                    <td class="text-nowrap">
+                        @if (ViewBag.CanCreate == true && bal > 0.01m)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="CreateReceipt" asp-route-customerId="@i.CustomerID">Receipt</a>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "arinvoice";
+                            ViewData["AmsDeleteId"] = i.ARInvoiceID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No AR invoices yet.</p>
+}

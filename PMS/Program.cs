@@ -3,6 +3,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.DataProtection;
 using PMS.Data;
+using PMS.Filters;
 using PMS.Services;
 using System.IO;
 using System.Linq;
@@ -10,8 +11,13 @@ using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// acc.Voucher.BankAccountID — omit EF mapping when DB predates Scripts/AMS_Alter_Voucher_BankAccount.sql (SqlException: Invalid column name 'BankAccountID').
+PMSDbContextAccCompat.MapVoucherBankAccountColumn =
+    builder.Configuration.GetValue<bool>("AmsAccCompat:MapVoucherBankAccountColumn", defaultValue: true);
+
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => options.Filters.Add<AmsViewBagFilter>());
+builder.Services.AddScoped<AmsAccessService>();
 
 // Add Entity Framework
 builder.Services.AddDbContext<PMSDbContext>(options =>
@@ -19,9 +25,20 @@ builder.Services.AddDbContext<PMSDbContext>(options =>
 
 // Add services
 builder.Services.AddScoped<SeedDataService>();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<PMS.Services.IModulePermissionService, PMS.Services.ModulePermissionService>();
 builder.Services.AddScoped<ISiteConfigService, SiteConfigService>();
+builder.Services.AddSingleton<PMS.Services.TotpSecretProtector>();
+builder.Services.AddSingleton<PMS.Services.ITotpAuthenticatorService, PMS.Services.TotpAuthenticatorService>();
+builder.Services.AddScoped<PMS.Services.ITwoFactorConfigService, PMS.Services.TwoFactorConfigService>();
 builder.Services.AddScoped<ISurchargeService, SurchargeService>();
+builder.Services.Configure<AmsPmsIntegrationOptions>(builder.Configuration.GetSection(AmsPmsIntegrationOptions.SectionName));
+builder.Services.AddScoped<IAmsPmsIntegrationService, AmsPmsIntegrationService>();
+builder.Services.AddScoped<AmsExportService>();
+builder.Services.AddScoped<AmsCoaClearService>();
+builder.Services.AddScoped<AmsAdminDeleteService>();
+builder.Services.Configure<AmsBackgroundJobsOptions>(builder.Configuration.GetSection(AmsBackgroundJobsOptions.SectionName));
+builder.Services.AddHostedService<AmsAccountingJobsHostedService>();
 
 // Persist Data Protection keys to keep auth cookies valid after IIS redeploy/restart.
 var dataProtectionPath = builder.Configuration["DataProtection:KeysPath"];

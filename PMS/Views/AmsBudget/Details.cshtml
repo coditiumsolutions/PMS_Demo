@@ -1,0 +1,62 @@
+@model AccBudget
+@{
+    ViewData["Title"] = "Budget lines — " + Model.BudgetName;
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success py-2">@TempData["Success"]</div>
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <p class="mb-0 text-muted small">Fiscal year: <strong>@(Model.FiscalYear?.YearName)</strong></p>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary btn-sm" asp-controller="AmsReporting" asp-action="BudgetVsActual" asp-route-budgetId="@Model.BudgetID">Budget vs actual</a>
+        @if (ViewBag.CanCreate == true)
+        {
+            <a class="btn btn-primary btn-sm" asp-action="AddLine" asp-route-budgetId="@Model.BudgetID"><i class="fas fa-plus me-1"></i>Add line</a>
+        }
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All budgets</a>
+    </div>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Account</th>
+                <th>Period</th>
+                <th>Cost center</th>
+                <th class="text-end">Budget</th>
+                <th class="text-end">Revised</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model.Lines.OrderBy(x => x.AccountHead?.AccountCode))
+            {
+                <tr>
+                    <td>@(l.AccountHead?.AccountCode) — @(l.AccountHead?.AccountName)</td>
+                    <td class="small">@(l.Period?.PeriodName ?? "—")</td>
+                    <td class="small">@(l.CostCenter?.CostCenterCode ?? "—")</td>
+                    <td class="text-end">@l.BudgetedAmount.ToString("N2")</td>
+                    <td class="text-end">@(l.RevisedAmount?.ToString("N2") ?? "—")</td>
+                    <td>
+                        @if (ViewBag.CanEdit == true)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="EditLine" asp-route-id="@l.BudgetLineID">Edit</a>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "budgetline";
+                            ViewData["AmsDeleteId"] = l.BudgetLineID;
+                            ViewData["AmsDeleteReturnUrl"] = Url.Action("Details", new { id = Model.BudgetID });
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Lines.Any())
+{
+    <p class="text-muted">No budget lines. Use Add line.</p>
+}

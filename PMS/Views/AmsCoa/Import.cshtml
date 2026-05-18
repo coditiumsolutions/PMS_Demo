@@ -1,0 +1,38 @@
+@{
+
+    ViewData["Title"] = "Import COA (CSV)";
+
+}
+
+<p class="text-muted mb-2">Upload <strong>coa-import.csv</strong> (recommended):</p>
+
+<ul class="small text-muted">
+
+    <li><code>S No, COA Code, Narration, Level #, Account Category</code></li>
+
+    <li>Parent, posting rules, and category ID are filled in automatically from code and level.</li>
+
+    <li>Level 5 = posting allowed; levels 1–4 = group accounts only.</li>
+
+</ul>
+
+<p class="small text-muted">Also accepts AMS 7-column format: <code>AccountCode, AccountName, AccountCategoryID, …</code></p>
+
+<form asp-action="Import" method="post" enctype="multipart/form-data">
+
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+
+        <input type="file" name="file" accept=".csv,text/csv" class="form-control" required />
+
+    </div>
+
+    <button type="submit" class="btn btn-primary">Upload</button>
+
+    <a asp-action="DownloadTemplate" class="btn btn-outline-secondary">Download coa-import.csv</a>
+
+    <a asp-action="Index" class="btn btn-link">Back to COA</a>
+
+</form>
+

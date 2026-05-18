@@ -1,0 +1,42 @@
+@model List<AccVoucherType>
+@{
+    ViewData["Title"] = "Voucher types";
+}
+<p class="mb-3 text-muted small">Seed types from <code>acc.VoucherType</code> (JV, BPV, BRV, …). Numbering uses these codes.</p>
+<div class="mb-3">
+    <partial name="_AmsExportCsv" model="@("VoucherTypes")" />
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Prefix</th>
+                <th>Auto no.</th>
+                <th>Active</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td><strong>@t.TypeCode</strong></td>
+                    <td>@t.TypeName</td>
+                    <td>@(t.Prefix ?? "—")</td>
+                    <td>@(t.IsAutoNumbered ? "Yes" : "No")</td>
+                    <td>@(t.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "vouchertype";
+                            ViewData["AmsDeleteId"] = t.VoucherTypeID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

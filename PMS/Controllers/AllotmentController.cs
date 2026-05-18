@@ -13,6 +13,10 @@ namespace PMS.Controllers
     public class AllotmentController : Controller
     {
         private const string ModuleKey = "Allotment";
+        private const string WorkflowConfigKey = "allotmentworkflow";
+        private const string PropertyStatusAvailable = "Available";
+        private const string PropertyStatusReserved = "Reserved";
+        private const string PropertyStatusAllotted = "Allotted";
         private readonly PMSDbContext _context;
         private readonly IWebHostEnvironment _environment;
         private readonly IModulePermissionService _modulePermission;
@@ -40,11 +44,107 @@ namespace PMS.Controllers
             return null;
         }
 
+        private async Task<List<string>> GetWorkflowStatusesAsync()
+        {
+            var config = await _context.Configurations.FirstOrDefaultAsync(c => c.ConfigKey == WorkflowConfigKey);
+            return config?.ConfigValue != null
+                ? config.ConfigValue.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList()
+                : new List<string> { "Initiated", "Operations Desk", "Approved", "Declined" };
+        }
+
+        private static string ResolveWorkflowStatus(IEnumerable<string> statuses, string fallback)
+        {
+            return statuses.FirstOrDefault(s => string.Equals(s, fallback, StringComparison.OrdinalIgnoreCase)) ?? fallback;
+        }
+
+        private static int GetWorkflowIndex(List<string> statuses, string? currentStatus)
+        {
+            if (statuses.Count == 0) return -1;
+            if (string.IsNullOrWhiteSpace(currentStatus)) return -1;
+            for (var i = 0; i < statuses.Count; i++)
+            {
+                if (string.Equals(statuses[i], currentStatus, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Allotment workflow: linear pipeline (e.g. Initiated → Operations Desk), then a single decision:
+        /// Approved or Declined (mutually exclusive terminals). Approved is locked.
+        /// </summary>
+        private async Task<(List<string> pipeline, string approved, string declined)> GetAllotmentWorkflowPartsAsync()
+        {
+            var statuses = await GetWorkflowStatusesAsync();
+            var approved = ResolveWorkflowStatus(statuses, "Approved");
+            var declined = ResolveWorkflowStatus(statuses, "Declined");
+            var pipeline = statuses
+                .Where(s => !string.Equals(s, approved, StringComparison.OrdinalIgnoreCase)
+                         && !string.Equals(s, declined, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (pipeline.Count == 0)
+            {
+                pipeline = new List<string>
+                {
+                    ResolveWorkflowStatus(statuses, "Initiated"),
+                    ResolveWorkflowStatus(statuses, "Operations Desk")
+                };
+            }
+
+            return (pipeline, approved, declined);
+        }
+
+        private async Task SetWorkflowStatusesViewBagAsync()
+        {
+            var statuses = await GetWorkflowStatusesAsync();
+            ViewBag.WorkflowStatuses = statuses;
+            ViewBag.InitiatedStatus = ResolveWorkflowStatus(statuses, "Initiated");
+            ViewBag.OperationsDeskStatus = ResolveWorkflowStatus(statuses, "Operations Desk");
+            ViewBag.ApprovedStatus = ResolveWorkflowStatus(statuses, "Approved");
+            ViewBag.DeclinedStatus = ResolveWorkflowStatus(statuses, "Declined");
+        }
+
+        private async Task ApplyAllotmentSideEffectsAsync(Allotment allotment, string newStatus)
+        {
+            if (allotment.PropertyID == null) return;
+
+            var statuses = await GetWorkflowStatusesAsync();
+            var approved = ResolveWorkflowStatus(statuses, "Approved");
+            var declined = ResolveWorkflowStatus(statuses, "Declined");
+
+            var property = await _context.Properties.FirstOrDefaultAsync(p => p.PropertyID == allotment.PropertyID);
+            if (property == null) return;
+
+            if (string.Equals(newStatus, approved, StringComparison.OrdinalIgnoreCase))
+            {
+                property.Status = PropertyStatusAllotted;
+                allotment.ApprovedBy = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? allotment.ApprovedBy;
+            }
+            else if (string.Equals(newStatus, declined, StringComparison.OrdinalIgnoreCase))
+            {
+                // Release property back to pool so a new allotment can be initiated.
+                property.Status = PropertyStatusAvailable;
+            }
+            else
+            {
+                // In-progress workflow: keep reserved if it isn't already allotted.
+                if (!string.Equals(property.Status, PropertyStatusAllotted, StringComparison.OrdinalIgnoreCase))
+                    property.Status = PropertyStatusReserved;
+            }
+        }
+
         // GET: Allotment/Index (Main page with grid and charts)
         public async Task<IActionResult> Index(string projectFilter = "All", string statusFilter = "All", string searchTerm = "")
         {
             var denied = await EnsurePermissionAsync("Read");
             if (denied != null) return denied;
+            await SetWorkflowStatusesViewBagAsync();
+            var workflowStatuses = ViewBag.WorkflowStatuses as List<string> ?? new List<string> { "Initiated", "Operations Desk", "Approved", "Declined" };
+            var initiatedStatus = ResolveWorkflowStatus(workflowStatuses, "Initiated");
+            var operationsDeskStatus = ResolveWorkflowStatus(workflowStatuses, "Operations Desk");
+            var approvedStatus = ResolveWorkflowStatus(workflowStatuses, "Approved");
+            var declinedStatus = ResolveWorkflowStatus(workflowStatuses, "Declined");
+
             // Get all allotments with related data
             var allotmentsQuery = _context.Allotments
                 .Include(a => a.Customer)
@@ -113,11 +213,13 @@ namespace PMS.Controllers
 
             // Statistics
             ViewBag.TotalAllotments = await _context.Allotments.CountAsync();
-            ViewBag.PendingApproval = await _context.Allotments.Where(a => a.WorkFlowStatus == "Pending Approval").CountAsync();
-            ViewBag.Approved = await _context.Allotments.Where(a => a.WorkFlowStatus == "Approved").CountAsync();
+            ViewBag.InitiatedCount = await _context.Allotments.CountAsync(a => a.WorkFlowStatus == initiatedStatus);
+            ViewBag.OperationsDeskCount = await _context.Allotments.CountAsync(a => a.WorkFlowStatus == operationsDeskStatus);
+            ViewBag.Approved = await _context.Allotments.CountAsync(a => a.WorkFlowStatus == approvedStatus);
+            ViewBag.Declined = await _context.Allotments.CountAsync(a => a.WorkFlowStatus == declinedStatus);
             ViewBag.TotalProperties = await _context.Properties.CountAsync();
-            ViewBag.AllottedProperties = await _context.Properties.Where(p => p.Status == "Allotted").CountAsync();
-            ViewBag.AvailableProperties = await _context.Properties.Where(p => p.Status == "Available").CountAsync();
+            ViewBag.AllottedProperties = await _context.Properties.Where(p => p.Status == PropertyStatusAllotted).CountAsync();
+            ViewBag.AvailableProperties = await _context.Properties.Where(p => p.Status == PropertyStatusAvailable).CountAsync();
 
             return View(allotments);
         }
@@ -161,7 +263,7 @@ namespace PMS.Controllers
             }
 
             // Check if customer already has an allotment
-            if (customer.Allotments != null && customer.Allotments.Any())
+            if (customer.Allotments != null && customer.Allotments.Any(a => !string.Equals(a.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase)))
             {
                 var existingAllotment = customer.Allotments.FirstOrDefault();
                 return Json(new { 
@@ -274,7 +376,7 @@ namespace PMS.Controllers
                 }
 
                 // Check if customer already has an allotment
-                if (customer.Allotments != null && customer.Allotments.Any())
+                if (customer.Allotments != null && customer.Allotments.Any(a => !string.Equals(a.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase)))
                 {
                     return Json(new { success = false, message = "Customer already has a property allotted. One customer can only have ONE property." });
                 }
@@ -295,7 +397,7 @@ namespace PMS.Controllers
                 }
 
                 // Check if property already has an allotment (double check)
-                if (property.Allotments != null && property.Allotments.Any())
+                if (property.Allotments != null && property.Allotments.Any(a => !string.Equals(a.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase)))
                 {
                     return Json(new { success = false, message = "Property is already allotted to another customer" });
                 }
@@ -333,6 +435,9 @@ namespace PMS.Controllers
                     return Json(new { success = false, message = "User ID is required. Please ensure you are logged in." });
                 }
 
+                var workflowStatuses = await GetWorkflowStatusesAsync();
+                var initiatedStatus = ResolveWorkflowStatus(workflowStatuses, "Initiated");
+
                 // Create Allotment
                 var allotment = new Allotment
                 {
@@ -342,7 +447,7 @@ namespace PMS.Controllers
                     AllottedBy = userID,
                     AllotmentDate = DateTime.Now,
                     AllottmentType = allotmentType ?? "Regular",
-                    WorkFlowStatus = "Pending",
+                    WorkFlowStatus = initiatedStatus,
                     Comments = comments
                 };
 
@@ -358,8 +463,8 @@ namespace PMS.Controllers
 
                 _context.Allotments.Add(allotment);
 
-                // Update Property Status
-                property.Status = "Allotted";
+                // Reserve the property until workflow is approved/declined.
+                property.Status = PropertyStatusReserved;
 
                 // Log activity
                 var log = new ActivityLog
@@ -376,7 +481,7 @@ namespace PMS.Controllers
 
                 return Json(new { 
                     success = true, 
-                    message = $"Property successfully allotted! Allotment ID: {allotmentID}",
+                    message = $"Allotment initiated. Allotment ID: {allotmentID}",
                     allotmentID = allotmentID
                 });
             }
@@ -406,6 +511,9 @@ namespace PMS.Controllers
         {
             try
             {
+                var denied = await EnsurePermissionAsync("Edit");
+                if (denied != null) return denied;
+
                 // Validate inputs
                 if (string.IsNullOrEmpty(customerID) || string.IsNullOrEmpty(propertyID))
                 {
@@ -431,7 +539,7 @@ namespace PMS.Controllers
                 }
 
                 // Check if customer already has an allotment
-                if (customer.Allotments != null && customer.Allotments.Any())
+                if (customer.Allotments != null && customer.Allotments.Any(a => !string.Equals(a.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase)))
                 {
                     TempData["Error"] = "Customer already has a property allotted. One customer can only have ONE property.";
                     return RedirectToAction(nameof(Create));
@@ -455,7 +563,7 @@ namespace PMS.Controllers
                 }
 
                 // Check if property already has an allotment (double check)
-                if (property.Allotments != null && property.Allotments.Any())
+                if (property.Allotments != null && property.Allotments.Any(a => !string.Equals(a.WorkFlowStatus, "Declined", StringComparison.OrdinalIgnoreCase)))
                 {
                     TempData["Error"] = "Property is already allotted to another customer";
                     return RedirectToAction(nameof(Create));
@@ -488,6 +596,9 @@ namespace PMS.Controllers
                 // Get current user ID
                 var userID = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "ADMIN";
 
+                var workflowStatuses = await GetWorkflowStatusesAsync();
+                var initiatedStatus = ResolveWorkflowStatus(workflowStatuses, "Initiated");
+
                 // Create Allotment
                 var allotment = new Allotment
                 {
@@ -497,17 +608,17 @@ namespace PMS.Controllers
                     AllottedBy = userID,
                     AllotmentDate = DateTime.Now,
                     AllottmentType = allotmentType ?? "Regular",
-                    WorkFlowStatus = "Pending",
+                    WorkFlowStatus = initiatedStatus,
                     Comments = comments
                 };
 
                 if (string.IsNullOrWhiteSpace(allotment.AllottmentType)) allotment.AllottmentType = "Regular";
-                if (string.IsNullOrWhiteSpace(allotment.WorkFlowStatus)) allotment.WorkFlowStatus = "Pending";
+                if (string.IsNullOrWhiteSpace(allotment.WorkFlowStatus)) allotment.WorkFlowStatus = initiatedStatus;
 
                 _context.Allotments.Add(allotment);
 
-                // Update Property Status
-                property.Status = "Allotted";
+                // Reserve property until approved/declined.
+                property.Status = PropertyStatusReserved;
 
                 // Handle file upload if attachment provided
                 if (attachment != null && attachment.Length > 0)
@@ -553,7 +664,7 @@ namespace PMS.Controllers
                 var log = new ActivityLog
                 {
                     UserID = userID,
-                    Action = $"Property {propertyID} allotted to Customer {customerID}",
+                    Action = $"Allotment {allotmentID} initiated (reserved): property {propertyID} for customer {customerID}",
                     RefType = "Allotment",
                     RefID = allotmentID,
                     CreatedAt = DateTime.Now
@@ -562,8 +673,9 @@ namespace PMS.Controllers
 
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = $"Property successfully allotted! Allotment ID: {allotmentID}";
-                return RedirectToAction("Details", "Property", new { id = propertyID });
+                TempData["Success"] =
+                    $"Allotment request {allotmentID} submitted as \"{initiatedStatus}\". The plot is reserved until Operations approves ({ResolveWorkflowStatus(workflowStatuses, "Approved")}) or declines.";
+                return RedirectToAction(nameof(Edit), new { id = allotmentID });
             }
             catch (Exception ex)
             {
@@ -601,7 +713,187 @@ namespace PMS.Controllers
                 .OrderByDescending(a => a.UploadedAt)
                 .ToListAsync();
 
+            await SetWorkflowStatusesViewBagAsync();
             return View(allotment);
+        }
+
+        // GET: Allotment/Edit (workflow controls)
+        public async Task<IActionResult> Edit(string id)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrEmpty(id)) return NotFound();
+
+            var allotment = await _context.Allotments
+                .Include(a => a.Customer)
+                .Include(a => a.Property)
+                    .ThenInclude(p => p.Project)
+                .Include(a => a.AllottedByUser)
+                .FirstOrDefaultAsync(a => a.AllotmentID == id);
+            if (allotment == null) return NotFound();
+
+            await SetWorkflowStatusesViewBagAsync();
+            var (pipeline, approvedStatus, declinedStatus) = await GetAllotmentWorkflowPartsAsync();
+            var wf = allotment.WorkFlowStatus ?? pipeline[0];
+            var isApproved = string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase);
+            var isDeclined = string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase);
+            var pIdx = GetWorkflowIndex(pipeline, wf);
+
+            ViewBag.PipelineStatuses = pipeline;
+            ViewBag.IsAllotmentApproved = isApproved;
+            ViewBag.IsAllotmentDeclined = isDeclined;
+            var inPipeline = !isApproved && !isDeclined && pIdx >= 0;
+            ViewBag.HasPipelinePrevious = inPipeline && pIdx > 0;
+            ViewBag.HasPipelineNext = inPipeline && pIdx < pipeline.Count - 1;
+            ViewBag.AtPipelineDecisionPoint = inPipeline && pIdx == pipeline.Count - 1;
+            if (!isApproved && !isDeclined && pIdx < 0)
+                ViewBag.WorkflowStatusWarning = "Current status does not match the configured pipeline. Use Move Back/Forward only after status is corrected in data.";
+            return View(allotment);
+        }
+
+        // POST: Allotment/MoveStatus
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MoveStatus(string id, string direction)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrEmpty(id)) return NotFound();
+
+            var allotment = await _context.Allotments
+                .Include(a => a.Property)
+                .FirstOrDefaultAsync(a => a.AllotmentID == id);
+            if (allotment == null) return NotFound();
+
+            var (pipeline, approvedStatus, declinedStatus) = await GetAllotmentWorkflowPartsAsync();
+            var wf = allotment.WorkFlowStatus ?? pipeline[0];
+
+            if (string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "This allotment is approved and locked. It cannot be moved or declined.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            if (string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "This allotment was declined. Workflow cannot be changed.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            var idx = GetWorkflowIndex(pipeline, wf);
+            if (idx < 0)
+            {
+                allotment.WorkFlowStatus = pipeline[0];
+                await _context.SaveChangesAsync();
+                TempData["Error"] = "Status was reset to the first pipeline step.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            if (idx >= pipeline.Count - 1 && string.Equals(direction, "forward", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "Use Approve or Decline from this step—not Move Forward.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            var newIdx = idx;
+            if (string.Equals(direction, "forward", StringComparison.OrdinalIgnoreCase))
+                newIdx = Math.Min(pipeline.Count - 1, idx + 1);
+            else if (string.Equals(direction, "backward", StringComparison.OrdinalIgnoreCase))
+            {
+                if (idx <= 0)
+                {
+                    TempData["Error"] = "Already at the first workflow step.";
+                    return RedirectToAction(nameof(Edit), new { id });
+                }
+                newIdx = idx - 1;
+            }
+            else
+            {
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            var newStatus = pipeline[newIdx];
+            if (!string.Equals(allotment.WorkFlowStatus, newStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                allotment.WorkFlowStatus = newStatus;
+                await ApplyAllotmentSideEffectsAsync(allotment, newStatus);
+
+                var userID = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "ADMIN";
+                _context.ActivityLogs.Add(new ActivityLog
+                {
+                    UserID = userID,
+                    Action = $"Allotment {id} moved to status '{newStatus}'",
+                    RefType = "Allotment",
+                    RefID = id,
+                    CreatedAt = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+                TempData["Success"] = $"Workflow updated: {newStatus}";
+            }
+
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        /// <summary>Terminal outcome from the last pipeline step only: Approved or Declined (not sequential).</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetAllotmentOutcome(string id, string outcome)
+        {
+            var denied = await EnsurePermissionAsync("Edit");
+            if (denied != null) return denied;
+            if (string.IsNullOrEmpty(id)) return NotFound();
+
+            var allotment = await _context.Allotments
+                .Include(a => a.Property)
+                .FirstOrDefaultAsync(a => a.AllotmentID == id);
+            if (allotment == null) return NotFound();
+
+            var (pipeline, approvedStatus, declinedStatus) = await GetAllotmentWorkflowPartsAsync();
+            var wf = allotment.WorkFlowStatus ?? pipeline[0];
+
+            if (string.Equals(wf, approvedStatus, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(wf, declinedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "This allotment is already complete.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            var idx = GetWorkflowIndex(pipeline, wf);
+            if (idx != pipeline.Count - 1)
+            {
+                TempData["Error"] = "Approve or Decline is only available at the final review step.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            string? newStatus = null;
+            if (string.Equals(outcome, "approve", StringComparison.OrdinalIgnoreCase))
+                newStatus = approvedStatus;
+            else if (string.Equals(outcome, "decline", StringComparison.OrdinalIgnoreCase))
+                newStatus = declinedStatus;
+
+            if (newStatus == null)
+            {
+                TempData["Error"] = "Invalid outcome.";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
+
+            allotment.WorkFlowStatus = newStatus;
+            await ApplyAllotmentSideEffectsAsync(allotment, newStatus);
+
+            var userID = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "ADMIN";
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserID = userID,
+                Action = $"Allotment {id} outcome set to '{newStatus}'",
+                RefType = "Allotment",
+                RefID = id,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Workflow complete: {newStatus}";
+            return RedirectToAction(nameof(Edit), new { id });
         }
 
         // GET: Allotment/UnAllot

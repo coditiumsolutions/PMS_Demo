@@ -1,0 +1,65 @@
+@model List<AccDealerCommissionVoucher>
+@{
+    ViewData["Title"] = "Dealer commission vouchers";
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success py-2">@TempData["Success"]</div>
+}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <partial name="_AmsExportCsv" model="@("DealerCommissions")" />
+
+    <p class="mb-0 text-muted small">Dealer commission vouchers: <code>acc.DealerCommissionVoucher</code>. Optional PMS dealer payment id.</p>
+    @if (ViewBag.CanCreate == true)
+    {
+        <a class="btn btn-primary btn-sm" asp-action="Create"><i class="fas fa-plus me-1"></i>New voucher</a>
+    }
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>No.</th>
+                <th>Date</th>
+                <th>Dealer</th>
+                <th class="text-end">Gross</th>
+                <th class="text-end">WHT</th>
+                <th class="text-end">Net</th>
+                <th>Status</th>
+                <th>PMS pay</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in Model)
+            {
+                <tr>
+                    <td class="text-nowrap">@v.VoucherNo</td>
+                    <td>@v.VoucherDate.ToString("yyyy-MM-dd")</td>
+                    <td>@v.DealerID</td>
+                    <td class="text-end">@v.GrossCommission.ToString("N2")</td>
+                    <td class="text-end">@v.WHTAmount.ToString("N2")</td>
+                    <td class="text-end">@v.NetPayable.ToString("N2")</td>
+                    <td>@v.Status</td>
+                    <td class="small">@(v.PMSDealerPaymentID ?? "—")</td>
+                    <td>
+                        @if (ViewBag.CanEdit == true)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@v.CommissionVoucherID">Edit</a>
+                        }
+                        @if (ViewBag.CanDelete == true)
+                        {
+                            ViewData["AmsDeleteEntity"] = "dealercommission";
+                            ViewData["AmsDeleteId"] = v.CommissionVoucherID;
+                            <partial name="_AmsDeleteButton" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!Model.Any())
+{
+    <p class="text-muted">No dealer commission vouchers yet.</p>
+}
