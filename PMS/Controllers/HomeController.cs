@@ -43,12 +43,18 @@ namespace PMS.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly PMSDbContext _context;
         private readonly IModulePermissionService _modulePermission;
+        private readonly GroqAIService _groqService;
 
-        public HomeController(ILogger<HomeController> logger, PMSDbContext context, IModulePermissionService modulePermission)
+        public HomeController(
+            ILogger<HomeController> logger,
+            PMSDbContext context,
+            IModulePermissionService modulePermission,
+            GroqAIService groqService)
         {
             _logger = logger;
             _context = context;
             _modulePermission = modulePermission;
+            _groqService = groqService;
         }
 
         public async Task<IActionResult> Index()
@@ -479,7 +485,7 @@ namespace PMS.Controllers
             try
             {
                 var schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "DBforAI.txt");
-                var groqService = new Services.GroqAIService();
+                var groqService = _groqService;
                 var schemaService = new Services.DatabaseSchemaService(schemaPath);
                 var validatorService = new Services.SQLQueryValidatorService(schemaService);
 

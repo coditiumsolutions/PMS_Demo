@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace PMS.Services
 {
@@ -10,18 +11,14 @@ namespace PMS.Services
         private int _currentKeyIndex = 0;
         private readonly object _lockObject = new object();
 
-        public GroqAIService()
+        public GroqAIService(IConfiguration configuration)
         {
             _httpClient = new HttpClient();
             _httpClient.BaseAddress = new Uri("https://api.groq.com/openai/v1/");
             _httpClient.Timeout = TimeSpan.FromSeconds(60);
 
-            // Load balancing with 2 API keys
-            _apiKeys = new[]
-            {
-                "REDACTED_GROQ_KEY_1",
-                "REDACTED_GROQ_KEY_2"
-            };
+            _apiKeys = configuration.GetSection("Groq:ApiKeys").Get<string[]>()
+                ?? Array.Empty<string>();
         }
 
         private string GetNextApiKey()

@@ -37,6 +37,7 @@ builder.Services.AddScoped<IAmsPmsIntegrationService, AmsPmsIntegrationService>(
 builder.Services.AddScoped<AmsExportService>();
 builder.Services.AddScoped<AmsCoaClearService>();
 builder.Services.AddScoped<AmsAdminDeleteService>();
+builder.Services.AddScoped<GroqAIService>();
 builder.Services.Configure<AmsBackgroundJobsOptions>(builder.Configuration.GetSection(AmsBackgroundJobsOptions.SectionName));
 builder.Services.AddHostedService<AmsAccountingJobsHostedService>();
 
