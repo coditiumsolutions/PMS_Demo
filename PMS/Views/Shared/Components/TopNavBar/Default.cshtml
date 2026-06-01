@@ -1,0 +1,28 @@
+@model PMS.ViewComponents.TopNavBarViewModel
+
+<div class="pms-topbar-stack">
+    <header class="pms-topbar" role="banner">
+        <div class="pms-topbar-inner">
+            <div class="pms-topbar-spacer" aria-hidden="true"></div>
+            <nav class="pms-topbar-nav" aria-label="Account">
+                <span class="pms-topbar-item">
+                    <i class="bi bi-person-circle" aria-hidden="true"></i>
+                    <span>Logged in As: <strong>@Model.UserDisplayName</strong></span>
+                </span>
+                <span class="pms-topbar-divider" aria-hidden="true"></span>
+                <span class="pms-topbar-item">
+                    <i class="bi bi-clock" aria-hidden="true"></i>
+                    <span>Login Time:
+                        <strong>@(Model.LoginTime?.ToString("MMM dd, yyyy hh:mm tt") ?? "—")</strong>
+                    </span>
+                </span>
+                <span class="pms-topbar-divider" aria-hidden="true"></span>
+                <a class="pms-topbar-link pms-topbar-logout" asp-controller="Account" asp-action="Logout">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+    <div class="pms-topbar-separator" aria-hidden="true"></div>
+</div>

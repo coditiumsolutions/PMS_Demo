@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/juba-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/property-management-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- DataTables CSS -->
@@ -146,8 +148,8 @@
             min-height: 100vh;
             background: var(--sidebar-bg);
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
-            width: 280px !important;
-            min-width: 280px;
+            width: 238px !important;
+            min-width: 238px;
             overflow: visible !important;
             border-right: 1px solid var(--border);
             position: relative;
@@ -267,8 +269,11 @@
         }
 
         .brand-logo-img {
-            max-width: 180px;
+            max-width: 100%;
+            max-height: 120px;
+            width: auto;
             height: auto;
+            object-fit: contain;
             filter: drop-shadow(2px 2px 4px rgba(117, 188, 255, 0.3));
             transition: transform 0.2s ease-in-out;
             background: transparent;
@@ -1245,8 +1250,8 @@
 
             .sidebar {
                 min-height: 100vh;
-                width: 280px !important;
-                min-width: 280px;
+                width: 238px !important;
+                min-width: 238px;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -1286,6 +1291,11 @@
             document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        @await Component.InvokeAsync("TopNavBar")
+    }
+    <div class="pms-app-body">
     <div class="container-fluid">
         <button id="mobileMenuToggle"
                 class="mobile-menu-toggle"
@@ -1304,23 +1314,17 @@
                     }
                     <!-- Sidebar -->
                     <nav id="appSidebar" class="col-md-3 col-lg-3 d-md-block sidebar collapse@(isAmsSidebarShell ? " sidebar--ams" : "")">
-                <div class="position-sticky pt-3">
+                <div class="position-sticky sidebar-sticky-inner">
                     <div class="brand-section" style="background: var(--sidebar-bg);">
                         @{
                             var siteConfig = await SiteConfigService.GetAsync();
-                            var logoPath = siteConfig?.LogoPath ?? "~/images/PMS.png";
+                            var logoPath = siteConfig?.LogoPath ?? "~/images/logohome.png";
                             var projectName = string.IsNullOrWhiteSpace(siteConfig?.ProjectName) ? "PMS" : siteConfig!.ProjectName!;
-                            var tagline = string.IsNullOrWhiteSpace(siteConfig?.Tagline) ? "Property Management System" : siteConfig!.Tagline!;
                         }
-                        <img src="@Url.Content(logoPath)" alt="@projectName" class="brand-logo-img mb-2" />
-                        <div class="brand-logo">@projectName</div>
+                        <img src="@Url.Content(logoPath)" alt="@projectName" class="brand-logo-img" />
                         @if (isAmsSidebarShell)
                         {
                             <div class="brand-subtitle">Accounting (AMS)</div>
-                        }
-                        else
-                        {
-                            <div class="brand-subtitle">@tagline</div>
                         }
                     </div>
                     
@@ -1760,6 +1764,7 @@ else
                     <!-- Main content -->
                     <main class="col-md-9 ms-sm-auto col-lg-9 main-content" style="margin-left: 15px !important;">
                 @if (ViewContext.RouteData.Values["Controller"]?.ToString() != "Home" &&
+                     ViewContext.RouteData.Values["Controller"]?.ToString() != "Registration" &&
                      !(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() == "RecordPayment"))
                 {
                     <div class="content-header">
@@ -1914,6 +1919,7 @@ else
                 </div>
             </main>
         </div>
+    </div>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

@@ -10,7 +10,7 @@ namespace PMS.Services
         public string? Tagline { get; set; } = "Property Management System";
         public string? WebsiteUrl { get; set; } = "";
         public string? Email { get; set; } = "";
-        public string LogoPath { get; set; } = "~/images/PMS.png";
+        public string LogoPath { get; set; } = "~/images/logohome.png";
     }
 
     public interface ISiteConfigService
