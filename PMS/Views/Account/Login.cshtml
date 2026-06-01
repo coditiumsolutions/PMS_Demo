@@ -1,5 +1,4 @@
 @model PMS.Services.SiteConfig
-@using System.Reflection
 
 @{
     var projectName = string.IsNullOrWhiteSpace(Model?.ProjectName) ? "PMS" : Model.ProjectName;
@@ -7,7 +6,6 @@
     Layout = null;
     var website = Model?.WebsiteUrl;
     var email = Model?.Email;
-    var appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 }
 
 <!DOCTYPE html>
@@ -127,9 +125,7 @@
     </div>
 
     <footer class="pms-login-footer">
-        <span>&copy; @DateTime.Now.Year @projectName. All rights reserved.</span>
-        <span class="mx-2">·</span>
-        <span>Version @appVersion</span>
+        <span>&copy; @DateTime.Now.Year @projectName. All rights reserved. · Reserved by Coditium Solutions</span>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
