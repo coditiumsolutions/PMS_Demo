@@ -9,8 +9,6 @@
     ViewData["ListingRecordCount"] = recordCount;
     ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
     ViewData["ListingAddText"] = "Add New";
-    ViewData["SearchCollapseId"] = "customerSearchCollapse";
-
     var pendingCount = ViewBag.PendingCustomersCount;
     ViewData["ListingExtraActions"] =
         "<a href=\"" + Url.Action("ByProject") + "\" class=\"btn btn-outline-primary btn-sm\">" +
@@ -45,62 +43,56 @@
 }
 
 <!-- Search Filters -->
-<form method="get" asp-action="Index" class="mb-4">
-    <div class="card pms-search-card">
-        <partial name="Listing/_SearchCardHeader" />
-        <div class="collapse show" id="customerSearchCollapse">
-            <div class="card-body">
-                <div class="row g-3 pms-search-fields align-items-end">
-                    <div class="col-12 col-md-6 col-lg-3 col-search">
-                        <div class="form-floating">
-                            <select name="projectFilter" id="projectFilter" class="form-select" onchange="this.form.submit()">
-                                <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
-                                @if (ViewBag.Projects != null)
-                                {
-                                    @foreach (var project in ViewBag.Projects)
-                                    {
-                                        <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
-                                            @project.ProjectName
-                                        </option>
-                                    }
-                                }
-                            </select>
-                            <label for="projectFilter">Filter by Project</label>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 col-search">
-                        <div class="form-floating">
-                            <select name="statusFilter" id="statusFilter" class="form-select" onchange="this.form.submit()">
-                                <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
-                                <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
-                                <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
-                                <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
-                                <option value="Marked for Deletion" selected="@(ViewBag.StatusFilter == "Marked for Deletion")">Marked for Deletion</option>
-                            </select>
-                            <label for="statusFilter">Filter by Status</label>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 col-search">
-                        <div class="form-floating">
-                            <input type="text"
-                                   name="searchTerm"
-                                   id="searchTerm"
-                                   class="form-control"
-                                   placeholder="Search"
-                                   value="@ViewBag.SearchTerm" />
-                            <label for="searchTerm">Search by ID, FormNo, Name, National ID, Email</label>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 col-search">
-                        <div class="d-flex justify-content-end gap-2 pms-search-actions border-0 mt-0 pt-0">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search me-1" aria-hidden="true"></i>Search
-                            </button>
-                            <a asp-action="Index" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
-                            </a>
-                        </div>
-                    </div>
+<form method="get" asp-action="Index" class="mb-4 pms-customer-listing">
+    <div class="pms-customer-search-wrap pms-listing-search-wrap">
+        <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="projectFilter" class="form-label">Filter by Project</label>
+                    <select name="projectFilter" id="projectFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
+                        @if (ViewBag.Projects != null)
+                        {
+                            @foreach (var project in ViewBag.Projects)
+                            {
+                                <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
+                                    @project.ProjectName
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-2">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="statusFilter" class="form-label">Filter by Status</label>
+                    <select name="statusFilter" id="statusFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
+                        <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
+                        <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
+                        <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
+                        <option value="Marked for Deletion" selected="@(ViewBag.StatusFilter == "Marked for Deletion")">Marked for Deletion</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field">
+                    <label for="searchTerm" class="form-label">Search by ID, FormNo, Name, National ID, Email</label>
+                    <input type="text"
+                           name="searchTerm"
+                           id="searchTerm"
+                           class="form-control"
+                           value="@ViewBag.SearchTerm" />
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="d-flex flex-wrap gap-2 pms-customer-search-actions">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                    </a>
                 </div>
             </div>
         </div>

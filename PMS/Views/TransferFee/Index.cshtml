@@ -2,63 +2,69 @@
 
 @{
     ViewData["Title"] = "Transfer Fee";
+    ViewData["ListingTitle"] = "Transfer Fee";
+    ViewData["ListingDescription"] = "Configure transfer fee rates by project";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
+    ViewData["ListingAddText"] = "Add Transfer Fee";
     var projects = ViewBag.Projects as IEnumerable<PMS.Models.Project> ?? Enumerable.Empty<PMS.Models.Project>();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0"><i class="fas fa-tags me-2"></i>Transfer Fee</h2>
-    @if (ViewBag.CanCreate == true)
-    {
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Add Transfer Fee
-        </a>
-    }
-</div>
-
-<form method="get" asp-action="Index" class="card pms-search-card mb-3">
-    <div class="card-body">
-        <div class="row g-2">
-            <div class="col-md-4">
-                <label class="form-label fw-bold">Project</label>
-                <select name="projectFilter" class="form-select form-select-sm">
-                    <option value="">All Projects</option>
-                    @foreach (var p in projects)
-                    {
-                        <option value="@p.ProjectID" selected="@(ViewBag.ProjectFilter == p.ProjectID)">@p.ProjectName</option>
-                    }
-                </select>
+<form method="get" asp-action="Index" class="mb-4 pms-listing-page">
+    <div class="pms-listing-search-wrap">
+        <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="projectFilter" class="form-label">Project</label>
+                    <select name="projectFilter" id="projectFilter" class="form-select">
+                        <option value="">All Projects</option>
+                        @foreach (var p in projects)
+                        {
+                            <option value="@p.ProjectID" selected="@(ViewBag.ProjectFilter == p.ProjectID)">@p.ProjectName</option>
+                        }
+                    </select>
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label fw-bold">SubProject</label>
-                <input type="text" name="subProjectFilter" class="form-control form-control-sm" value="@ViewBag.SubProjectFilter" placeholder="SubProject" />
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="pms-compact-field">
+                    <label for="subProjectFilter" class="form-label">SubProject</label>
+                    <input type="text" name="subProjectFilter" id="subProjectFilter" class="form-control" value="@ViewBag.SubProjectFilter" placeholder="SubProject" />
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label fw-bold">Priority</label>
-                <select name="priorityFilter" class="form-select form-select-sm">
-                    <option value="">All</option>
-                    <option value="Normal" selected="@(ViewBag.PriorityFilter == "Normal")">Normal</option>
-                    <option value="Urgent" selected="@(ViewBag.PriorityFilter == "Urgent")">Urgent</option>
-                </select>
+            <div class="col-12 col-md-6 col-lg-2">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="priorityFilter" class="form-label">Priority</label>
+                    <select name="priorityFilter" id="priorityFilter" class="form-select">
+                        <option value="">All</option>
+                        <option value="Normal" selected="@(ViewBag.PriorityFilter == "Normal")">Normal</option>
+                        <option value="Urgent" selected="@(ViewBag.PriorityFilter == "Urgent")">Urgent</option>
+                    </select>
+                </div>
             </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-search me-1"></i>Search
-                </button>
-                <a asp-action="Index" class="btn btn-secondary btn-sm">Clear</a>
+            <div class="col-12 col-lg-4">
+                <div class="d-flex flex-wrap gap-2 pms-listing-search-actions">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </form>
 
-<div class="card">
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
+        <partial name="Listing/_GridToolbar" />
+
         @if (Model.Any())
         {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle pms-enterprise-table">
+            <div class="table-responsive pms-saas-table-wrap">
+                <table class="table pms-saas-table">
                     <thead>
                         <tr>
-                            <th>Actions</th>
                             <th>ID</th>
                             <th>Project</th>
                             <th>SubProject</th>
@@ -68,38 +74,41 @@
                             <th>Created On</th>
                             <th>Created By</th>
                             <th>Modified By</th>
+                            <th class="pms-saas-th-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var row in Model)
                         {
                             <tr>
-                                <td>
-                                    @if (ViewBag.CanEdit == true)
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@row.Id" class="btn btn-sm btn-outline-warning" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    }
-                                    @if (ViewBag.CanDelete == true)
-                                    {
-                                        <form asp-action="Delete" asp-route-id="@row.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this transfer fee row?');">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    }
+                                <td data-label="ID"><code>@row.Id</code></td>
+                                <td data-label="Project">@(row.Project?.ProjectName ?? row.ProjectID)</td>
+                                <td data-label="SubProject">@(row.SubProject ?? "—")</td>
+                                <td data-label="Transfer Type">@(row.TransferType ?? "—")</td>
+                                <td data-label="Priority"><span class="pms-pill pms-pill--info">@(row.TransferPriority ?? "—")</span></td>
+                                <td data-label="Amount/Unit">@row.AmountPerUnit.ToString("N2")</td>
+                                <td data-label="Created On"><span class="text-nowrap">@row.CreatedOn.ToString("MMM dd, yyyy HH:mm")</span></td>
+                                <td data-label="Created By">@(row.CreatedBy ?? "—")</td>
+                                <td data-label="Modified By">@(row.ModifiedBy ?? "—")</td>
+                                <td class="pms-saas-td-actions" data-label="Actions">
+                                    <div class="pms-row-actions" role="group">
+                                        @if (ViewBag.CanEdit == true)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@row.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                            </a>
+                                        }
+                                        @if (ViewBag.CanDelete == true)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@row.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this transfer fee row?');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
                                 </td>
-                                <td><code>@row.Id</code></td>
-                                <td>@(row.Project?.ProjectName ?? row.ProjectID)</td>
-                                <td>@(row.SubProject ?? "—")</td>
-                                <td>@(row.TransferType ?? "—")</td>
-                                <td><span class="badge bg-info text-dark">@(row.TransferPriority ?? "—")</span></td>
-                                <td>@row.AmountPerUnit.ToString("N2")</td>
-                                <td>@row.CreatedOn.ToString("MMM dd, yyyy HH:mm")</td>
-                                <td>@(row.CreatedBy ?? "—")</td>
-                                <td>@(row.ModifiedBy ?? "—")</td>
                             </tr>
                         }
                     </tbody>
@@ -109,7 +118,7 @@
         else
         {
             <div class="text-center py-4 text-muted">
-                <i class="fas fa-inbox fa-3x mb-2 d-block"></i>
+                <i class="bi bi-inbox fs-1 mb-2 d-block" aria-hidden="true"></i>
                 <p class="mb-0">No transfer fee rows found.</p>
             </div>
         }

@@ -1,20 +1,15 @@
 @model IEnumerable<PMS.Models.Waiver>
 @{
     ViewData["Title"] = "Waivers";
+    ViewData["ListingTitle"] = "Waivers";
+    ViewData["ListingDescription"] = "Surcharge waiver requests";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
+    ViewData["ListingAddText"] = "New Waiver";
     var initiatedStatus = (string?)ViewBag.InitiatedStatus ?? "Initiated";
     var approvedStatus = (string?)ViewBag.ApprovedStatus ?? "Approved";
     var declinedStatus = (string?)ViewBag.DeclinedStatus ?? "Declined";
 }
-
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h2 class="mb-0"><i class="fas fa-hand-holding-usd me-2"></i>Waivers</h2>
-    @if (ViewBag.CanCreate == true)
-    {
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>New Waiver
-        </a>
-    }
-</div>
 
 @if (TempData["SuccessMessage"] != null)
 {
@@ -64,13 +59,13 @@
     </div>
 </div>
 
-<form method="get" asp-action="Index" class="mb-4">
-    <div class="card">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label fw-semibold">Status</label>
-                    <select name="statusFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+<form method="get" asp-action="Index" class="mb-4 pms-listing-page">
+    <div class="pms-listing-search-wrap">
+        <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="statusFilter" class="form-label">Status</label>
+                    <select name="statusFilter" id="statusFilter" class="form-select" onchange="this.form.submit()">
                         <option value="">All</option>
                         @foreach (var s in (ViewBag.WorkflowStatuses as List<string> ?? new List<string>()))
                         {
@@ -78,25 +73,33 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-semibold">Customer ID</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" name="customerFilter" class="form-control" placeholder="Filter by customer" value="@ViewBag.CustomerFilter" />
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-                    </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-5">
+                <div class="pms-compact-field">
+                    <label for="customerFilter" class="form-label">Customer ID</label>
+                    <input type="text" name="customerFilter" id="customerFilter" class="form-control" placeholder="Filter by customer" value="@ViewBag.CustomerFilter" />
                 </div>
-                <div class="col-md-4">
-                    <a asp-action="Index" class="btn btn-secondary btn-sm"><i class="fas fa-times me-1"></i>Clear</a>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="d-flex flex-wrap gap-2 pms-listing-search-actions">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </form>
 
-<div class="card">
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle pms-enterprise-table align-middle" id="waiverTable">
+        <partial name="Listing/_GridToolbar" />
+
+        <div class="table-responsive pms-saas-table-wrap">
+            <table class="table pms-saas-table" id="waiverTable">
                 <thead>
                     <tr>
                         <th>Waiver ID</th>
@@ -106,7 +109,7 @@
                         <th class="text-end">Waived</th>
                         <th>Status</th>
                         <th>Created</th>
-                        <th>Actions</th>
+                        <th class="pms-saas-th-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -114,41 +117,43 @@
                     {
                         var status = w.Status ?? initiatedStatus;
                         var isApproved = string.Equals(status, approvedStatus, StringComparison.OrdinalIgnoreCase);
-                        var badge = string.Equals(status, approvedStatus, StringComparison.OrdinalIgnoreCase)
-                            ? "bg-success"
+                        var pillClass = string.Equals(status, approvedStatus, StringComparison.OrdinalIgnoreCase)
+                            ? "pms-pill--success"
                             : string.Equals(status, declinedStatus, StringComparison.OrdinalIgnoreCase)
-                                ? "bg-danger"
-                                : "bg-warning text-dark";
+                                ? "pms-pill--danger"
+                                : "pms-pill--warning";
                         <tr>
-                            <td><code>@w.WaiverID</code></td>
-                            <td>
+                            <td data-label="Waiver ID"><code>@w.WaiverID</code></td>
+                            <td data-label="Customer">
                                 <div><code>@w.CustomerID</code></div>
                                 <div class="small text-muted">@(w.Customer?.FullName ?? "—")</div>
                             </td>
-                            <td>@(w.WaiverType ?? "—")</td>
-                            <td class="text-end">@w.TotalAmount.ToString("N0")</td>
-                            <td class="text-end fw-bold text-success">@w.WaivedAmount.ToString("N0")</td>
-                            <td><span class="badge @badge">@status</span></td>
-                            <td>@w.CreatedAt.ToString("MMM dd, yyyy")</td>
-                            <td>
-                                <a asp-action="Details" asp-route-id="@w.WaiverID" class="btn btn-sm btn-outline-info" title="Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                @if (ViewBag.CanEdit == true && !isApproved)
-                                {
-                                    <a asp-action="Edit" asp-route-id="@w.WaiverID" class="btn btn-sm btn-outline-primary" title="Edit">
-                                        <i class="fas fa-edit"></i>
+                            <td data-label="Type">@(w.WaiverType ?? "—")</td>
+                            <td class="text-end" data-label="Total Surcharge">@w.TotalAmount.ToString("N0")</td>
+                            <td class="text-end fw-bold text-success" data-label="Waived">@w.WaivedAmount.ToString("N0")</td>
+                            <td data-label="Status"><span class="pms-pill @pillClass">@status</span></td>
+                            <td data-label="Created"><span class="text-nowrap">@w.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                            <td class="pms-saas-td-actions" data-label="Actions">
+                                <div class="pms-row-actions" role="group">
+                                    <a asp-action="Details" asp-route-id="@w.WaiverID" class="btn btn-sm btn-outline-secondary" title="Details">
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
                                     </a>
-                                }
-                                @if (ViewBag.CanDelete == true && !isApproved)
-                                {
-                                    <form asp-action="Delete" asp-route-id="@w.WaiverID" method="post" class="d-inline" onsubmit="return confirm('Delete this waiver?');">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                }
+                                    @if (ViewBag.CanEdit == true && !isApproved)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@w.WaiverID" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                        </a>
+                                    }
+                                    @if (ViewBag.CanDelete == true && !isApproved)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@w.WaiverID" method="post" class="d-inline" onsubmit="return confirm('Delete this waiver?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
                             </td>
                         </tr>
                     }

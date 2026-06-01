@@ -2,22 +2,15 @@
 
 @{
     ViewData["Title"] = "NDC (No Dues Certificate)";
+    ViewData["ListingTitle"] = "NDC (No Dues Certificate)";
+    ViewData["ListingDescription"] = "No Dues Certificate records before property transfer";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
+    ViewData["ListingAddText"] = "New NDC";
+    ViewData["ListingExtraActions"] =
+        "<a href=\"" + Url.Action("Index", "TransferFee") + "\" class=\"btn btn-outline-info btn-sm\">" +
+        "<i class=\"bi bi-tags me-1\" aria-hidden=\"true\"></i>Transfer Fee Module</a>";
 }
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <!-- <h2 class="mb-0"><i class="fas fa-file-certificate me-2"></i>NDC</h2> -->
-    <div class="d-flex gap-2">
-        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
-            <i class="fas fa-tags me-2"></i>Transfer Fee Module
-        </a>
-        @if (ViewBag.CanCreate == true)
-        {
-            <a asp-action="Create" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>New NDC
-            </a>
-        }
-    </div>
-</div>
 
 @if (TempData["Success"] != null)
 {
@@ -34,17 +27,19 @@
     </div>
 }
 
-<form method="get" asp-action="Index" class="mb-4">
-    <div class="card">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Customer ID</label>
-                    <input type="text" name="customerIdFilter" class="form-control form-control-sm" placeholder="Search by Customer ID" value="@ViewBag.CustomerIdFilter" />
+<form method="get" asp-action="Index" class="mb-4 pms-listing-page">
+    <div class="pms-listing-search-wrap">
+        <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field">
+                    <label for="customerIdFilter" class="form-label">Customer ID</label>
+                    <input type="text" name="customerIdFilter" id="customerIdFilter" class="form-control" placeholder="Search by Customer ID" value="@ViewBag.CustomerIdFilter" />
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Workflow Status</label>
-                    <select name="workflowFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="workflowFilter" class="form-label">Workflow Status</label>
+                    <select name="workflowFilter" id="workflowFilter" class="form-select" onchange="this.form.submit()">
                         <option value="">All</option>
                         @if (ViewBag.WorkflowStatuses != null)
                         {
@@ -55,31 +50,31 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-search me-2"></i>Search
-                        </button>
-                        <a asp-action="Index" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-times me-2"></i>Clear
-                        </a>
-                    </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="d-flex flex-wrap gap-2 pms-listing-search-actions">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </form>
 
-<div class="card">
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
+        <partial name="Listing/_GridToolbar" />
+
         @if (Model != null && Model.Any())
         {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle pms-enterprise-table">
+            <div class="table-responsive pms-saas-table-wrap">
+                <table class="table pms-saas-table">
                     <thead>
                         <tr>
-                            <th>Actions</th>
                             <th>NDC ID</th>
                             <th>Customer ID</th>
                             <th>Customer / Project</th>
@@ -94,6 +89,7 @@
                             <th>Expiry</th>
                             <th>Workflow</th>
                             <th>Created</th>
+                            <th class="pms-saas-th-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -101,38 +97,15 @@
                         {
                             var isApproved = string.Equals(n.WorkFlowStatus?.Trim(), "Approved", StringComparison.OrdinalIgnoreCase);
                             <tr>
-                                <td>
-                                    <a asp-action="Print" asp-route-id="@n.NDCID" target="_blank" class="btn btn-sm btn-outline-secondary" title="Print">
-                                        <i class="fas fa-print"></i>
-                                    </a>
-                                    <a asp-action="Details" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-primary" title="Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    @if (ViewBag.CanEdit == true && !isApproved)
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-warning" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    }
-                                    @if (ViewBag.CanDelete == true)
-                                    {
-                                        <form asp-action="Delete" asp-route-id="@n.NDCID" method="post" class="d-inline" onsubmit="return confirm('Delete this NDC record?');">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                </td>
-                                <td><span class="badge bg-secondary">@n.NDCID</span></td>
-                                <td><code>@n.CustomerID</code></td>
-                                <td>
+                                <td data-label="NDC ID"><span class="badge bg-secondary">@n.NDCID</span></td>
+                                <td data-label="Customer ID"><code>@n.CustomerID</code></td>
+                                <td data-label="Customer / Project">
                                     @if (n.Customer != null)
                                     {
                                         <span>@(n.Customer.FullName ?? "—")</span>
                                         @if (n.Customer.PaymentPlan?.Project != null)
                                         {
-                                            <br /><span class="badge bg-info">@n.Customer.PaymentPlan.Project.ProjectName</span>
+                                            <br /><span class="pms-pill pms-pill--info">@n.Customer.PaymentPlan.Project.ProjectName</span>
                                         }
                                     }
                                     else
@@ -140,28 +113,53 @@
                                         <span class="text-muted">—</span>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="Type / Title">
                                     <span class="text-muted small">@(n.NDCType ?? "—")</span>
                                     @if (!string.IsNullOrWhiteSpace(n.Title))
                                     {
                                         <br /><span class="small">@(n.Title.Length > 40 ? n.Title.Substring(0, 40) + "…" : n.Title)</span>
                                     }
                                 </td>
-                                <td>@(n.TotalDueAmount?.ToString("N0") ?? "—")</td>
-                                <td>@(n.TotalDueInstallments?.ToString("N0") ?? "—")</td>
-                                <td>@(n.RemainingDues?.ToString("N0") ?? "—")</td>
-                                <td>@(n.AmountPerUnit?.ToString("N2") ?? "—")</td>
-                                <td>@(n.PropertySize?.ToString("N2") ?? "—")</td>
-                                <td>@(n.TransferFeeAmount?.ToString("N0") ?? "—")</td>
-                                <td>
+                                <td data-label="Total Due">@(n.TotalDueAmount?.ToString("N0") ?? "—")</td>
+                                <td data-label="Total Paid">@(n.TotalDueInstallments?.ToString("N0") ?? "—")</td>
+                                <td data-label="Remaining Dues">@(n.RemainingDues?.ToString("N0") ?? "—")</td>
+                                <td data-label="Amount/Unit">@(n.AmountPerUnit?.ToString("N2") ?? "—")</td>
+                                <td data-label="Property Size">@(n.PropertySize?.ToString("N2") ?? "—")</td>
+                                <td data-label="Transfer Fee">@(n.TransferFeeAmount?.ToString("N0") ?? "—")</td>
+                                <td data-label="All Clear">
                                     @if (n.AllPaymentClear)
-                                    { <span class="badge bg-success">Yes</span> }
+                                    { <span class="pms-pill pms-pill--success">Yes</span> }
                                     else
-                                    { <span class="badge bg-warning">No</span> }
+                                    { <span class="pms-pill pms-pill--warning">No</span> }
                                 </td>
-                                <td>@(n.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</td>
-                                <td><span class="badge bg-primary">@(n.WorkFlowStatus ?? "—")</span></td>
-                                <td>@n.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td data-label="Expiry">@(n.NDCExpiryDate?.ToString("MMM dd, yyyy") ?? "—")</td>
+                                <td data-label="Workflow"><span class="pms-pill pms-pill--info">@(n.WorkFlowStatus ?? "—")</span></td>
+                                <td data-label="Created"><span class="text-nowrap">@n.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                                <td class="pms-saas-td-actions" data-label="Actions">
+                                    <div class="pms-row-actions" role="group">
+                                        <a asp-action="Print" asp-route-id="@n.NDCID" target="_blank" class="btn btn-sm btn-outline-secondary" title="Print">
+                                            <i class="bi bi-printer" aria-hidden="true"></i>
+                                        </a>
+                                        <a asp-action="Details" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-secondary" title="Details">
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
+                                        </a>
+                                        @if (ViewBag.CanEdit == true && !isApproved)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@n.NDCID" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                            </a>
+                                        }
+                                        @if (ViewBag.CanDelete == true)
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@n.NDCID" method="post" class="d-inline" onsubmit="return confirm('Delete this NDC record?');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -171,10 +169,13 @@
         else
         {
             <div class="text-center py-5 text-muted">
-                <i class="fas fa-file-certificate fa-4x mb-3"></i>
+                <i class="bi bi-file-earmark-check fs-1 mb-3 d-block" aria-hidden="true"></i>
                 <h5>No NDC records</h5>
                 <p>Create an NDC (No Dues Certificate) before a transfer when the customer has cleared all dues.</p>
-                <a asp-action="Create" class="btn btn-primary"><i class="fas fa-plus me-2"></i>New NDC</a>
+                @if (ViewBag.CanCreate == true)
+                {
+                    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-2" aria-hidden="true"></i>New NDC</a>
+                }
             </div>
         }
     </div>

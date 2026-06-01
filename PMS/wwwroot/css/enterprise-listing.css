@@ -362,3 +362,288 @@
 [data-theme="dark"] .pms-listing-scope .table-responsive {
     border-color: #334155;
 }
+
+/* ─── Flat listing (no card background) — Registration etc. ─── */
+
+.pms-listing-flat.pms-search-card,
+.pms-listing-flat.pms-grid-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.pms-listing-flat.pms-search-card .pms-search-card-header {
+    background: transparent !important;
+    border-bottom: 1px solid #e5e7eb;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.pms-listing-flat.pms-search-card > .collapse > .card-body,
+.pms-listing-flat.pms-grid-card > .card-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    background: transparent !important;
+}
+
+.pms-listing-flat .pms-grid-toolbar {
+    border-bottom: 1px solid #e5e7eb;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.pms-listing-flat .table-responsive {
+    border: none;
+    border-radius: 0;
+}
+
+/* Listing search bar — Registration, Customer, etc. */
+.pms-listing-page,
+.pms-registration-listing,
+.pms-customer-listing,
+.pms-transfer-listing {
+    --pms-listing-control-h: 36px;
+}
+
+.pms-listing-search-wrap .pms-compact-field .form-label,
+.pms-registration-search-wrap .pms-compact-field .form-label,
+.pms-customer-search-wrap .pms-compact-field .form-label,
+.pms-transfer-search-wrap .pms-compact-field .form-label,
+.pms-listing-page .pms-listing-search-wrap .pms-compact-field .form-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+    text-transform: none;
+    letter-spacing: 0.01em;
+}
+
+.pms-registration-listing .pms-listing-search-wrap .form-control,
+.pms-registration-listing .pms-listing-search-wrap .form-select,
+.pms-registration-listing .pms-registration-search-wrap .form-control,
+.pms-registration-listing .pms-registration-search-wrap .form-select,
+.pms-customer-listing .pms-customer-search-wrap .form-control,
+.pms-customer-listing .pms-customer-search-wrap .form-select,
+.pms-transfer-listing .pms-transfer-search-wrap .form-control,
+.pms-transfer-listing .pms-transfer-search-wrap .form-select,
+.pms-listing-page .pms-listing-search-wrap .form-control,
+.pms-listing-page .pms-listing-search-wrap .form-select {
+    min-height: var(--pms-listing-control-h);
+    height: var(--pms-listing-control-h);
+    padding: 0.35rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 10px;
+    border: 1px solid #94a3b8;
+}
+
+.pms-registration-listing .pms-listing-search-wrap .form-control:focus,
+.pms-registration-listing .pms-listing-search-wrap .form-select:focus,
+.pms-registration-listing .pms-registration-search-wrap .form-control:focus,
+.pms-registration-listing .pms-registration-search-wrap .form-select:focus,
+.pms-customer-listing .pms-customer-search-wrap .form-control:focus,
+.pms-customer-listing .pms-customer-search-wrap .form-select:focus,
+.pms-transfer-listing .pms-transfer-search-wrap .form-control:focus,
+.pms-transfer-listing .pms-transfer-search-wrap .form-select:focus,
+.pms-listing-page .pms-listing-search-wrap .form-control:focus,
+.pms-listing-page .pms-listing-search-wrap .form-select:focus {
+    border-color: #475569;
+    box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.15);
+}
+
+.pms-registration-listing .pms-listing-search-wrap .form-select,
+.pms-registration-listing .pms-registration-search-wrap .form-select,
+.pms-customer-listing .pms-customer-search-wrap .form-select,
+.pms-transfer-listing .pms-transfer-search-wrap .form-select,
+.pms-listing-page .pms-listing-search-wrap .form-select {
+    padding-right: 2.25rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23475569'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    background-size: 14px 10px;
+}
+
+.pms-registration-listing .pms-listing-search-wrap .form-select:focus,
+.pms-registration-listing .pms-registration-search-wrap .form-select:focus,
+.pms-customer-listing .pms-customer-search-wrap .form-select:focus,
+.pms-customer-listing .pms-customer-search-wrap #projectFilter:focus,
+.pms-customer-listing .pms-customer-search-wrap #statusFilter:focus,
+.pms-transfer-listing .pms-transfer-search-wrap .form-select:focus,
+.pms-transfer-listing .pms-transfer-search-wrap #workflowFilter:focus,
+.pms-listing-page .pms-listing-search-wrap .form-select:focus {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%232563eb'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+.pms-registration-listing .pms-search-actions .btn,
+.pms-customer-listing .pms-customer-search-actions .btn,
+.pms-transfer-listing .pms-transfer-search-actions .btn,
+.pms-listing-page .pms-listing-search-actions .btn {
+    min-height: var(--pms-listing-control-h);
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8125rem;
+}
+
+.pms-listing-search-wrap,
+.pms-registration-search-wrap,
+.pms-customer-search-wrap,
+.pms-transfer-search-wrap,
+.pms-listing-page .pms-listing-search-wrap {
+    border: 1px solid #94a3b8;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    background: transparent !important;
+}
+
+.pms-registration-search-actions .btn,
+.pms-customer-search-actions .btn,
+.pms-transfer-search-actions .btn,
+.pms-listing-search-actions .btn {
+    min-width: 0;
+}
+
+@media (min-width: 992px) {
+    .pms-listing-search-wrap .row,
+    .pms-registration-search-wrap .row,
+    .pms-customer-search-wrap .row,
+    .pms-transfer-search-wrap .row,
+    .pms-listing-page .pms-listing-search-wrap .row {
+        flex-wrap: nowrap !important;
+    }
+
+    .pms-registration-search-actions,
+    .pms-customer-search-actions,
+    .pms-transfer-search-actions,
+    .pms-listing-search-actions {
+        justify-content: flex-end;
+    }
+
+    .pms-registration-search-actions .btn,
+    .pms-customer-search-actions .btn,
+    .pms-transfer-search-actions .btn,
+    .pms-listing-search-actions .btn {
+        flex: 1 1 0;
+        max-width: calc(50% - 0.25rem);
+    }
+}
+
+[data-theme="dark"] .pms-listing-flat.pms-search-card,
+[data-theme="dark"] .pms-listing-flat.pms-grid-card {
+    background: transparent !important;
+}
+
+[data-theme="dark"] .pms-listing-flat.pms-search-card .pms-search-card-header {
+    background: transparent !important;
+    border-color: #334155;
+}
+
+/* ─── Registration Create form ─── */
+
+.pms-registration-process-note {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: 1rem !important;
+    color: #000 !important;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.pms-registration-process-note strong {
+    color: #000 !important;
+    font-weight: 700;
+}
+
+.pms-registration-process-note .pms-registration-process-detail {
+    color: #2563eb !important;
+    font-weight: 500;
+}
+
+.pms-registration-create.pms-listing-flat.card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.pms-registration-create.pms-listing-flat > .card-body {
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.pms-registration-create {
+    --pms-listing-control-h: 36px;
+}
+
+.pms-registration-create .form-control,
+.pms-registration-create .form-select {
+    min-height: var(--pms-listing-control-h);
+    height: var(--pms-listing-control-h);
+    padding: 0.35rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 10px;
+    border-color: #94a3b8;
+}
+
+.pms-registration-create .form-select {
+    padding-right: 2.25rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23475569'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    background-size: 14px 10px;
+}
+
+.pms-registration-create .form-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.35rem;
+}
+
+.pms-registration-create-actions .btn {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.4rem 2rem;
+    min-height: 36px;
+    border-radius: 10px;
+    min-width: 140px;
+}
+
+.pms-registration-create-actions .btn-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+}
+
+.pms-registration-create-actions .btn-primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+}
+
+.pms-registration-create-actions .btn-outline-secondary {
+    color: #334155;
+    border-color: #64748b;
+    border-width: 1.5px;
+    background: #fff;
+}
+
+.pms-registration-create-actions .btn-outline-secondary:hover {
+    color: #0f172a;
+    background: #f1f5f9;
+    border-color: #475569;
+}
+
+[data-theme="dark"] .pms-registration-process-note,
+[data-theme="dark"] .pms-registration-process-note strong {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .pms-registration-process-note .pms-registration-process-detail {
+    color: #60a5fa !important;
+}

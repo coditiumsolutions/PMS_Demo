@@ -3,10 +3,10 @@
 @{
     ViewData["Title"] = "Transfers";
     ViewData["ListingTitle"] = "All Transfers";
+    ViewData["ListingDescription"] = "Manage property transfer records";
     ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
     ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
     ViewData["ListingAddText"] = "New Transfer";
-    ViewData["SearchCollapseId"] = "transferSearchCollapse";
 
     var extraActions = "<a href=\"" + Url.Action("Index", "TransferFee") + "\" class=\"btn btn-outline-info btn-sm\">" +
         "<i class=\"bi bi-tags me-1\" aria-hidden=\"true\"></i>Transfer Fee Module</a>";
@@ -33,60 +33,54 @@
     </div>
 }
 
-<form method="get" asp-action="Index" class="mb-4">
-    <div class="card pms-search-card">
-        <partial name="Listing/_SearchCardHeader" />
-        <div class="collapse show" id="transferSearchCollapse">
-            <div class="card-body">
-                <div class="row g-3 pms-search-fields align-items-end">
-                    <div class="col-12 col-md-6 col-lg-3 col-search">
-                        <div class="form-floating">
-                            <input type="text"
-                                   name="customerIdFilter"
-                                   id="customerIdFilter"
-                                   class="form-control"
-                                   placeholder="Customer ID"
-                                   value="@ViewBag.CustomerIdFilter" />
-                            <label for="customerIdFilter">Customer ID</label>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 col-search">
-                        <div class="form-floating">
-                            <select name="workflowFilter" id="workflowFilter" class="form-select" onchange="this.form.submit()">
-                                <option value="">All</option>
-                                @if (ViewBag.WorkflowStatuses != null)
-                                {
-                                    foreach (var s in (string[])ViewBag.WorkflowStatuses)
-                                    {
-                                        <option value="@s" selected="@(ViewBag.WorkflowFilter == s)">@s</option>
-                                    }
-                                }
-                            </select>
-                            <label for="workflowFilter">Workflow Status</label>
-                        </div>
-                    </div>
-                    <div class="col-12 col-lg-6 col-search">
-                        <div class="d-flex justify-content-end gap-2 pms-search-actions border-0 mt-0 pt-0">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search me-1" aria-hidden="true"></i>Search
-                            </button>
-                            <a asp-action="Index" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
-                            </a>
-                        </div>
-                    </div>
+<form method="get" asp-action="Index" class="mb-4 pms-transfer-listing">
+    <div class="pms-transfer-search-wrap pms-listing-search-wrap">
+        <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field">
+                    <label for="customerIdFilter" class="form-label">Customer ID</label>
+                    <input type="text"
+                           name="customerIdFilter"
+                           id="customerIdFilter"
+                           class="form-control"
+                           value="@ViewBag.CustomerIdFilter" />
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="workflowFilter" class="form-label">Workflow Status</label>
+                    <select name="workflowFilter" id="workflowFilter" class="form-select" onchange="this.form.submit()">
+                        <option value="">All</option>
+                        @if (ViewBag.WorkflowStatuses != null)
+                        {
+                            foreach (var s in (string[])ViewBag.WorkflowStatuses)
+                            {
+                                <option value="@s" selected="@(ViewBag.WorkflowFilter == s)">@s</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="d-flex flex-wrap gap-2 pms-transfer-search-actions">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </form>
 
-<div class="card pms-grid-card">
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-transfer-listing">
     <div class="card-body">
         <partial name="Listing/_GridToolbar" />
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle pms-enterprise-table" id="transfersTable">
+        <div class="table-responsive pms-saas-table-wrap">
+            <table class="table pms-saas-table" id="transfersTable">
                 <thead>
                     <tr>
                         <th>Transfer ID</th>
@@ -96,7 +90,7 @@
                         <th>Buyer</th>
                         <th>Workflow</th>
                         <th>Created</th>
-                        <th>Actions</th>
+                        <th class="pms-saas-th-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -105,33 +99,33 @@
                         var isInitiated = string.Equals(t.WorkFlowStatus?.Trim(), "Created", StringComparison.OrdinalIgnoreCase)
                             || string.Equals(t.WorkFlowStatus?.Trim(), "Initiated", StringComparison.OrdinalIgnoreCase);
                         <tr>
-                            <td><span class="badge bg-secondary">@t.TransferID</span></td>
-                            <td><code>@t.CustomerID</code></td>
-                            <td>
+                            <td data-label="Transfer ID"><span class="badge bg-secondary">@t.TransferID</span></td>
+                            <td data-label="Customer ID"><code>@t.CustomerID</code></td>
+                            <td data-label="Customer / Project">
                                 @if (t.Customer?.PaymentPlan?.Project != null)
                                 {
-                                    <span class="badge bg-info">@t.Customer.PaymentPlan.Project.ProjectName</span>
+                                    <span class="pms-pill pms-pill--info">@t.Customer.PaymentPlan.Project.ProjectName</span>
                                 }
                                 else
                                 {
                                     <span class="text-muted">—</span>
                                 }
                             </td>
-                            <td><span class="pms-cell-truncate" title="@t.SellerName">@(t.SellerName ?? "—")</span></td>
-                            <td><span class="pms-cell-truncate" title="@t.BuyerName">@(t.BuyerName ?? "—")</span></td>
-                            <td>
+                            <td data-label="Seller"><span class="pms-cell-truncate" title="@t.SellerName">@(t.SellerName ?? "—")</span></td>
+                            <td data-label="Buyer"><span class="pms-cell-truncate" title="@t.BuyerName">@(t.BuyerName ?? "—")</span></td>
+                            <td data-label="Workflow">
                                 @if (t.WorkFlowStatus == "Approved")
-                                { <span class="badge bg-success">@t.WorkFlowStatus</span> }
+                                { <span class="pms-pill pms-pill--success">@t.WorkFlowStatus</span> }
                                 else if (t.WorkFlowStatus == "Created")
-                                { <span class="badge bg-primary">@t.WorkFlowStatus</span> }
+                                { <span class="pms-pill pms-pill--info">@t.WorkFlowStatus</span> }
                                 else if (t.WorkFlowStatus == "Pending")
-                                { <span class="badge bg-warning text-dark">@t.WorkFlowStatus</span> }
+                                { <span class="pms-pill pms-pill--warning">@t.WorkFlowStatus</span> }
                                 else
-                                { <span class="badge bg-warning text-dark">@(t.WorkFlowStatus ?? "—")</span> }
+                                { <span class="pms-pill pms-pill--warning">@(t.WorkFlowStatus ?? "—")</span> }
                             </td>
-                            <td>@t.CreatedAt.ToString("MMM dd, yyyy")</td>
-                            <td>
-                                <div class="btn-group pms-action-group" role="group">
+                            <td data-label="Created"><span class="text-nowrap">@t.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                            <td class="pms-saas-td-actions" data-label="Actions">
+                                <div class="pms-row-actions" role="group">
                                     <a asp-action="Details" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-secondary" title="Details">
                                         <i class="bi bi-eye" aria-hidden="true"></i>
                                     </a>

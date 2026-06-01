@@ -1,34 +1,28 @@
 @model PMS.Models.Registration
 
 @{
-    ViewData["Title"] = "New Registration";
+    ViewData["Title"] = "Registration";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-        <i class="fas fa-file-alt me-2"></i>New Registration
-    </h2>
-    <a asp-action="Index" class="btn btn-outline-primary">
-        <i class="fas fa-arrow-left me-2"></i>Back to List
+    <h2 class="mb-0">Registration</h2>
+    <a asp-action="Index" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Back to List
     </a>
 </div>
 
-<div class="alert alert-info mb-4">
-    <i class="fas fa-info-circle me-2"></i>
-    <strong>Registration Process:</strong> This is the first step. After registration is approved, it can be converted to a Customer with a Payment Plan.
+<div class="pms-registration-process-note mb-4">
+    <strong>Registration Process:</strong>
+    <span class="pms-registration-process-detail">This is the first step. After registration is approved, it can be converted to a Customer with a Payment Plan.</span>
 </div>
 
-<div class="card">
+<div class="card pms-listing-flat pms-registration-create">
     <div class="card-body">
         <form asp-action="Create" method="post">
             @Html.AntiForgeryToken()
             
             <div class="row">
                 <div class="col-md-6">
-                    <h6 class="mb-3 text-primary">
-                        <i class="fas fa-user me-2"></i>Personal Information
-                    </h6>
-
                     <div class="mb-3">
                         <label asp-for="FullName" class="form-label">Full Name *</label>
                         <input asp-for="FullName" id="FullName" class="form-control" required />
@@ -61,10 +55,6 @@
                 </div>
 
                 <div class="col-md-6">
-                    <h6 class="mb-3 text-primary">
-                        <i class="fas fa-phone me-2"></i>Contact Information
-                    </h6>
-
                     <div class="mb-3">
                         <label asp-for="Phone" class="form-label">Phone Number *</label>
                         <input asp-for="Phone" id="Phone" class="form-control" required />
@@ -110,12 +100,10 @@
 
             <hr class="my-4">
 
-            <div class="d-flex justify-content-end gap-2">
-                <a asp-action="Index" class="btn btn-secondary">
-                    <i class="fas fa-times me-2"></i>Cancel
-                </a>
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="fas fa-save me-2"></i>Create Registration
+            <div class="d-flex justify-content-end gap-2 pms-registration-create-actions">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save
                 </button>
             </div>
         </form>
