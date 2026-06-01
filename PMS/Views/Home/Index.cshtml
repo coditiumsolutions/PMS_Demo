@@ -12,12 +12,6 @@
         if (value >= 1_000m) return $"{(value / 1_000m):0.#}K";
         return value.ToString("N0");
     }
-    string FormatPayments(decimal totalPayments)
-    {
-        if (totalPayments >= 1_000_000) return $"{(totalPayments / 1_000_000):0.##}M";
-        if (totalPayments >= 1_000) return $"{(totalPayments / 1_000):0.#}K";
-        return $"{totalPayments:N0}";
-    }
 }
 
 <div class="pms-dashboard">
@@ -69,19 +63,7 @@
 
     <!-- Charts -->
     <div class="row g-3 mb-4">
-        <div class="col-lg-4">
-            <div class="pms-panel">
-                <div class="pms-panel-header">
-                    <h6><i class="bi bi-graph-up me-2 text-primary" aria-hidden="true"></i>Revenue Collection Trend</h6>
-                </div>
-                <div class="pms-panel-body">
-                    <div class="pms-chart-wrap">
-                        <canvas id="monthlyPaymentsChart" aria-label="Revenue collection trend chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4">
+        <div class="col-lg-6">
             <div class="pms-panel">
                 <div class="pms-panel-header">
                     <h6><i class="bi bi-pie-chart me-2 text-primary" aria-hidden="true"></i>Occupancy Rate</h6>
@@ -93,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
+        <div class="col-lg-6">
             <div class="pms-panel">
                 <div class="pms-panel-header">
                     <h6><i class="bi bi-clipboard-data me-2 text-primary" aria-hidden="true"></i>Collection Status</h6>
@@ -105,248 +87,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <!-- Recent Activities -->
-        <div class="col-lg-8">
-            <div class="pms-panel">
-                <div class="pms-panel-header">
-                    <h6><i class="bi bi-clock-history me-2" aria-hidden="true"></i>Recent Activities</h6>
-                    <a asp-controller="Payment" asp-action="CustomerPayments" class="small text-decoration-none">View all</a>
-                </div>
-                <div class="pms-panel-body">
-                    <div class="row g-4">
-                        <div class="col-md-4">
-                            <h6 class="text-uppercase small fw-bold text-muted mb-2">Latest Payments</h6>
-                            @if (Model.RecentPayments?.Any() == true)
-                            {
-                                foreach (var payment in Model.RecentPayments.Take(5))
-                                {
-                                    <div class="pms-activity-item">
-                                        <div class="pms-activity-icon" style="background:#dbeafe;color:#1d4ed8;">
-                                            <i class="bi bi-credit-card" aria-hidden="true"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-semibold small">PKR @payment.Amount.ToString("N0")</div>
-                                            <div class="text-muted small">@payment.PaymentDate.ToString("MMM dd, yyyy") · @(payment.Method ?? "Payment")</div>
-                                        </div>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <p class="text-muted small mb-0">No recent payments.</p>
-                            }
-                        </div>
-                        <div class="col-md-4">
-                            <h6 class="text-uppercase small fw-bold text-muted mb-2">Service Requests</h6>
-                            <div class="pms-activity-item">
-                                <div class="pms-activity-icon" style="background:#fef3c7;color:#b45309;">
-                                    <i class="bi bi-ticket-detailed" aria-hidden="true"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-semibold small">Open operational items</div>
-                                    <div class="text-muted small">@pendingRequests pending across modules</div>
-                                </div>
-                            </div>
-                            <a asp-controller="Ticket" asp-action="Index" class="btn btn-sm btn-outline-primary mt-1">View tickets &amp; complaints</a>
-                        </div>
-                        <div class="col-md-4">
-                            <h6 class="text-uppercase small fw-bold text-muted mb-2">New Residents</h6>
-                            @if (Model.RecentCustomers?.Any() == true)
-                            {
-                                foreach (var customer in Model.RecentCustomers.Take(5))
-                                {
-                                    <div class="pms-activity-item">
-                                        <div class="pms-activity-icon" style="background:#d1fae5;color:#047857;">
-                                            <i class="bi bi-person-plus" aria-hidden="true"></i>
-                                        </div>
-                                        <div>
-                                            <div class="fw-semibold small">@(customer.FullName ?? "Customer")</div>
-                                            <div class="text-muted small">ID: @(customer.CustomerID ?? "—")</div>
-                                        </div>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <p class="text-muted small mb-0">No recent residents.</p>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="col-lg-4">
-            <div class="pms-panel">
-                <div class="pms-panel-header">
-                    <h6><i class="bi bi-lightning-charge me-2" aria-hidden="true"></i>Quick Actions</h6>
-                </div>
-                <div class="pms-panel-body d-grid gap-2">
-                    <a asp-controller="Property" asp-action="Create" class="pms-quick-action">
-                        <i class="bi bi-building" aria-hidden="true"></i> Add Property
-                    </a>
-                    <a asp-controller="Customer" asp-action="Create" class="pms-quick-action">
-                        <i class="bi bi-person-plus" aria-hidden="true"></i> Add Resident
-                    </a>
-                    <a asp-controller="Payment" asp-action="PaymentPlans" class="pms-quick-action">
-                        <i class="bi bi-receipt" aria-hidden="true"></i> Generate Bill
-                    </a>
-                    <a asp-controller="Payment" asp-action="RecordPayment" class="pms-quick-action">
-                        <i class="bi bi-cash-coin" aria-hidden="true"></i> Record Payment
-                    </a>
-                    <a asp-controller="Ticket" asp-action="Create" class="pms-quick-action">
-                        <i class="bi bi-chat-left-text" aria-hidden="true"></i> Create Complaint
-                    </a>
-                </div>
-            </div>
-
-            <div class="pms-panel mt-3">
-                <div class="pms-panel-header">
-                    <h6><i class="bi bi-bar-chart me-2" aria-hidden="true"></i>Portfolio Snapshot</h6>
-                </div>
-                <div class="pms-panel-body">
-                    <div class="row text-center g-2">
-                        <div class="col-6">
-                            <div class="fw-bold fs-4 text-success">@Model.AvailableProperties</div>
-                            <div class="small text-muted">Available</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="fw-bold fs-4 text-primary">@Model.AllottedProperties</div>
-                            <div class="small text-muted">Allotted</div>
-                        </div>
-                        <div class="col-12 pt-2 border-top">
-                            <div class="small text-muted">Total collections (PKR)</div>
-                            <div class="fw-bold">@FormatPayments(Model.TotalPayments)</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @if (Model.ShowPendingTasks)
-    {
-        <div class="row g-3 mb-4">
-            <div class="col-12">
-                <div class="pms-panel">
-                    <div class="pms-panel-header">
-                        <h6><i class="bi bi-list-check me-2 text-warning" aria-hidden="true"></i>Pending Tasks</h6>
-                    </div>
-                    <div class="pms-panel-body">
-                        <div class="row g-3">
-                            <div class="col-6 col-md-4 col-xl-2">
-                                <a href="@Url.Action("Index", "Customer", new { statusFilter = "Pending" })" class="pms-pending-link">
-                                    <i class="bi bi-person-clock text-primary"></i>
-                                    <span><strong class="d-block small">Pending Customers</strong><small class="text-muted">@Model.PendingCustomers</small></span>
-                                </a>
-                            </div>
-                            <div class="col-6 col-md-4 col-xl-2">
-                                <a href="@Url.Action("UpdateRequests", "Customer", new { status = "Pending" })" class="pms-pending-link">
-                                    <i class="bi bi-clipboard-check text-primary"></i>
-                                    <span><strong class="d-block small">Update Requests</strong><small class="text-muted">@Model.PendingCustomerUpdateRequests</small></span>
-                                </a>
-                            </div>
-                            <div class="col-6 col-md-4 col-xl-2">
-                                <a href="@Url.Action("Index", "Waiver", new { statusFilter = Model.PendingWaiverStatusFilter })" class="pms-pending-link">
-                                    <i class="bi bi-file-earmark-text text-primary"></i>
-                                    <span><strong class="d-block small">Pending Waivers</strong><small class="text-muted">@Model.PendingWaivers</small></span>
-                                </a>
-                            </div>
-                            <div class="col-6 col-md-4 col-xl-2">
-                                <a href="@Url.Action("Index", "Transfer", new { workflowFilter = "Pending" })" class="pms-pending-link">
-                                    <i class="bi bi-arrow-left-right text-primary"></i>
-                                    <span><strong class="d-block small">Pending Transfers</strong><small class="text-muted">@Model.PendingTransfers</small></span>
-                                </a>
-                            </div>
-                            <div class="col-6 col-md-4 col-xl-2">
-                                <a href="@Url.Action("Index", "Refund", new { workflowFilter = "Pending" })" class="pms-pending-link">
-                                    <i class="bi bi-arrow-counterclockwise text-primary"></i>
-                                    <span><strong class="d-block small">Pending Refunds</strong><small class="text-muted">@Model.PendingRefunds</small></span>
-                                </a>
-                            </div>
-                            <div class="col-6 col-md-4 col-xl-2">
-                                <a href="@Url.Action("Index", "Allotment", new { statusFilter = "All" })" class="pms-pending-link">
-                                    <i class="bi bi-hand-index text-primary"></i>
-                                    <span><strong class="d-block small">Pending Allotments</strong><small class="text-muted">@Model.PendingAllotments</small></span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    <!-- Reports Hub -->
-    <div class="row g-3 mb-4">
-        <div class="col-12">
-            <div class="pms-panel">
-                <div class="pms-panel-header">
-                    <h6><i class="bi bi-folder2-open me-2" aria-hidden="true"></i>Reports Hub</h6>
-                </div>
-                <div class="pms-panel-body">
-                    <div class="row g-3">
-                        <div class="col-12 col-sm-6 col-xl-3">
-                            <a href="@Url.Action("Defaulters", "Reports")" class="pms-report-link">
-                                <i class="bi bi-person-exclamation text-danger fs-5"></i>
-                                <span><strong>Defaulters</strong><small>Overdue customers report</small></span>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-xl-3">
-                            <a href="@Url.Action("NotAllotted", "Reports")" class="pms-report-link">
-                                <i class="bi bi-geo-alt text-primary fs-5"></i>
-                                <span><strong>Not Allotted</strong><small>Customers without allotment</small></span>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-xl-3">
-                            <a href="@Url.Action("PropertyReport", "Reports")" class="pms-report-link">
-                                <i class="bi bi-buildings text-primary fs-5"></i>
-                                <span><strong>Property Report</strong><small>Allotted vs not allotted</small></span>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-xl-3">
-                            <a href="@Url.Action("RequestedReport", "Reports", new { id = "daily-transfer-report", title = "Daily Transfer Report" })" class="pms-report-link">
-                                <i class="bi bi-arrow-left-right text-primary fs-5"></i>
-                                <span><strong>Transfer Activity</strong><small>Daily transfer analytics</small></span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Additional analytics -->
-    <div class="row g-3 mb-4">
-        <div class="col-lg-6">
-            <div class="pms-panel">
-                <div class="pms-panel-header">
-                    <h6><i class="bi bi-graph-up-arrow me-2" aria-hidden="true"></i>Resident Registration Trend</h6>
-                </div>
-                <div class="pms-panel-body">
-                    <div class="pms-chart-wrap">
-                        <canvas id="customerTrendChart" aria-label="Customer registration trend"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @if (Model.DealerData != null && Model.DealerData.Any())
-        {
-            <div class="col-lg-6">
-                <div class="pms-panel">
-                    <div class="pms-panel-header">
-                        <h6><i class="bi bi-shop me-2" aria-hidden="true"></i>Dealer Performance Overview</h6>
-                    </div>
-                    <div class="pms-panel-body">
-                        <canvas id="dealerChart" height="120" aria-label="Dealer performance chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        }
     </div>
 </div>
 
@@ -387,40 +127,6 @@
             }
         });
 
-        const monthlyPaymentsCtx = document.getElementById('monthlyPaymentsChart').getContext('2d');
-        new Chart(monthlyPaymentsCtx, {
-            type: 'line',
-            data: {
-                labels: [@Html.Raw(string.Join(",", Model.MonthlyPaymentsData.Keys.Select(k => $"'{k}'")))],
-                datasets: [{
-                    label: 'Revenue (PKR)',
-                    data: [@string.Join(",", Model.MonthlyPaymentsData.Values)],
-                    borderColor: colors.primary,
-                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 4,
-                    pointBackgroundColor: colors.primaryLight
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function (value) {
-                                return 'PKR ' + Number(value).toLocaleString('en-US');
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
         const paymentStatusCtx = document.getElementById('paymentStatusChart').getContext('2d');
         new Chart(paymentStatusCtx, {
             type: 'bar',
@@ -441,75 +147,5 @@
                 scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
         });
-
-        const customerTrendCtx = document.getElementById('customerTrendChart').getContext('2d');
-        new Chart(customerTrendCtx, {
-            type: 'line',
-            data: {
-                labels: [@Html.Raw(string.Join(",", Model.CustomerTrendData.Keys.Select(k => $"'{k}'")))],
-                datasets: [{
-                    label: 'New Residents',
-                    data: [@string.Join(",", Model.CustomerTrendData.Values)],
-                    borderColor: colors.primary,
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-            }
-        });
-
-        @if (Model.DealerData != null && Model.DealerData.Any())
-        {
-            <text>
-            const dealerChartCtx = document.getElementById('dealerChart');
-            if (dealerChartCtx) {
-                const dealerData = [
-                    @foreach (var dealer in Model.DealerData)
-                    {
-                        <text>{
-                            dealershipName: '@Html.Raw(dealer.DealershipName?.Replace("'", "\\'") ?? "")',
-                            customers: @dealer.Customers,
-                            properties: @dealer.Properties
-                        },</text>
-                    }
-                ];
-
-                new Chart(dealerChartCtx.getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: dealerData.map(d => d.dealershipName.length > 20 ? d.dealershipName.substring(0, 20) + '...' : d.dealershipName),
-                        datasets: [
-                            {
-                                label: 'Customers',
-                                data: dealerData.map(d => d.customers),
-                                backgroundColor: 'rgba(37, 99, 235, 0.85)',
-                                borderRadius: 8
-                            },
-                            {
-                                label: 'Properties',
-                                data: dealerData.map(d => d.properties),
-                                backgroundColor: 'rgba(14, 165, 233, 0.85)',
-                                borderRadius: 8
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { position: 'top' } },
-                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                    }
-                });
-            }
-            </text>
-        }
     </script>
 }

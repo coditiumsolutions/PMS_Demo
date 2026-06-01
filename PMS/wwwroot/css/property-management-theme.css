@@ -527,9 +527,13 @@ body:has(.pms-dashboard) .main-content {
     color: rgba(255, 255, 255, 0.88) !important;
 }
 
-#appSidebar .sidebar .nav-link i,
-#appSidebar .nav-link i {
-    color: rgba(255, 255, 255, 0.88) !important;
+#appSidebar h6,
+#appSidebar .brand-subtitle {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+#appSidebar .submenu-caret {
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 #appSidebar .sidebar .nav-link.active,
@@ -540,11 +544,6 @@ body:has(.pms-dashboard) .main-content {
     box-shadow: none !important;
 }
 
-#appSidebar .sidebar .nav-link.active i,
-#appSidebar .nav-link.active i {
-    color: #fff !important;
-}
-
 #appSidebar .sidebar .nav-link:hover,
 #appSidebar .nav-link:hover {
     background: rgba(255, 255, 255, 0.08) !important;
@@ -552,19 +551,68 @@ body:has(.pms-dashboard) .main-content {
     transform: translateX(4px);
 }
 
-#appSidebar .sidebar .nav-link:hover i,
-#appSidebar .nav-link:hover i {
-    color: #e2e8f0 !important;
-}
-
-#appSidebar h6,
-#appSidebar .brand-subtitle {
-    color: rgba(255, 255, 255, 0.75) !important;
-}
-
-#appSidebar .submenu-caret {
-    color: rgba(255, 255, 255, 0.6) !important;
-}
+/* Colorful sidebar link icons only (labels/backgrounds unchanged) */
+#appSidebar .nav-link .fa-tachometer-alt { color: #60a5fa !important; }
+#appSidebar .nav-link .fa-th-large { color: #a78bfa !important; }
+#appSidebar .nav-link .fa-users { color: #22d3ee !important; }
+#appSidebar .nav-link .fa-file-alt { color: #38bdf8 !important; }
+#appSidebar .nav-link .fa-user-friends { color: #2dd4bf !important; }
+#appSidebar .nav-link .fa-cogs { color: #fb923c !important; }
+#appSidebar .nav-link .fa-exchange-alt { color: #818cf8 !important; }
+#appSidebar .nav-link .fa-tags { color: #f472b6 !important; }
+#appSidebar .nav-link .fa-certificate { color: #fbbf24 !important; }
+#appSidebar .nav-link .fa-undo-alt { color: #fb7185 !important; }
+#appSidebar .nav-link .fa-key { color: #facc15 !important; }
+#appSidebar .nav-link .fa-hand-holding { color: #a3e635 !important; }
+#appSidebar .nav-link .fa-copy { color: #60a5fa !important; }
+#appSidebar .nav-link .fa-hand-holding-usd { color: #4ade80 !important; }
+#appSidebar .nav-link .fa-building { color: #93c5fd !important; }
+#appSidebar .nav-link .fa-home { color: #34d399 !important; }
+#appSidebar .nav-link .fa-layer-group { color: #c084fc !important; }
+#appSidebar .nav-link .fa-store { color: #fdba74 !important; }
+#appSidebar .nav-link .fa-money-check-alt { color: #4ade80 !important; }
+#appSidebar .nav-link .fa-money-bill-wave { color: #2dd4bf !important; }
+#appSidebar .nav-link .fa-file-invoice-dollar { color: #5eead4 !important; }
+#appSidebar .nav-link .fa-chart-line { color: #f472b6 !important; }
+#appSidebar .nav-link .fa-envelope-open-text { color: #7dd3fc !important; }
+#appSidebar .nav-link .fa-ticket-alt { color: #f87171 !important; }
+#appSidebar .nav-link .fa-calculator { color: #fcd34d !important; }
+#appSidebar .nav-link .fa-chart-bar { color: #c4b5fd !important; }
+#appSidebar .nav-link .fa-user-slash { color: #f87171 !important; }
+#appSidebar .nav-link .fa-filter { color: #fb923c !important; }
+#appSidebar .nav-link .fa-check-circle { color: #4ade80 !important; }
+#appSidebar .nav-link .fa-project-diagram { color: #22d3ee !important; }
+#appSidebar .nav-link .fa-calendar-day { color: #60a5fa !important; }
+#appSidebar .nav-link .fa-sitemap { color: #a78bfa !important; }
+#appSidebar .nav-link .fa-user-cog { color: #e2e8f0 !important; }
+#appSidebar .nav-link .fa-arrow-left { color: #94a3b8 !important; }
+#appSidebar .nav-link .fa-user-circle { color: #7dd3fc !important; }
+#appSidebar .nav-link .fa-sign-out-alt { color: #f87171 !important; }
+#appSidebar .nav-link .fa-book { color: #38bdf8 !important; }
+#appSidebar .nav-link .fa-sitemap { color: #a78bfa !important; }
+#appSidebar .nav-link .fa-university { color: #60a5fa !important; }
+#appSidebar .nav-link .fa-file-invoice { color: #fbbf24 !important; }
+#appSidebar .nav-link .fa-book-open { color: #34d399 !important; }
+#appSidebar .nav-link .fa-truck { color: #fdba74 !important; }
+#appSidebar .nav-link .fa-file-contract { color: #c084fc !important; }
+#appSidebar .nav-link .fa-percent { color: #f472b6 !important; }
+#appSidebar .nav-link .fa-receipt { color: #4ade80 !important; }
+#appSidebar .nav-link .fa-coins { color: #facc15 !important; }
+#appSidebar .nav-link .fa-balance-scale-right { color: #2dd4bf !important; }
+#appSidebar .nav-link .fa-chart-area { color: #818cf8 !important; }
+#appSidebar .nav-link .fa-history { color: #94a3b8 !important; }
+#appSidebar .nav-link .fa-database { color: #60a5fa !important; }
+#appSidebar .nav-link .fa-sliders-h { color: #fb923c !important; }
+#appSidebar .nav-link .fa-calendar-alt { color: #38bdf8 !important; }
+#appSidebar .nav-link .fa-balance-scale { color: #2dd4bf !important; }
+#appSidebar .nav-link .fa-plus-circle { color: #4ade80 !important; }
+#appSidebar .nav-link .fa-list-alt { color: #a78bfa !important; }
+#appSidebar .nav-link .fa-chart-pie { color: #f472b6 !important; }
+#appSidebar .nav-link .fa-list { color: #94a3b8 !important; }
+#appSidebar .nav-link .fa-hourglass-half { color: #fbbf24 !important; }
+#appSidebar .nav-link .fa-hourglass-end { color: #fb7185 !important; }
+#appSidebar .nav-link .fa-water { color: #22d3ee !important; }
+#appSidebar .nav-link .fa-percentage { color: #e879f9 !important; }
 
 /* Golden divider lines between sidebar links */
 #appSidebar .sidebar-sticky-inner > ul.nav > .nav-item {
