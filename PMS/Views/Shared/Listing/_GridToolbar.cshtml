@@ -1,0 +1,45 @@
+@{
+    var title = ViewData["ListingTitle"] as string ?? ViewData["Title"]?.ToString() ?? "Records";
+    var recordCount = ViewData["ListingRecordCount"];
+    var countText = ViewData["ListingCountText"] as string;
+    if (string.IsNullOrEmpty(countText) && recordCount != null)
+    {
+        countText = $"{recordCount} record{(recordCount is int c && c == 1 ? "" : "s")}";
+    }
+    var addUrl = ViewData["ListingAddUrl"] as string;
+    var addText = ViewData["ListingAddText"] as string ?? "Add New";
+    var showAdd = ViewData["ListingShowAdd"] as bool? ?? !string.IsNullOrEmpty(addUrl);
+}
+
+@{
+    var description = ViewData["ListingDescription"] as string;
+}
+
+<div class="pms-grid-toolbar d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div class="pms-grid-toolbar-start">
+        <h5 class="pms-grid-title mb-0">@title</h5>
+        @if (!string.IsNullOrEmpty(description))
+        {
+            <p class="pms-grid-subtitle mb-0">@description</p>
+        }
+        @if (!string.IsNullOrEmpty(countText))
+        {
+            <span class="badge rounded-pill pms-record-badge">@countText</span>
+        }
+    </div>
+    <div class="d-flex flex-wrap gap-2 pms-grid-toolbar-actions">
+        @if (showAdd && !string.IsNullOrEmpty(addUrl))
+        {
+            <a href="@addUrl" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>@addText
+            </a>
+        }
+        @if (ViewData["ListingExtraActions"] != null)
+        {
+            @Html.Raw(ViewData["ListingExtraActions"])
+        }
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()" title="Refresh">
+            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
+        </button>
+    </div>
+</div>

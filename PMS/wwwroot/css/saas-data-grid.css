@@ -1,0 +1,470 @@
+/* Premium SaaS data grid — scoped to .pms-saas-grid */
+
+.pms-saas-grid {
+    --saas-bg: #f8fafc;
+    --saas-card: #ffffff;
+    --saas-primary: #2563eb;
+    --saas-success: #10b981;
+    --saas-warning: #f59e0b;
+    --saas-danger: #ef4444;
+    --saas-border: #e5e7eb;
+    --saas-radius: 16px;
+    --saas-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    --saas-row-h: 64px;
+}
+
+/* ─── Premium card container ─── */
+
+.pms-saas-grid.pms-grid-card {
+    background: var(--saas-card);
+    border: 1px solid var(--saas-border);
+    border-radius: var(--saas-radius);
+    box-shadow: var(--saas-shadow);
+    overflow: hidden;
+}
+
+.pms-saas-grid.pms-grid-card > .card-body {
+    padding: 20px;
+}
+
+/* ─── Toolbar ─── */
+
+.pms-saas-grid .pms-grid-toolbar {
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+}
+
+.pms-saas-grid .pms-grid-toolbar-start {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pms-saas-grid .pms-grid-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+.pms-saas-grid .pms-grid-subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+
+.pms-saas-grid .pms-record-badge {
+    align-self: flex-start;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08) !important;
+    color: var(--saas-primary) !important;
+    border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.pms-saas-grid .pms-grid-toolbar-actions .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    padding: 0.45rem 0.9rem;
+}
+
+.pms-saas-grid .pms-grid-toolbar-actions .btn-primary {
+    background: var(--saas-primary);
+    border-color: var(--saas-primary);
+}
+
+/* ─── Table shell ─── */
+
+.pms-saas-grid .pms-saas-table-wrap {
+    border: none;
+    border-radius: 12px;
+    overflow: auto;
+    max-height: calc(100vh - 300px);
+    background: var(--saas-card);
+}
+
+.pms-saas-grid .pms-saas-table {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100% !important;
+}
+
+/* ─── Sticky header ─── */
+
+.pms-saas-grid .pms-saas-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.pms-saas-grid .pms-saas-table thead th {
+    background: var(--saas-bg) !important;
+    color: #475569 !important;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--saas-border) !important;
+    border-top: none !important;
+    padding: 0.9rem 1rem;
+    white-space: nowrap;
+    vertical-align: middle;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.pms-saas-grid .pms-saas-table thead th:hover {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+}
+
+.pms-saas-grid .pms-saas-table thead th.pms-saas-th-check {
+    width: 48px;
+    padding-left: 1rem;
+}
+
+.pms-saas-grid .pms-saas-table thead th.pms-saas-th-actions {
+    width: 1%;
+    text-align: right;
+}
+
+/* ─── Rows ─── */
+
+.pms-saas-grid .pms-saas-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.pms-saas-grid .pms-saas-table tbody tr:hover {
+    background-color: #f8fafc !important;
+    box-shadow: inset 3px 0 0 var(--saas-primary);
+}
+
+.pms-saas-grid .pms-saas-table tbody td {
+    padding: 0 1rem;
+    height: var(--saas-row-h);
+    vertical-align: middle;
+    color: #1e293b;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    max-width: 240px;
+}
+
+.pms-saas-grid .pms-saas-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ─── Primary two-line cell ─── */
+
+.pms-saas-grid .pms-cell-primary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.pms-saas-grid .pms-cell-primary-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+}
+
+.pms-saas-grid .pms-cell-primary-sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* ─── Status pills ─── */
+
+.pms-saas-grid .pms-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.35em 0.75em;
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.pms-saas-grid .pms-pill--success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+}
+
+.pms-saas-grid .pms-pill--warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.pms-saas-grid .pms-pill--danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+}
+
+.pms-saas-grid .pms-pill--neutral {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.pms-saas-grid .pms-pill--info {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--saas-primary);
+}
+
+/* ─── Row actions (reveal on hover) ─── */
+
+.pms-saas-grid .pms-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    opacity: 0;
+    transform: translateX(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.pms-saas-grid .pms-saas-table tbody tr:hover .pms-row-actions,
+.pms-saas-grid .pms-saas-table tbody tr:focus-within .pms-row-actions {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.pms-saas-grid .pms-row-actions .btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px !important;
+    border: 1px solid var(--saas-border);
+    background: #fff;
+    color: #475569;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pms-saas-grid .pms-row-actions .btn:hover {
+    background: var(--saas-bg);
+    border-color: #cbd5e1;
+    color: var(--saas-primary);
+}
+
+.pms-saas-grid .pms-row-actions .btn-outline-primary:hover {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: var(--saas-primary);
+    color: var(--saas-primary);
+}
+
+.pms-saas-grid .pms-row-actions .btn-outline-danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--saas-danger);
+    color: var(--saas-danger);
+}
+
+.pms-saas-grid .pms-row-actions .btn i {
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.pms-saas-grid .pms-saas-td-actions {
+    text-align: right;
+}
+
+/* ─── Checkboxes ─── */
+
+.pms-saas-grid .pms-saas-checkbox,
+.pms-saas-grid #selectAllPendingCustomers {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--saas-primary);
+    border-radius: 4px;
+}
+
+.pms-saas-grid .pms-saas-th-check,
+.pms-saas-grid .pms-saas-td-check {
+    width: 48px;
+    text-align: center;
+}
+
+/* ─── DataTables pagination (styling only) ─── */
+
+.pms-saas-grid .dataTables_wrapper {
+    padding-top: 0.5rem;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_length,
+.pms-saas-grid .dataTables_wrapper .dataTables_filter {
+    font-size: 0.8125rem;
+    color: #64748b;
+    padding: 0.75rem 0;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_filter input {
+    border-radius: 10px;
+    border: 1px solid var(--saas-border);
+    padding: 0.45rem 0.85rem;
+    min-height: 38px;
+    margin-left: 0.5rem;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_info {
+    font-size: 0.8125rem;
+    color: #64748b;
+    padding: 1rem 0;
+    font-weight: 500;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate {
+    padding: 1rem 0;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate .paginate_button {
+    border-radius: 10px !important;
+    margin: 0 3px;
+    border: 1px solid var(--saas-border) !important;
+    padding: 0.4rem 0.85rem !important;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    min-width: 36px;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: var(--saas-primary) !important;
+    border-color: var(--saas-primary) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current) {
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
+    color: var(--saas-primary) !important;
+}
+
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate .paginate_button.previous,
+.pms-saas-grid .dataTables_wrapper .dataTables_paginate .paginate_button.next {
+    font-weight: 600;
+}
+
+/* ─── Empty state ─── */
+
+.pms-saas-grid .pms-saas-empty {
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.pms-saas-grid .pms-saas-empty-icon {
+    font-size: 3.5rem;
+    color: #cbd5e1;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.pms-saas-grid .pms-saas-empty h5 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 0.5rem;
+}
+
+.pms-saas-grid .pms-saas-empty p {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ─── Mobile card rows ─── */
+
+@media (max-width: 767.98px) {
+    .pms-saas-grid .pms-saas-table-wrap {
+        max-height: none;
+        border: none;
+    }
+
+    .pms-saas-grid .pms-saas-table thead {
+        display: none;
+    }
+
+    .pms-saas-grid .pms-saas-table tbody tr {
+        display: block;
+        height: auto;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: var(--saas-card);
+        border: 1px solid var(--saas-border);
+        border-radius: 12px;
+        box-shadow: var(--saas-shadow);
+    }
+
+    .pms-saas-grid .pms-saas-table tbody tr:hover {
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+        inset: none;
+    }
+
+    .pms-saas-grid .pms-saas-table tbody td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        height: auto;
+        padding: 0.5rem 0;
+        border: none;
+        max-width: none;
+    }
+
+    .pms-saas-grid .pms-saas-table tbody td::before {
+        content: attr(data-label);
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #94a3b8;
+        flex-shrink: 0;
+        min-width: 100px;
+    }
+
+    .pms-saas-grid .pms-saas-td-check {
+        justify-content: flex-start;
+    }
+
+    .pms-saas-grid .pms-saas-td-check::before {
+        content: "Select";
+    }
+
+    .pms-saas-grid .pms-saas-td-actions {
+        justify-content: flex-end;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f1f5f9;
+        margin-top: 0.5rem;
+    }
+
+    .pms-saas-grid .pms-saas-td-actions::before {
+        display: none;
+    }
+
+    .pms-saas-grid .pms-row-actions {
+        opacity: 1;
+        transform: none;
+    }
+
+    .pms-saas-grid .dataTables_wrapper .dataTables_length,
+    .pms-saas-grid .dataTables_wrapper .dataTables_filter {
+        text-align: left;
+    }
+}

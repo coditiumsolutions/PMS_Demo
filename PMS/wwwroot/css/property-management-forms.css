@@ -1,0 +1,506 @@
+/* Premium SaaS forms — scoped to .pms-saas-form */
+
+.pms-listing-scope .content-body:has(.pms-form-page) {
+    background-color: #f8fafc;
+}
+
+.pms-form-page {
+    --pms-form-primary: #2563eb;
+    --pms-form-success: #10b981;
+    --pms-form-warning: #f59e0b;
+    --pms-form-danger: #ef4444;
+    --pms-form-bg: #f8fafc;
+    --pms-form-card: #ffffff;
+    --pms-form-border: #e5e7eb;
+    --pms-form-radius: 16px;
+    --pms-form-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    --pms-form-input-h: 48px;
+    padding-bottom: 5rem;
+}
+
+/* ─── Page header ─── */
+
+.pms-form-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.pms-form-header-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.025em;
+    margin: 0 0 0.35rem;
+    line-height: 1.2;
+}
+
+.pms-form-header-text p {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+    max-width: 42rem;
+    line-height: 1.5;
+}
+
+.pms-form-header-meta {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 0.35rem;
+}
+
+.pms-form-header-meta code {
+    background: #f1f5f9;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    color: #334155;
+    font-size: 0.8rem;
+}
+
+.pms-form-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pms-form-header-actions .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pms-form-header-actions .btn:hover {
+    transform: translateY(-1px);
+}
+
+.pms-form-header-actions .btn-primary {
+    background: var(--pms-form-primary);
+    border-color: var(--pms-form-primary);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* ─── Form card ─── */
+
+.pms-saas-form-card {
+    background: var(--pms-form-card);
+    border: 1px solid var(--pms-form-border) !important;
+    border-radius: var(--pms-form-radius) !important;
+    box-shadow: var(--pms-form-shadow);
+    overflow: hidden;
+}
+
+.pms-saas-form-card > .card-header {
+    background: var(--pms-form-bg);
+    border-bottom: 1px solid var(--pms-form-border);
+    padding: 1rem 1.5rem 0;
+}
+
+.pms-saas-form-body {
+    padding: 1.5rem 1.75rem 1.75rem !important;
+}
+
+@media (min-width: 992px) {
+    .pms-saas-form-body {
+        padding: 1.75rem 2rem 2rem !important;
+    }
+}
+
+/* ─── Modern tabs ─── */
+
+.pms-form-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border: none !important;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.pms-form-tabs .nav-item {
+    margin: 0;
+}
+
+.pms-form-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.65rem 1.1rem !important;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569 !important;
+    background: #fff;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    margin-bottom: 0.5rem;
+}
+
+.pms-form-tabs .nav-link:hover {
+    background: #f1f5f9 !important;
+    color: var(--pms-form-primary) !important;
+}
+
+.pms-form-tabs .nav-link.active {
+    background: var(--pms-form-primary) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.pms-form-tabs .nav-link.active i {
+    color: #fff !important;
+}
+
+.pms-form-tabs .nav-link i {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* ─── Tab content ─── */
+
+.pms-saas-form .tab-content {
+    padding-top: 1.5rem;
+}
+
+.pms-saas-form .tab-pane h6.pms-form-section-title,
+.pms-saas-form .tab-pane h6 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #e2e8f0;
+    letter-spacing: -0.01em;
+}
+
+.pms-saas-form .tab-pane h6 i {
+    color: var(--pms-form-primary);
+}
+
+.pms-form-section {
+    margin-bottom: 2rem;
+}
+
+.pms-form-section:last-child {
+    margin-bottom: 0;
+}
+
+.pms-saas-form .pms-form-section .mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.pms-saas-form .pms-form-section .mb-4 {
+    margin-bottom: 1.25rem !important;
+}
+
+/* ─── Fields ─── */
+
+.pms-saas-form .form-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.01em;
+}
+
+.pms-saas-form .form-control,
+.pms-saas-form .form-select {
+    min-height: var(--pms-form-input-h);
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-size: 0.9rem;
+    color: #1e293b;
+    padding: 0.65rem 0.85rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pms-saas-form .form-select {
+    padding-right: 2.25rem;
+    background-position: right 0.75rem center;
+}
+
+.pms-saas-form textarea.form-control {
+    min-height: auto;
+    resize: vertical;
+    padding-top: 0.75rem;
+    line-height: 1.5;
+}
+
+.pms-saas-form .form-control:focus,
+.pms-saas-form .form-select:focus {
+    border-color: var(--pms-form-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.pms-saas-form .form-control:disabled,
+.pms-saas-form .form-select:disabled {
+    background-color: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.pms-saas-form .form-control[readonly] {
+    background-color: #f8fafc;
+    color: #475569;
+}
+
+/* Floating label pattern (when used) */
+.pms-saas-form .form-floating > .form-control,
+.pms-saas-form .form-floating > .form-select {
+    min-height: var(--pms-form-input-h);
+    height: var(--pms-form-input-h);
+}
+
+.pms-saas-form .form-floating > label {
+    color: #64748b;
+    font-size: 0.85rem;
+    padding: 0.85rem 0.85rem;
+}
+
+.pms-saas-form .form-floating > .form-control:focus ~ label,
+.pms-saas-form .form-floating > .form-control:not(:placeholder-shown) ~ label,
+.pms-saas-form .form-floating > .form-select ~ label {
+    color: var(--pms-form-primary);
+}
+
+/* Required indicator on labels containing * */
+.pms-saas-form .form-label:has(+ .form-control[required]),
+.pms-saas-form .form-label:has(+ .form-select[required]),
+.pms-saas-form .form-label:has(+ textarea[required]) {
+    color: #334155;
+}
+
+/* ─── Validation ─── */
+
+.pms-saas-form .text-danger,
+.pms-saas-form .field-validation-error {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-top: 0.35rem;
+    display: block;
+}
+
+.pms-saas-form .input-validation-error {
+    border-color: var(--pms-form-danger) !important;
+}
+
+.pms-saas-form .input-validation-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.pms-saas-form .alert {
+    border-radius: 12px;
+    border: none;
+    font-size: 0.875rem;
+}
+
+.pms-saas-form .alert-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #92400e;
+}
+
+.pms-saas-form .alert-info {
+    background: rgba(37, 99, 235, 0.08);
+    color: #1e40af;
+}
+
+.pms-saas-form .alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+}
+
+/* ─── Checkboxes & radios ─── */
+
+.pms-saas-form .form-check-input {
+    width: 1.1em;
+    height: 1.1em;
+    border-radius: 4px;
+    accent-color: var(--pms-form-primary);
+}
+
+.pms-saas-form .form-check-input:checked {
+    background-color: var(--pms-form-primary);
+    border-color: var(--pms-form-primary);
+}
+
+.pms-saas-form .form-check-label {
+    font-size: 0.875rem;
+    color: #475569;
+}
+
+/* ─── Buttons in form body ─── */
+
+.pms-saas-form .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pms-saas-form .btn-primary {
+    background: var(--pms-form-primary);
+    border-color: var(--pms-form-primary);
+}
+
+.pms-saas-form .btn:hover {
+    transform: translateY(-1px);
+}
+
+.pms-saas-form .btn-danger {
+    background: var(--pms-form-danger);
+    border-color: var(--pms-form-danger);
+}
+
+/* ─── Tables inside tabs ─── */
+
+.pms-saas-form .table {
+    font-size: 0.875rem;
+    border-color: #f1f5f9;
+}
+
+.pms-saas-form .table thead th {
+    background: #f8fafc;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 1px solid var(--pms-form-border);
+    padding: 0.75rem;
+}
+
+.pms-saas-form .table tbody td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+    border-color: #f1f5f9;
+}
+
+.pms-saas-form .table tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* ─── Nested attachment cards ─── */
+
+.pms-saas-form .tab-pane > .card,
+.pms-saas-form .tab-pane .card.mb-4 {
+    border-radius: 12px !important;
+    border: 1px solid var(--pms-form-border) !important;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.pms-saas-form .tab-pane .card-header {
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+    border: none;
+    padding: 0.85rem 1.25rem;
+}
+
+.pms-saas-form .tab-pane .card-header h6 {
+    color: #fff !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.9rem;
+}
+
+/* ─── Sticky footer ─── */
+
+.pms-form-footer-sticky {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1020;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--pms-form-border);
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.08);
+    padding: 0.85rem 1.5rem;
+}
+
+.pms-form-footer-sticky .pms-form-footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+}
+
+.pms-form-footer-sticky .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 1.1rem;
+}
+
+/* Offset for sidebar layout */
+@media (min-width: 992px) {
+    .pms-form-footer-sticky {
+        left: var(--pms-sidebar-width, 238px);
+    }
+}
+
+/* ─── Responsive field grid helper ─── */
+
+.pms-saas-form .pms-form-fields-row {
+    --bs-gutter-y: 1rem;
+}
+
+@media (min-width: 1200px) {
+    .pms-saas-form .pms-form-fields-row > .col-xl-3 {
+        flex: 0 0 auto;
+        width: 25%;
+    }
+}
+
+/* ─── Mobile tabs ─── */
+
+@media (max-width: 767.98px) {
+    .pms-form-tabs {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .pms-form-tabs .nav-link {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .pms-form-header {
+        flex-direction: column;
+    }
+
+    .pms-form-header-actions {
+        width: 100%;
+    }
+
+    .pms-form-header-actions .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .pms-form-page {
+        padding-bottom: 6.5rem;
+    }
+}
+
+[data-theme="dark"] .pms-saas-form-card {
+    background: #1e293b;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .pms-form-header-text h1 {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .pms-form-footer-sticky {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: #334155;
+}

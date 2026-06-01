@@ -2,28 +2,21 @@
 
 @{
     ViewData["Title"] = "Transfers";
-}
+    ViewData["ListingTitle"] = "All Transfers";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
+    ViewData["ListingAddText"] = "New Transfer";
+    ViewData["SearchCollapseId"] = "transferSearchCollapse";
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0"></h2>
-    <div class="d-flex flex-wrap gap-2">
-        <a asp-controller="TransferFee" asp-action="Index" class="btn btn-outline-info">
-            <i class="fas fa-tags me-2"></i>Transfer Fee Module
-        </a>
-        @if (ViewBag.ShowDuplicateFileTransferLink as bool? == true)
-        {
-            <a asp-controller="DuplicateFileTransfer" asp-action="Index" class="btn btn-outline-primary">
-                <i class="fas fa-copy me-2"></i>Duplicate file transfer
-            </a>
-        }
-        @if (ViewBag.CanCreate == true)
-        {
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>New Transfer
-        </a>
-        }
-    </div>
-</div>
+    var extraActions = "<a href=\"" + Url.Action("Index", "TransferFee") + "\" class=\"btn btn-outline-info btn-sm\">" +
+        "<i class=\"bi bi-tags me-1\" aria-hidden=\"true\"></i>Transfer Fee Module</a>";
+    if (ViewBag.ShowDuplicateFileTransferLink as bool? == true)
+    {
+        extraActions += "<a href=\"" + Url.Action("Index", "DuplicateFileTransfer") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+            "<i class=\"bi bi-files me-1\" aria-hidden=\"true\"></i>Duplicate file transfer</a>";
+    }
+    ViewData["ListingExtraActions"] = extraActions;
+}
 
 @if (TempData["SuccessMessage"] != null)
 {
@@ -41,35 +34,46 @@
 }
 
 <form method="get" asp-action="Index" class="mb-4">
-    <div class="card">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Customer ID</label>
-                    <input type="text" name="customerIdFilter" class="form-control form-control-sm" placeholder="Search by Customer ID" value="@ViewBag.CustomerIdFilter" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Workflow Status</label>
-                    <select name="workflowFilter" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All</option>
-                        @if (ViewBag.WorkflowStatuses != null)
-                        {
-                            foreach (var s in (string[])ViewBag.WorkflowStatuses)
-                            {
-                                <option value="@s" selected="@(ViewBag.WorkflowFilter == s)">@s</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">&nbsp;</label>
-                    <div class="d-flex gap-2 align-items-center">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-search me-2"></i>Search
-                        </button>
-                        <a asp-action="Index" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-times me-2"></i>Clear
-                        </a>
+    <div class="card pms-search-card">
+        <partial name="Listing/_SearchCardHeader" />
+        <div class="collapse show" id="transferSearchCollapse">
+            <div class="card-body">
+                <div class="row g-3 pms-search-fields align-items-end">
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="form-floating">
+                            <input type="text"
+                                   name="customerIdFilter"
+                                   id="customerIdFilter"
+                                   class="form-control"
+                                   placeholder="Customer ID"
+                                   value="@ViewBag.CustomerIdFilter" />
+                            <label for="customerIdFilter">Customer ID</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="form-floating">
+                            <select name="workflowFilter" id="workflowFilter" class="form-select" onchange="this.form.submit()">
+                                <option value="">All</option>
+                                @if (ViewBag.WorkflowStatuses != null)
+                                {
+                                    foreach (var s in (string[])ViewBag.WorkflowStatuses)
+                                    {
+                                        <option value="@s" selected="@(ViewBag.WorkflowFilter == s)">@s</option>
+                                    }
+                                }
+                            </select>
+                            <label for="workflowFilter">Workflow Status</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 col-search">
+                        <div class="d-flex justify-content-end gap-2 pms-search-actions border-0 mt-0 pt-0">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,11 +81,13 @@
     </div>
 </form>
 
-<div class="card">
+<div class="card pms-grid-card">
     <div class="card-body">
+        <partial name="Listing/_GridToolbar" />
+
         <div class="table-responsive">
-            <table class="table table-striped table-hover" id="transfersTable">
-                <thead class="table-dark">
+            <table class="table table-hover align-middle pms-enterprise-table" id="transfersTable">
+                <thead>
                     <tr>
                         <th>Transfer ID</th>
                         <th>Customer ID</th>
@@ -111,38 +117,40 @@
                                     <span class="text-muted">—</span>
                                 }
                             </td>
-                            <td>@(t.SellerName ?? "—")</td>
-                            <td>@(t.BuyerName ?? "—")</td>
+                            <td><span class="pms-cell-truncate" title="@t.SellerName">@(t.SellerName ?? "—")</span></td>
+                            <td><span class="pms-cell-truncate" title="@t.BuyerName">@(t.BuyerName ?? "—")</span></td>
                             <td>
                                 @if (t.WorkFlowStatus == "Approved")
                                 { <span class="badge bg-success">@t.WorkFlowStatus</span> }
                                 else if (t.WorkFlowStatus == "Created")
                                 { <span class="badge bg-primary">@t.WorkFlowStatus</span> }
+                                else if (t.WorkFlowStatus == "Pending")
+                                { <span class="badge bg-warning text-dark">@t.WorkFlowStatus</span> }
                                 else
-                                { <span class="badge bg-warning">@(t.WorkFlowStatus ?? "—")</span> }
+                                { <span class="badge bg-warning text-dark">@(t.WorkFlowStatus ?? "—")</span> }
                             </td>
                             <td>@t.CreatedAt.ToString("MMM dd, yyyy")</td>
                             <td>
-                                <div class="btn-group" role="group">
-                                    <a asp-action="Details" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-info" title="Details">
-                                        <i class="fas fa-eye"></i>
+                                <div class="btn-group pms-action-group" role="group">
+                                    <a asp-action="Details" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-secondary" title="Details">
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
                                     </a>
                                     @if (t.WorkFlowStatus == "Approved")
                                     {
                                         <a asp-action="TransferLetter" asp-route-id="@t.TransferID" target="_blank" class="btn btn-sm btn-outline-success" title="Transfer Letter">
-                                            <i class="fas fa-file-alt"></i>
+                                            <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
                                         </a>
                                     }
                                     else
                                     {
                                         <a asp-action="TransferReceipt" asp-route-id="@t.TransferID" target="_blank" class="btn btn-sm btn-outline-warning" title="Transfer Receipt">
-                                            <i class="fas fa-receipt"></i>
+                                            <i class="bi bi-receipt" aria-hidden="true"></i>
                                         </a>
                                     }
                                     @if ((ViewBag.CanEdit == true) && t.WorkFlowStatus != "Approved")
                                     {
                                         <a asp-action="Edit" asp-route-id="@t.TransferID" class="btn btn-sm btn-outline-primary" title="Edit">
-                                            <i class="fas fa-edit"></i>
+                                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
                                         </a>
                                     }
                                     @if (ViewBag.CanDelete == true && isInitiated)
@@ -150,7 +158,7 @@
                                         <form asp-action="Delete" asp-route-id="@t.TransferID" method="post" class="d-inline" onsubmit="return confirm('Delete this transfer?');">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="fas fa-trash"></i>
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
                                             </button>
                                         </form>
                                     }

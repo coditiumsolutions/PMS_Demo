@@ -2,38 +2,32 @@
 
 @{
     ViewData["Title"] = "Search Customers";
-    var showBulkSelection = (ViewBag.StatusFilter as string) == "Pending" && ViewBag.CanEdit == true;
-}
+    var recordCount = Model?.Count() ?? 0;
+    ViewData["ListingTitle"] = "Customers";
+    ViewData["ListingDescription"] = "Manage all customer records";
+    ViewData["ListingCountText"] = recordCount + " Record" + (recordCount == 1 ? "" : "s");
+    ViewData["ListingRecordCount"] = recordCount;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
+    ViewData["ListingAddText"] = "Add New";
+    ViewData["SearchCollapseId"] = "customerSearchCollapse";
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-    <!-- <i class="fas fa-users me-2"></i>Customers -->
-    </h2>
-    <div class="btn-group" role="group">
-        @if (ViewBag.CanCreate == true)
-        {
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Add New Customer
-        </a>
-        }
-        <a asp-action="ByProject" class="btn btn-outline-primary">
-            <i class="fas fa-layer-group me-2"></i>Customers By Project
-        </a>
-        <a asp-action="Index" asp-route-statusFilter="Pending" class="btn btn-outline-warning">
-            <i class="fas fa-clock me-2"></i>Pending Customers
-            <span class="badge bg-warning text-dark ms-1">@ViewBag.PendingCustomersCount</span>
-        </a>
-        <a asp-action="UpdateRequests" class="btn btn-outline-secondary">
-            <i class="fas fa-user-edit me-2"></i>Update Requests
-        </a>
-        <a asp-action="Reports" class="btn btn-outline-primary">
-            <i class="fas fa-chart-bar me-2"></i>Customer Reports
-        </a>
-        <a asp-action="CustomerBlocking" class="btn btn-outline-primary">
-            <i class="fas fa-ban me-2"></i>Customer Blocking
-        </a>
-    </div>
-</div>
+    var pendingCount = ViewBag.PendingCustomersCount;
+    ViewData["ListingExtraActions"] =
+        "<a href=\"" + Url.Action("ByProject") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+        "<i class=\"bi bi-layers me-1\" aria-hidden=\"true\"></i>By Project</a>" +
+        "<a href=\"" + Url.Action("Index", new { statusFilter = "Pending" }) + "\" class=\"btn btn-outline-warning btn-sm\">" +
+        "<i class=\"bi bi-clock me-1\" aria-hidden=\"true\"></i>Pending " +
+        "<span class=\"badge bg-warning text-dark ms-1\">" + pendingCount + "</span></a>" +
+        "<a href=\"" + Url.Action("UpdateRequests") + "\" class=\"btn btn-outline-secondary btn-sm\">" +
+        "<i class=\"bi bi-person-lines-fill me-1\" aria-hidden=\"true\"></i>Update Requests</a>" +
+        "<a href=\"" + Url.Action("Reports") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+        "<i class=\"bi bi-bar-chart me-1\" aria-hidden=\"true\"></i>Reports</a>" +
+        "<a href=\"" + Url.Action("CustomerBlocking") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+        "<i class=\"bi bi-slash-circle me-1\" aria-hidden=\"true\"></i>Blocking</a>";
+
+    var showBulkSelection = (ViewBag.StatusFilter as string) == "Pending" && ViewBag.CanEdit == true;
+    ViewData["ShowBulkSelection"] = showBulkSelection;
+}
 
 @if (TempData["SuccessMessage"] != null)
 {
@@ -50,50 +44,62 @@
     </div>
 }
 
-<!-- Filters -->
+<!-- Search Filters -->
 <form method="get" asp-action="Index" class="mb-4">
-    <div class="card">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Filter by Project</label>
-                    <select name="projectFilter" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
-                        @if (ViewBag.Projects != null)
-                        {
-                            @foreach (var project in ViewBag.Projects)
-                            {
-                                <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
-                                    @project.ProjectName
-                                </option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Filter by Status</label>
-                    <select name="statusFilter" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
-                        <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
-                        <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
-                        <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
-                        <option value="Marked for Deletion" selected="@(ViewBag.StatusFilter == "Marked for Deletion")">Marked for Deletion</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Search</label>
-                    <input type="text" name="searchTerm" class="form-control form-control-sm" 
-                           placeholder="Search by Customer ID, FormNo, Name, National ID, Email..." 
-                           value="@ViewBag.SearchTerm" />
-                </div>
-                <div class="col-md-3">
-                    <div class="d-flex gap-2 align-items-center">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-search me-2"></i>Search
-                        </button>
-                        <a asp-action="Index" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-times me-2"></i>Clear
-                        </a>
+    <div class="card pms-search-card">
+        <partial name="Listing/_SearchCardHeader" />
+        <div class="collapse show" id="customerSearchCollapse">
+            <div class="card-body">
+                <div class="row g-3 pms-search-fields align-items-end">
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="form-floating">
+                            <select name="projectFilter" id="projectFilter" class="form-select" onchange="this.form.submit()">
+                                <option value="All" selected="@(ViewBag.ProjectFilter == "All")">All Projects</option>
+                                @if (ViewBag.Projects != null)
+                                {
+                                    @foreach (var project in ViewBag.Projects)
+                                    {
+                                        <option value="@project.ProjectID" selected="@(ViewBag.ProjectFilter == project.ProjectID)">
+                                            @project.ProjectName
+                                        </option>
+                                    }
+                                }
+                            </select>
+                            <label for="projectFilter">Filter by Project</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="form-floating">
+                            <select name="statusFilter" id="statusFilter" class="form-select" onchange="this.form.submit()">
+                                <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
+                                <option value="Active" selected="@(ViewBag.StatusFilter == "Active")">Active</option>
+                                <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
+                                <option value="Inactive" selected="@(ViewBag.StatusFilter == "Inactive")">Inactive</option>
+                                <option value="Marked for Deletion" selected="@(ViewBag.StatusFilter == "Marked for Deletion")">Marked for Deletion</option>
+                            </select>
+                            <label for="statusFilter">Filter by Status</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="form-floating">
+                            <input type="text"
+                                   name="searchTerm"
+                                   id="searchTerm"
+                                   class="form-control"
+                                   placeholder="Search"
+                                   value="@ViewBag.SearchTerm" />
+                            <label for="searchTerm">Search by ID, FormNo, Name, National ID, Email</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="d-flex justify-content-end gap-2 pms-search-actions border-0 mt-0 pt-0">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -103,285 +109,52 @@
 
 @if (showBulkSelection)
 {
-    <form asp-action="BulkUpdatePendingCustomers" method="post" class="card mb-3">
+    <form asp-action="BulkUpdatePendingCustomers" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="projectFilter" value="@ViewBag.ProjectFilter" />
         <input type="hidden" name="searchTerm" value="@ViewBag.SearchTerm" />
-        <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="fw-bold">Pending Customer Actions:</span>
-                <select name="bulkAction" id="bulkAction" class="form-select form-select-sm" style="width: 240px;" required>
-                    <option value="">Select Action</option>
-                    <option value="Activate">Make Active</option>
-                    <option value="MarkForDeletion">Mark for Deletion</option>
-                </select>
-                <button type="submit" class="btn btn-warning btn-sm" id="applyBulkActionBtn" disabled>
-                    <i class="fas fa-check-double me-1"></i>Apply to Selected
-                </button>
-                <small class="text-muted">Select customers below, choose action, and enter comments.</small>
-            </div>
-            <div class="mt-2">
-                <label for="bulkActionComments" class="form-label fw-bold mb-1">Comments <span class="text-danger">*</span></label>
-                <textarea id="bulkActionComments"
-                          name="comments"
-                          class="form-control form-control-sm"
-                          rows="2"
-                          maxlength="1000"
-                          placeholder="Enter reason/comments for this status change"
-                          required></textarea>
+
+        <div class="card pms-search-card mb-3">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="fw-bold">Pending Customer Actions:</span>
+                    <select name="bulkAction" id="bulkAction" class="form-select form-select-sm" style="width: 240px;" required>
+                        <option value="">Select Action</option>
+                        <option value="Activate">Make Active</option>
+                        <option value="MarkForDeletion">Mark for Deletion</option>
+                    </select>
+                    <button type="submit" class="btn btn-warning btn-sm" id="applyBulkActionBtn" disabled>
+                        <i class="fas fa-check-double me-1"></i>Apply to Selected
+                    </button>
+                    <small class="text-muted">Select customers below, choose action, and enter comments.</small>
+                </div>
+                <div class="mt-2">
+                    <label for="bulkActionComments" class="form-label fw-bold mb-1">Comments <span class="text-danger">*</span></label>
+                    <textarea id="bulkActionComments"
+                              name="comments"
+                              class="form-control form-control-sm"
+                              rows="2"
+                              maxlength="1000"
+                              placeholder="Enter reason/comments for this status change"
+                              required></textarea>
+                </div>
             </div>
         </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover" id="customersTable">
-                <thead class="table-dark">
-                    <tr>
-                        @if (showBulkSelection)
-                        {
-                            <th style="width: 40px;">
-                                <input type="checkbox" id="selectAllPendingCustomers" title="Select all" />
-                            </th>
-                        }
-                        <th>Customer ID</th>
-                        <th>Full Name</th>
-                        <th>Project</th>
-                        <th>Allotment Status</th>
-                        <th>PlanPlan</th>
-                        <th>Status</th>
-                        <th>Created Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var customer in Model)
-                    {
-                        <tr>
-                            @if (showBulkSelection)
-                            {
-                                <td>
-                                    <input type="checkbox"
-                                           class="pending-customer-checkbox"
-                                           name="selectedCustomerIds"
-                                           value="@(customer.CustomerID ?? "")"
-                                           @(string.IsNullOrWhiteSpace(customer.CustomerID) ? "disabled" : "") />
-                                </td>
-                            }
-                            <td>
-                                <span class="badge bg-secondary">@(customer.CustomerID ?? "-")</span>
-                                @if (!string.IsNullOrWhiteSpace(customer.FormNo))
-                                {
-                                    <br><small class="text-muted">FormNo: @customer.FormNo</small>
-                                }
-                            </td>
-                            <td>
-                                <strong>@customer.FullName</strong>
-                                @if (!string.IsNullOrEmpty(customer.FatherName))
-                                {
-                                    <br><small class="text-muted">S/O @customer.FatherName</small>
-                                }
-                            </td>
-                            <td>
-                                @{
-                                    var projectName = customer.PaymentPlan?.Project?.ProjectName
-                                        ?? customer.Project?.ProjectName;
-                                }
-                                @if (!string.IsNullOrWhiteSpace(projectName))
-                                {
-                                    <span class="badge bg-info">@projectName</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">No Project</span>
-                                }
-                            </td>
-                            <td>
-                                @if (customer.Allotments != null && customer.Allotments.Any())
-                                {
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check-circle me-1"></i>Allotted
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">
-                                        <i class="fas fa-times-circle me-1"></i>Not Allotted
-                                    </span>
-                                }
-                            </td>
-                            <td>
-                                @{
-                                    var planName = customer.PaymentPlan?.PlanName;
-                                    var planId = customer.PlanID;
-                                }
-                                @if (!string.IsNullOrWhiteSpace(planName) || !string.IsNullOrWhiteSpace(planId))
-                                {
-                                    <strong>@(string.IsNullOrWhiteSpace(planName) ? "Unknown Plan" : planName)</strong>
-                                    @if (!string.IsNullOrWhiteSpace(planId))
-                                    {
-                                        <br><small class="text-muted">@planId</small>
-                                    }
-                                }
-                                else
-                                {
-                                    <span class="text-muted">No Plan Allocated</span>
-                                }
-                            </td>
-                            <td>
-                                <span class="badge @((customer.Status ?? "Active") == "Active" ? "bg-success" : "bg-warning")">
-                                    @(customer.Status ?? "Active")
-                                </span>
-                            </td>
-                            <td>@customer.CreatedAt.ToString("MMM dd, yyyy")</td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a asp-action="AccountStatement" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-info" title="Account Statement">
-                                        <i class="fas fa-file-invoice-dollar"></i>
-                                    </a>
-                                    @if (ViewBag.CanEdit == true)
-                                    {
-                                    <a asp-action="Edit" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-success" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    }
-                                    <a asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-theme" title="Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    @if (ViewBag.CanDelete == true)
-                                    {
-                                    <a asp-action="Delete" asp-route-id="@(customer.CustomerID ?? "")" 
-                                       class="btn btn-sm btn-outline-danger" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                    }
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+        <div class="card pms-grid-card pms-saas-grid">
+            <div class="card-body">
+                <partial name="Listing/_GridToolbar" />
+                <partial name="_CustomerDataGrid" model="Model" />
+            </div>
         </div>
-    </div>
-</div>
     </form>
 }
 else
 {
-    <div class="card">
+    <div class="card pms-grid-card pms-saas-grid">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="customersTable">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Customer ID</th>
-                            <th>Full Name</th>
-                            <th>Project</th>
-                            <th>Allotment Status</th>
-                            <th>PlanPlan</th>
-                            <th>Status</th>
-                            <th>Created Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var customer in Model)
-                        {
-                            <tr>
-                                <td>
-                                    <span class="badge bg-secondary">@(customer.CustomerID ?? "-")</span>
-                                    @if (!string.IsNullOrWhiteSpace(customer.FormNo))
-                                    {
-                                        <br><small class="text-muted">FormNo: @customer.FormNo</small>
-                                    }
-                                </td>
-                                <td>
-                                    <strong>@customer.FullName</strong>
-                                    @if (!string.IsNullOrEmpty(customer.FatherName))
-                                    {
-                                        <br><small class="text-muted">S/O @customer.FatherName</small>
-                                    }
-                                </td>
-                                <td>
-                                    @{
-                                        var projectName = customer.PaymentPlan?.Project?.ProjectName
-                                            ?? customer.Project?.ProjectName;
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(projectName))
-                                    {
-                                        <span class="badge bg-info">@projectName</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">No Project</span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (customer.Allotments != null && customer.Allotments.Any())
-                                    {
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-check-circle me-1"></i>Allotted
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">
-                                            <i class="fas fa-times-circle me-1"></i>Not Allotted
-                                        </span>
-                                    }
-                                </td>
-                                <td>
-                                    @{
-                                        var planName = customer.PaymentPlan?.PlanName;
-                                        var planId = customer.PlanID;
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(planName) || !string.IsNullOrWhiteSpace(planId))
-                                    {
-                                        <strong>@(string.IsNullOrWhiteSpace(planName) ? "Unknown Plan" : planName)</strong>
-                                        @if (!string.IsNullOrWhiteSpace(planId))
-                                        {
-                                            <br><small class="text-muted">@planId</small>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">No Plan Allocated</span>
-                                    }
-                                </td>
-                                <td>
-                                    <span class="badge @((customer.Status ?? "Active") == "Active" ? "bg-success" : "bg-warning")">
-                                        @(customer.Status ?? "Active")
-                                    </span>
-                                </td>
-                                <td>@customer.CreatedAt.ToString("MMM dd, yyyy")</td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a asp-action="AccountStatement" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-info" title="Account Statement">
-                                            <i class="fas fa-file-invoice-dollar"></i>
-                                        </a>
-                                        @if (ViewBag.CanEdit == true)
-                                        {
-                                            <a asp-action="Edit" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-success" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        }
-                                        <a asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")" class="btn btn-sm btn-outline-theme" title="Details">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        @if (ViewBag.CanDelete == true)
-                                        {
-                                            <a asp-action="Delete" asp-route-id="@(customer.CustomerID ?? "")"
-                                               class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        }
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <partial name="Listing/_GridToolbar" />
+            <partial name="_CustomerDataGrid" model="Model" />
         </div>
     </div>
 }
@@ -393,13 +166,15 @@ else
             var createdDateColumnIndex = showBulkSelection ? 7 : 6;
             var actionsColumnIndex = showBulkSelection ? 8 : 7;
 
-            $('#customersTable').DataTable({
-                "pageLength": 25,
-                "order": [[ createdDateColumnIndex, "desc" ]],
-                "columnDefs": [
-                    { "orderable": false, "targets": actionsColumnIndex }
-                ]
-            });
+            if ($('#customersTable').length) {
+                $('#customersTable').DataTable({
+                    "pageLength": 25,
+                    "order": [[ createdDateColumnIndex, "desc" ]],
+                    "columnDefs": [
+                        { "orderable": false, "targets": actionsColumnIndex }
+                    ]
+                });
+            }
 
             if (showBulkSelection) {
                 var $selectAll = $('#selectAllPendingCustomers');

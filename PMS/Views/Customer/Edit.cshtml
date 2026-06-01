@@ -4,51 +4,57 @@
     ViewData["Title"] = "Edit Customer";
 }
 
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2></h2>
-            <div>
-                <a asp-action="Details" asp-route-id="@Model.CustomerID" class="btn btn-outline-info me-2">
-                    <i class="fas fa-eye me-2"></i>View Details
-                </a>
-                <a asp-action="Index" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to List
-                </a>
-            </div>
+<div class="pms-form-page">
+    <div class="pms-form-header">
+        <div class="pms-form-header-text">
+            <h1>Edit Customer</h1>
+            <p>Manage customer information, next of kin, allotments, joint owners, and document attachments.</p>
+            <div class="pms-form-header-meta">Customer ID: <code>@Model.CustomerID</code></div>
         </div>
+        <div class="pms-form-header-actions">
+            <button type="submit" form="customerEditForm" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save Changes
+            </button>
+            <a asp-action="Details" asp-route-id="@Model.CustomerID" class="btn btn-outline-secondary">
+                <i class="bi bi-eye me-1" aria-hidden="true"></i>View Details
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Cancel
+            </a>
+        </div>
+    </div>
 
-        <div class="card">
-            <div class="card-header p-0">
-                <ul class="nav nav-tabs customer-tabs" id="customerTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
-                            <i class="fas fa-user-circle me-2"></i>Personal Info
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="nominee-tab" data-bs-toggle="tab" data-bs-target="#nominee" type="button" role="tab" aria-controls="nominee" aria-selected="false">
-                            <i class="fas fa-user-shield me-2"></i>Next of Kin Info
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="allotments-tab" data-bs-toggle="tab" data-bs-target="#allotments" type="button" role="tab" aria-controls="allotments" aria-selected="false">
-                            <i class="fas fa-building me-2"></i>Allotments
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="jointowners-tab" data-bs-toggle="tab" data-bs-target="#jointowners" type="button" role="tab" aria-controls="jointowners" aria-selected="false">
-                            <i class="fas fa-users me-2"></i>JointOwners
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab" aria-controls="attachments" aria-selected="false">
-                            <i class="fas fa-paperclip me-2"></i>Attachments
-                        </button>
-                    </li>
-                </ul>
-            </div>
-            <div class="card-body">
+    <div class="card pms-saas-form-card pms-saas-form">
+        <div class="card-header border-0">
+            <ul class="nav pms-form-tabs customer-tabs" id="customerTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                        <i class="bi bi-person-vcard" aria-hidden="true"></i>Personal Info
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="nominee-tab" data-bs-toggle="tab" data-bs-target="#nominee" type="button" role="tab" aria-controls="nominee" aria-selected="false">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>Next of Kin
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="allotments-tab" data-bs-toggle="tab" data-bs-target="#allotments" type="button" role="tab" aria-controls="allotments" aria-selected="false">
+                        <i class="bi bi-building" aria-hidden="true"></i>Allotments
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="jointowners-tab" data-bs-toggle="tab" data-bs-target="#jointowners" type="button" role="tab" aria-controls="jointowners" aria-selected="false">
+                        <i class="bi bi-people" aria-hidden="true"></i>Joint Owners
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab" aria-controls="attachments" aria-selected="false">
+                        <i class="bi bi-paperclip" aria-hidden="true"></i>Attachments
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body pms-saas-form-body">
                 @if (TempData["ErrorMessage"] != null)
                 {
                     <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -66,10 +72,10 @@
                     <div class="tab-content" id="customerTabContent">
                         <!-- Personal Info Tab (Personal + Contact) -->
                         <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
-                            <div class="row">
+                            <div class="row g-3 pms-form-fields-row">
                                 <!-- Personal Information -->
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="fas fa-user me-2"></i>Personal Information</h6>
+                                <div class="col-12 col-lg-6 pms-form-section">
+                                    <h6 class="pms-form-section-title"><i class="fas fa-user me-2"></i>Personal Information</h6>
                                     
                                     <div class="mb-3">
                                         <label asp-for="FullName" class="form-label">Full Name *</label>
@@ -151,8 +157,8 @@
                                 </div>
 
                                 <!-- Contact Information -->
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="fas fa-phone me-2"></i>Contact Information</h6>
+                                <div class="col-12 col-lg-6 pms-form-section">
+                                    <h6 class="pms-form-section-title"><i class="fas fa-phone me-2"></i>Contact Information</h6>
                                     
                                     <div class="mb-3">
                                         <label asp-for="Email" class="form-label">Email Address</label>
@@ -224,9 +230,9 @@
 
                         <!-- Next of Kin Info Tab -->
                         <div class="tab-pane fade" id="nominee" role="tabpanel" aria-labelledby="nominee-tab">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6 class="mb-3"><i class="fas fa-user-friends me-2"></i>Next of Kin Information</h6>
+                            <div class="row g-3 pms-form-fields-row">
+                                <div class="col-12 col-lg-6 pms-form-section">
+                                    <h6 class="pms-form-section-title"><i class="fas fa-user-friends me-2"></i>Next of Kin Information</h6>
                                     
                                     <div class="mb-3">
                                         <label asp-for="NomineeName" class="form-label">Next of Kin Name</label>
@@ -283,7 +289,7 @@
                                         <span asp-validation-for="NomineePicturePath" class="text-danger"></span>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-12 col-lg-6 pms-form-section">
                                     <div class="alert alert-info">
                                         <i class="fas fa-info-circle me-2"></i>
                                         <strong>Next of Kin Information</strong>
@@ -296,7 +302,7 @@
                         <!-- Property Allotments Tab -->
                         <div class="tab-pane fade" id="allotments" role="tabpanel" aria-labelledby="allotments-tab">
                             <div class="row g-3 mb-4">
-                                <div class="col-md-4">
+                                <div class="col-12 col-md-6 col-xl-3">
                                         <label asp-for="ProjectID" class="form-label">Project *</label>
                                         <select asp-for="ProjectID" id="ProjectID" class="form-select" required>
                                             <option value="">Select Project</option>
@@ -310,13 +316,13 @@
                                         </select>
                                         <span asp-validation-for="ProjectID" class="text-danger"></span>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-12 col-md-6 col-xl-3">
                                     <label asp-for="RegisteredSize" class="form-label">Registered Size</label>
                                     <input asp-for="RegisteredSize" id="RegisteredSize" class="form-control" type="number" step="0.01" inputmode="decimal" placeholder="Enter size" />
                                     <datalist id="RegisteredSizeOptions"></datalist>
                                     <small class="text-muted">Sizes are suggested from selected project, or type your own value.</small>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-12 col-md-6 col-xl-3">
                                     <label class="form-label">Is Dealer Registered?</label>
                                     <div class="d-flex gap-3 mb-2">
                                         <div class="form-check">
@@ -351,7 +357,7 @@
                                     </div>
 
                             <div class="row g-3 mb-4">
-                                <div class="col-md-4">
+                                <div class="col-12 col-md-6 col-xl-3">
                                         <label asp-for="PlanID" class="form-label">Payment Plan</label>
                                         <select asp-for="PlanID" class="form-select">
                                             <option value="">Select Payment Plan</option>
@@ -364,7 +370,7 @@
                                             }
                                         </select>
                                     </div>
-                                <div class="col-md-4">
+                                <div class="col-12 col-md-6 col-xl-3">
                                         <label asp-for="SubProject" class="form-label">Sub Project</label>
                                         <select asp-for="SubProject" id="SubProject" class="form-select">
                                             @if (!string.IsNullOrWhiteSpace(Model.SubProject))
@@ -378,8 +384,8 @@
                                         </select>
                                         <small class="text-muted">Sub projects are loaded from the selected project (same as Create).</small>
                                     </div>
-                                <div class="col-md-4">
-                                    <div class="alert alert-info mb-0">
+                                <div class="col-12 col-md-6 col-xl-3">
+                                    <div class="alert alert-info mb-0 h-100 d-flex align-items-center">
                                         <i class="fas fa-info-circle me-2"></i>
                                         <strong>Allotment is managed from the Allotment module</strong> (workflow).
                                     </div>
@@ -470,21 +476,21 @@
 
                         <!-- Joint Owners Tab -->
                         <div class="tab-pane fade" id="jointowners" role="tabpanel" aria-labelledby="jointowners-tab">
-                            <div class="row g-3">
-                                <div class="col-md-6">
+                            <div class="row g-3 pms-form-fields-row">
+                                <div class="col-12 col-md-6 col-xl-6">
                                     <label class="form-label">Joint Owner Name *</label>
                                     <input type="text" id="jointOwnerName" class="form-control" placeholder="Enter joint owner name" />
                                     <small class="text-muted">Letters, spaces, dots and hyphens only.</small>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-12 col-md-6 col-xl-3">
                                     <label class="form-label">Son /D/W/o</label>
                                     <input type="text" id="jointOwnerFatherName" class="form-control" placeholder="Enter father name" />
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-12 col-md-6 col-xl-3">
                                     <label class="form-label">CNIC *</label>
                                     <input type="text" id="jointOwnerCNIC" class="form-control" placeholder="XXXXX-XXXXXXX-X" maxlength="15" />
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-12 col-md-6 col-xl-3">
                                     <label class="form-label">Contact *</label>
                                     <input type="text" id="jointOwnerContact" class="form-control" placeholder="03XXXXXXXXX" />
                                     <small class="text-muted">Must be 11 to 13 digits.</small>
@@ -534,7 +540,7 @@
                         <div class="tab-pane fade" id="attachments" role="tabpanel" aria-labelledby="attachments-tab">
                             <div class="row">
                                 <div class="col-12">
-                                    <h6 class="mb-3"><i class="fas fa-paperclip me-2"></i>Customer Attachments</h6>
+                                    <h6 class="pms-form-section-title"><i class="fas fa-paperclip me-2"></i>Customer Attachments</h6>
                                     
                                     <!-- Customer Picture Section -->
                                     <div class="card mb-4" style="border-color: var(--primary);">
@@ -623,7 +629,7 @@
 
                                             <!-- Attachments List -->
                                             <div id="attachmentsList" class="mt-4">
-                                                <h6 class="mb-3">Uploaded Attachments</h6>
+                                                <h6 class="pms-form-section-title">Uploaded Attachments</h6>
                                                 <div id="attachmentsContainer" class="row">
                                                     <div class="col-12 text-center text-muted py-3">
                                                         <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
@@ -638,97 +644,35 @@
                         </div>
                     </div>
 
-                    <!-- Form Actions -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <hr>
-                            <div class="d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary me-2">
-                                    <i class="fas fa-save me-2"></i>Save Changes
-                                </button>
-                                <a asp-action="Details" asp-route-id="@Model.CustomerID" class="btn btn-outline-info me-2">
-                                    <i class="fas fa-eye me-2"></i>View Details
-                                </a>
-                                <a asp-action="Index" class="btn btn-secondary">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
-                            </div>
-                        </div>
+                    <div class="pms-form-actions-inline d-none d-md-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save Changes
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.CustomerID" class="btn btn-outline-secondary">
+                            <i class="bi bi-eye me-1" aria-hidden="true"></i>View Details
+                        </a>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Cancel
+                        </a>
                     </div>
                 </form>
-            </div>
+        </div>
+    </div>
+
+    <div class="pms-form-footer-sticky">
+        <div class="pms-form-footer-inner">
+            <button type="submit" form="customerEditForm" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save Changes
+            </button>
+            <a asp-action="Details" asp-route-id="@Model.CustomerID" class="btn btn-outline-secondary d-none d-sm-inline-flex">
+                <i class="bi bi-eye me-1" aria-hidden="true"></i>View Details
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg me-1" aria-hidden="true"></i>Cancel
+            </a>
         </div>
     </div>
 </div>
-
-<style>
-    /* Tab Styling */
-    .customer-tabs {
-        border-bottom: 2px solid var(--primary);
-        background: var(--primary-bg);
-        padding: 0.5rem 1rem 0;
-    }
-
-    .customer-tabs .nav-link {
-        color: var(--text-secondary);
-        font-weight: 600;
-        border: none;
-        border-bottom: 3px solid transparent;
-        padding: 0.75rem 1.25rem;
-        transition: all 0.3s ease;
-        font-size: 14px;
-    }
-
-    .customer-tabs .nav-link:hover {
-        color: var(--primary);
-        background: rgba(0, 0, 0, 0.04);
-        border-bottom-color: var(--primary-light);
-    }
-
-    .customer-tabs .nav-link.active {
-        color: var(--primary);
-        background: var(--card-bg);
-        border-bottom-color: var(--primary);
-        font-weight: 700;
-    }
-
-    .customer-tabs .nav-link i {
-        font-size: 13px;
-    }
-
-    /* Tab Content */
-    .tab-content {
-        padding-top: 1rem;
-    }
-
-    .tab-content .tab-pane {
-        display: none;
-    }
-
-    .tab-content .tab-pane.show.active {
-        display: block;
-    }
-
-    /* Section Headers within Tabs */
-    .tab-pane h6 {
-        color: var(--primary);
-        font-weight: 700;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid var(--primary-light);
-    }
-
-    /* Responsive Tabs */
-    @@media (max-width: 768px) {
-        .customer-tabs .nav-link {
-            padding: 0.5rem 0.75rem;
-            font-size: 12px;
-        }
-
-        .customer-tabs .nav-link i {
-            display: none;
-        }
-    }
-</style>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

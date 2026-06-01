@@ -2,65 +2,68 @@
 
 @{
     ViewData["Title"] = "Registrations";
+    ViewData["ListingTitle"] = "All Registrations";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("Create") : null;
+    ViewData["ListingAddText"] = "New Registration";
+    ViewData["SearchCollapseId"] = "registrationSearchCollapse";
 }
 
-@if (ViewBag.CanCreate == true)
-{
-<div class="d-flex justify-content-end mb-3">
-    <a asp-action="Create" class="btn btn-success">
-        <i class="fas fa-plus me-2"></i>New Registration
-    </a>
-</div>
-}
-
-@* TempData messages are handled in _Layout.cshtml *@
-
-<!-- Filters and Grid -->
-<div class="card">
-    <div class="card-header pms-page-card-header">
-        <h5 class="mb-0 text-white">
-            <i class="fas fa-list me-2"></i>All Registrations
-        </h5>
-    </div>
-    <div class="card-body">
-        <!-- Filters -->
-        <form method="get" asp-action="Index" class="mb-4">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Filter by Status</label>
-                    <select name="statusFilter" class="form-select" onchange="this.form.submit()">
-                        <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
-                        <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
-                        <option value="Approved" selected="@(ViewBag.StatusFilter == "Approved")">Approved</option>
-                        <option value="Rejected" selected="@(ViewBag.StatusFilter == "Rejected")">Rejected</option>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Search</label>
-                    <input type="text" name="searchTerm" class="form-control" 
-                           placeholder="Search by ID, Name, CNIC, Phone, Email..." 
-                           value="@ViewBag.SearchTerm" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search me-2"></i>Search
-                        </button>
-                        <a asp-action="Index" class="btn btn-secondary">
-                            <i class="fas fa-redo me-2"></i>Reset
-                        </a>
+<!-- Search Filters -->
+<form method="get" asp-action="Index" class="mb-4">
+    <div class="card pms-search-card">
+        <partial name="Listing/_SearchCardHeader" />
+        <div class="collapse show" id="registrationSearchCollapse">
+            <div class="card-body">
+                <div class="row g-3 pms-search-fields align-items-end">
+                    <div class="col-12 col-md-6 col-lg-3 col-search">
+                        <div class="form-floating">
+                            <select name="statusFilter" id="statusFilter" class="form-select" onchange="this.form.submit()">
+                                <option value="All" selected="@(ViewBag.StatusFilter == "All")">All Status</option>
+                                <option value="Pending" selected="@(ViewBag.StatusFilter == "Pending")">Pending</option>
+                                <option value="Approved" selected="@(ViewBag.StatusFilter == "Approved")">Approved</option>
+                                <option value="Rejected" selected="@(ViewBag.StatusFilter == "Rejected")">Rejected</option>
+                            </select>
+                            <label for="statusFilter">Filter by Status</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-6 col-search">
+                        <div class="form-floating">
+                            <input type="text"
+                                   name="searchTerm"
+                                   id="searchTerm"
+                                   class="form-control"
+                                   placeholder="Search"
+                                   value="@ViewBag.SearchTerm" />
+                            <label for="searchTerm">Search by ID, Name, CNIC, Phone, Email</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-3 col-search">
+                        <div class="d-flex justify-content-end gap-2 pms-search-actions border-0 mt-0 pt-0">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
+    </div>
+</form>
 
-        <!-- Grid -->
+<!-- Data Grid -->
+<div class="card pms-grid-card">
+    <div class="card-body">
+        <partial name="Listing/_GridToolbar" />
+
         @if (Model.Any())
         {
             <div class="table-responsive">
-                <table class="table table-hover align-middle" id="registrationsTable">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle pms-enterprise-table" id="registrationsTable">
+                    <thead>
                         <tr>
                             <th>Actions</th>
                             <th>Registration ID</th>
@@ -81,48 +84,34 @@
                         {
                             <tr>
                                 <td>
-                                    <div class="btn-group" role="group">
+                                    <div class="btn-group pms-action-group" role="group">
                                         @if (ViewBag.CanEdit == true)
                                         {
-                                        <a asp-action="Edit" asp-route-id="@registration.RegID" 
-                                           class="btn btn-sm btn-outline-success" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
+                                            <a asp-action="Edit" asp-route-id="@registration.RegID"
+                                               class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                            </a>
                                         }
-                                        <a asp-action="Details" asp-route-id="@registration.RegID" 
-                                           class="btn btn-sm btn-outline-theme" title="View Details">
-                                            <i class="fas fa-eye"></i>
+                                        <a asp-action="Details" asp-route-id="@registration.RegID"
+                                           class="btn btn-sm btn-outline-secondary" title="View Details">
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
                                         </a>
                                         @if ((ViewBag.CanDelete == true) && (registration.Customers == null || !registration.Customers.Any()))
                                         {
-                                            <a asp-action="Delete" asp-route-id="@registration.RegID" 
+                                            <a asp-action="Delete" asp-route-id="@registration.RegID"
                                                class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="fas fa-trash"></i>
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
                                             </a>
                                         }
                                     </div>
                                 </td>
-                                <td>
-                                    <code>@registration.RegID</code>
-                                </td>
-                                <td>
-                                    <strong>@registration.FullName</strong>
-                                </td>
-                                <td>
-                                    @(registration.Project?.ProjectName ?? "—")
-                                </td>
-                                <td>
-                                    @(registration.FormNo ?? "—")
-                                </td>
-                                <td>
-                                    @(registration.Size ?? "—")
-                                </td>
-                                <td>
-                                    @(registration.SubProject ?? "—")
-                                </td>
-                                <td>
-                                    @(registration.CNIC ?? "N/A")
-                                </td>
+                                <td><code>@registration.RegID</code></td>
+                                <td><strong class="pms-cell-truncate" title="@registration.FullName">@registration.FullName</strong></td>
+                                <td><span class="pms-cell-truncate" title="@(registration.Project?.ProjectName ?? "—")">@(registration.Project?.ProjectName ?? "—")</span></td>
+                                <td>@(registration.FormNo ?? "—")</td>
+                                <td>@(registration.Size ?? "—")</td>
+                                <td>@(registration.SubProject ?? "—")</td>
+                                <td>@(registration.CNIC ?? "N/A")</td>
                                 <td>
                                     <div>
                                         <i class="fas fa-phone text-primary me-1"></i>@registration.Phone
@@ -130,7 +119,7 @@
                                     @if (!string.IsNullOrEmpty(registration.Email))
                                     {
                                         <div>
-                                            <small class="text-muted">
+                                            <small class="text-muted pms-cell-truncate d-block" title="@registration.Email">
                                                 <i class="fas fa-envelope me-1"></i>@registration.Email
                                             </small>
                                         </div>
@@ -138,13 +127,13 @@
                                 </td>
                                 <td>
                                     @registration.CreatedAt.ToString("MMM dd, yyyy")
-                                    <br>
+                                    <br />
                                     <small class="text-muted">@registration.CreatedAt.ToString("hh:mm tt")</small>
                                 </td>
                                 <td>
                                     @if (registration.Status == "Pending")
                                     {
-                                        <span class="badge bg-warning">
+                                        <span class="badge bg-warning text-dark">
                                             <i class="fas fa-clock me-1"></i>Pending
                                         </span>
                                     }
@@ -171,9 +160,9 @@
                                         var customer = registration.Customers.FirstOrDefault();
                                         @if (customer != null)
                                         {
-                                            <a asp-controller="Customer" asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")" 
+                                            <a asp-controller="Customer" asp-action="Details" asp-route-id="@(customer.CustomerID ?? "")"
                                                class="btn btn-sm btn-success">
-                                                <i class="fas fa-user me-1"></i>View Customer
+                                                <i class="bi bi-person me-1"></i>View
                                             </a>
                                         }
                                     }
@@ -190,15 +179,15 @@
         }
         else
         {
-            <div class="text-center py-5">
-                <i class="fas fa-inbox fa-4x mb-3 text-muted"></i>
+            <div class="pms-empty-state">
+                <i class="bi bi-inbox display-4 d-block mb-3 text-muted"></i>
                 <h5 class="text-muted">No Registrations Found</h5>
-                <p class="text-muted">@(ViewBag.SearchTerm != null && ViewBag.SearchTerm != "" ? "Try different search criteria" : "Start by creating a new registration.")</p>
+                <p class="text-muted mb-3">@(ViewBag.SearchTerm != null && ViewBag.SearchTerm != "" ? "Try different search criteria." : "Start by creating a new registration.")</p>
                 @if (ViewBag.CanCreate == true)
                 {
-                <a asp-action="Create" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Create First Registration
-                </a>
+                    <a asp-action="Create" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Create First Registration
+                    </a>
                 }
             </div>
         }
@@ -206,46 +195,6 @@
 </div>
 
 <style>
-    .avatar-sm {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .bg-soft {
-        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-    }
-
-    .bg-info.bg-soft {
-        background-color: rgba(13, 202, 240, 0.1) !important;
-    }
-
-    .bg-warning.bg-soft {
-        background-color: rgba(255, 193, 7, 0.1) !important;
-    }
-
-    .bg-success.bg-soft {
-        background-color: rgba(25, 135, 84, 0.1) !important;
-    }
-
-    .font-size-24 {
-        font-size: 24px;
-    }
-
-    code {
-        background: rgba(156, 106, 222, 0.1);
-        color: #9C6ADE;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    /* Improve registration grid readability in dark theme */
-    html[data-theme="dark"] #registrationsTable thead,
-    html[data-theme="dark"] #registrationsTable thead tr,
     html[data-theme="dark"] #registrationsTable thead th {
         background-color: #0f172a !important;
         color: var(--text-primary) !important;
@@ -262,14 +211,11 @@
 </style>
 
 @section Scripts {
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    
     <script>
         $(document).ready(function () {
             $('#registrationsTable').DataTable({
                 "pageLength": 25,
-                "order": [[9, "desc"]], // Sort by date descending
+                "order": [[9, "desc"]],
                 "columnDefs": [
                     { "orderable": false, "targets": [0, 11] }
                 ]
@@ -277,4 +223,3 @@
         });
     </script>
 }
-

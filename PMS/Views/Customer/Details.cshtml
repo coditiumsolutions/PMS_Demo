@@ -39,7 +39,7 @@
 <div class="row">
     <!-- Main Content with Tabs -->
     <div class="col-12">
-        <div class="card">
+        <div class="card pms-customer-details">
             <div class="card-header p-0">
                 <ul class="nav nav-tabs customer-tabs" id="customerTabs" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -825,37 +825,51 @@
 </div>
 
 <style>
-    /* Tab Styling */
-    .customer-tabs {
-        border-bottom: 2px solid #6f42c1;
-        background: linear-gradient(135deg, #f8f9fa 0%, #f3f0ff 100%);
-        padding: 0.5rem 1rem 0;
+    /* Card / form — no background */
+    .pms-customer-details.card {
+        background: transparent;
+        border: none;
+        box-shadow: none;
     }
 
-    .customer-tabs .nav-link {
-        color: #666;
+    .pms-customer-details .card-body {
+        background: transparent;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Tab Styling */
+    .pms-customer-details .customer-tabs {
+        border-bottom: 1px solid #e5e7eb;
+        background: transparent;
+        padding: 0.5rem 0 0;
+    }
+
+    .pms-customer-details .customer-tabs .nav-link {
+        color: #64748b;
         font-weight: 600;
         border: none;
-        border-bottom: 3px solid transparent;
-        padding: 0.75rem 1.25rem;
-        transition: all 0.3s ease;
+        border-bottom: 2px solid transparent;
+        padding: 0.75rem 1rem;
+        transition: color 0.2s ease, border-color 0.2s ease;
         font-size: 14px;
+        background: transparent;
     }
 
-    .customer-tabs .nav-link:hover {
-        color: #6f42c1;
-        background: rgba(111, 66, 193, 0.05);
-        border-bottom-color: #9370db;
+    .pms-customer-details .customer-tabs .nav-link:hover {
+        color: #2563eb;
+        background: transparent;
+        border-bottom-color: #cbd5e1;
     }
 
-    .customer-tabs .nav-link.active {
-        color: #6f42c1;
-        background: white;
-        border-bottom-color: #6f42c1;
+    .pms-customer-details .customer-tabs .nav-link.active {
+        color: #2563eb;
+        background: transparent;
+        border-bottom-color: #2563eb;
         font-weight: 700;
     }
 
-    .customer-tabs .nav-link i {
+    .pms-customer-details .customer-tabs .nav-link i {
         font-size: 13px;
     }
 
@@ -864,59 +878,99 @@
         padding-top: 1rem;
     }
 
-    /* Detail Fields */
-    .detail-field {
-        padding: 8px 10px;
-        background: linear-gradient(135deg, #f8f9fa 0%, var(--gold-tint) 100%);
-        border-radius: 6px;
-        transition: all 0.3s ease;
+    /* Detail fields — full-width horizontal line after each row */
+    .pms-customer-details .tab-pane .row > [class*="col-"]:has(.detail-field) {
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 0 !important;
+        border-bottom: 1px solid #e5e7eb;
+        background: transparent !important;
     }
 
-    .detail-field:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(11, 148, 68, 0.1);
+    .pms-customer-details .tab-pane .row > [class*="col-"]:has(.detail-field):last-child {
+        border-bottom: 1px solid #e5e7eb;
     }
 
-    .detail-field label {
+    .pms-customer-details .detail-field {
+        padding: 0;
+        margin: 0;
+        background: transparent !important;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .pms-customer-details .detail-field:hover {
+        transform: none;
+        box-shadow: none;
+        background: transparent !important;
+    }
+
+    .pms-customer-details .detail-field label {
         display: block;
-        margin-bottom: 3px;
-        font-size: 10px;
+        margin-bottom: 0.35rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #666;
+        letter-spacing: 0.06em;
+        color: #64748b;
         font-weight: 600;
     }
 
-    .detail-field p {
-        font-size: 14px;
-        color: var(--text-dark);
+    .pms-customer-details .detail-field label i {
+        color: #2563eb;
+        opacity: 0.85;
+    }
+
+    .pms-customer-details .detail-field p {
+        font-size: 0.9375rem;
+        color: #0f172a;
         margin-bottom: 0;
         font-weight: 500;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .pms-customer-details .col-12:has(.detail-field) .detail-field {
+        padding-left: 0;
+        padding-right: 0;
     }
 
     code {
-        background: var(--light-green);
-        color: var(--primary-green);
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 13px;
+        background: transparent;
+        color: #0f172a;
+        padding: 0;
+        border-radius: 0;
+        font-size: 0.9375rem;
         font-weight: 600;
     }
 
     /* Section Headers within Tabs */
-    .tab-pane h6 {
-        color: #6f42c1;
+    .pms-customer-details .tab-pane h6 {
+        color: #0f172a;
         font-weight: 700;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e8dcff;
+        margin-top: 0.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: transparent;
     }
 
     .activity-log-row {
         cursor: pointer;
     }
 
-    .activity-log-row:hover {
-        background-color: rgba(111, 66, 193, 0.08);
+    .pms-customer-details .activity-log-row:hover {
+        background-color: rgba(37, 99, 235, 0.06);
+    }
+
+    /* Tables / inner cards keep their own surfaces */
+    .pms-customer-details .tab-pane .table {
+        background: #fff;
+    }
+
+    .pms-customer-details .tab-pane > .card,
+    .pms-customer-details .tab-pane .card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
     }
 
     /* Responsive Tabs */

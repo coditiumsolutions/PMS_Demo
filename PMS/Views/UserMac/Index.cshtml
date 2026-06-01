@@ -30,7 +30,7 @@
 
 @if (Model.SelectedUser != null)
 {
-    <div class="card mb-3">
+    <div class="card pms-search-card mb-3">
         <div class="card-header">Add Certificate Thumbprint for @Model.SelectedUser.FullName (@Model.SelectedUser.UserID)</div>
         <div class="card-body">
             <form asp-action="AddWhitelist" method="post" class="row g-2">
@@ -51,7 +51,7 @@
 
     <div class="row">
         <div class="col-md-6">
-            <div class="card mb-3">
+            <div class="card pms-search-card mb-3">
                 <div class="card-header">Whitelisted Certificates</div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -99,7 +99,7 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card mb-3">
+            <div class="card pms-search-card mb-3">
                 <div class="card-header">Blocked Login Attempts (Not Yet Whitelisted)</div>
                 <div class="card-body">
                     <div class="table-responsive">
