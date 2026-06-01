@@ -1311,6 +1311,11 @@
                         var layoutCtrl = ViewContext.RouteData.Values["Controller"]?.ToString();
                         var isAmsSidebarShell = string.Equals(layoutCtrl, "AccountsManagement", StringComparison.Ordinal)
                             || (!string.IsNullOrEmpty(layoutCtrl) && layoutCtrl.StartsWith("Ams", StringComparison.Ordinal));
+                        var showPageBanner = !string.IsNullOrEmpty(layoutCtrl)
+                            && (string.Equals(layoutCtrl, "Settings", StringComparison.Ordinal)
+                                || string.Equals(layoutCtrl, "Account", StringComparison.Ordinal)
+                                || string.Equals(layoutCtrl, "AccountsManagement", StringComparison.Ordinal)
+                                || layoutCtrl.StartsWith("Ams", StringComparison.Ordinal));
                     }
                     <!-- Sidebar -->
                     <nav id="appSidebar" class="col-md-3 col-lg-3 d-md-block sidebar collapse@(isAmsSidebarShell ? " sidebar--ams" : "")">
@@ -1763,9 +1768,7 @@ else
 
                     <!-- Main content -->
                     <main class="col-md-9 ms-sm-auto col-lg-9 main-content" style="margin-left: 15px !important;">
-                @if (ViewContext.RouteData.Values["Controller"]?.ToString() != "Home" &&
-                     ViewContext.RouteData.Values["Controller"]?.ToString() != "Registration" &&
-                     !(ViewContext.RouteData.Values["Controller"]?.ToString() == "Payment" && ViewContext.RouteData.Values["Action"]?.ToString() == "RecordPayment"))
+                @if (showPageBanner)
                 {
                     <div class="content-header">
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
