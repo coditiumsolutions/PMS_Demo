@@ -2,14 +2,12 @@
     ViewData["Title"] = "Workspace - ZKB Eclipse";
 }
 
+<div class="workspace-section">
 <!-- Workspace Header -->
-<div class="workspace-header mb-4">
+<div class="workspace-header mb-0">
     <div class="workspace-header-row">
         <div>
-            <h3 class="workspace-title">
-                <i class="fas fa-th-large me-2"></i>Workspace
-            </h3>
-            <p class="workspace-subtitle mb-2">Quick access to all modules</p>
+            <h3 class="workspace-title">Workspace</h3>
             <p class="mb-0">
                 <a href="@Url.Action("Index", "AccountsManagement")" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-calculator me-1"></i>Accounts Management
@@ -23,6 +21,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Workspace Tiles Grid -->
@@ -603,8 +602,20 @@
 }
 
 <style>
+    .workspace-section {
+        border: 1px solid #94a3b8;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        background: transparent;
+        margin-bottom: 1.25rem;
+    }
+
+    html[data-theme="dark"] .workspace-section {
+        border-color: var(--border, #334155);
+    }
+
     .workspace-header {
-        margin-bottom: 30px;
+        margin-bottom: 0;
     }
 
     .workspace-header-row {
@@ -644,20 +655,8 @@
         margin-bottom: 8px;
     }
 
-    .workspace-subtitle {
-        font-size: 14px;
-        color: var(--text-secondary);
-        margin: 0;
-    }
-
-    /* Ensure workspace header text is readable in dark theme */
-    html[data-theme="dark"] .workspace-title,
-    html[data-theme="dark"] .workspace-subtitle {
+    html[data-theme="dark"] .workspace-title {
         color: var(--text-primary);
-    }
-
-    html[data-theme="dark"] .workspace-subtitle {
-        color: var(--text-secondary);
     }
 
     .workspace-grid {

@@ -2,69 +2,53 @@
 
 @{
     ViewData["Title"] = "User Management";
+    ViewData["HidePageBanner"] = true;
+    ViewData["ListingHideTitle"] = true;
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = Url.Action("CreateUser");
+    ViewData["ListingAddText"] = "Add New User";
+    ViewData["ListingExtraActions"] =
+        "<a href=\"" + Url.Action("Index", "UserMac") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+        "<i class=\"bi bi-shield-check me-1\" aria-hidden=\"true\"></i>Manage mTLS Certificates</a>";
     var whitelistCounts = ViewBag.WhitelistCounts as Dictionary<string, int> ?? new Dictionary<string, int>();
     var blockedCounts = ViewBag.BlockedCounts as Dictionary<string, int> ?? new Dictionary<string, int>();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <!-- <h2>
-        <i class="fas fa-users-cog me-2"></i>User Management
-    </h2> -->
-    <a asp-action="CreateUser" class="btn btn-primary">
-        <i class="fas fa-user-plus me-2"></i>Add New User
-    </a>
-</div>
-<div class="mb-3">
-    <a asp-controller="UserMac" asp-action="Index" class="btn btn-outline-primary btn-sm">
-        <i class="fas fa-shield-alt me-1"></i>Manage mTLS Certificates
-    </a>
-</div>
-
-<!-- Users Statistics -->
-<div class="row mb-4">
-    <div class="col-md-3">
+<div class="row g-2 mb-3 users-stats-compact">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count()</div>
             <div class="stats-label">Total Users</div>
-            <i class="fas fa-users fa-2x mt-2" style="color: var(--primary-green);"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count(u => u.IsActive)</div>
             <div class="stats-label">Active Users</div>
-            <i class="fas fa-user-check fa-2x mt-2" style="color: var(--primary-green);"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count(u => !u.IsActive)</div>
             <div class="stats-label">Inactive Users</div>
-            <i class="fas fa-user-slash fa-2x mt-2" style="color: #dc3545;"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Select(u => u.RoleID).Distinct().Count()</div>
             <div class="stats-label">Total Roles</div>
-            <i class="fas fa-shield-alt fa-2x mt-2" style="color: var(--accent-gold);"></i>
         </div>
     </div>
 </div>
 
-<!-- Users Table -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-list me-2"></i>All Users
-        </h5>
-    </div>
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover" id="usersTable">
+        <partial name="Listing/_GridToolbar" />
+
+        <div class="table-responsive pms-saas-table-wrap">
+            <table class="table pms-saas-table" id="usersTable">
                 <thead>
                     <tr>
-                        <th>Actions</th>
                         <th>User ID</th>
                         <th>Full Name</th>
                         <th>Email</th>
@@ -76,110 +60,88 @@
                         <th>Whitelisted Certs</th>
                         <th>Blocked Attempts</th>
                         <th>Created Date</th>
+                        <th class="pms-saas-th-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var user in Model.OrderBy(u => u.FullName))
                     {
                         <tr>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-info" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#userModal@(user.UserID)"
-                                            title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-primary" 
-                                            onclick="editUser('@user.UserID')"
-                                            title="Edit User">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" 
-                                            class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")" 
-                                            onclick="toggleUserStatus('@user.UserID', @user.IsActive.ToString().ToLower())"
-                                            title="@(user.IsActive ? "Deactivate" : "Activate")">
-                                        <i class="fas fa-@(user.IsActive ? "ban" : "check")"></i>
-                                    </button>
-                                    <a class="btn btn-sm btn-outline-secondary"
-                                       asp-controller="UserMac"
-                                       asp-action="Index"
-                                       asp-route-userId="@user.UserID"
-                                       title="Manage mTLS certificates">
-                                        <i class="fas fa-shield-alt"></i>
-                                    </a>
-                                </div>
+                            <td data-label="User ID"><code>@user.UserID</code></td>
+                            <td data-label="Full Name">
+                                <strong class="pms-cell-truncate" title="@user.FullName">@user.FullName</strong>
                             </td>
-                            <td>
-                                <code>@user.UserID</code>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-user-circle fa-2x me-2" style="color: var(--primary-green);"></i>
-                                    <div>
-                                        <strong>@user.FullName</strong>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <i class="fas fa-envelope me-2 text-muted"></i>
-                                @user.Email
-                            </td>
-                            <td>@(user.Designation ?? "—")</td>
-                            <td>@(user.Department ?? "—")</td>
-                            <td>
+                            <td data-label="Email"><span class="pms-cell-truncate" title="@user.Email">@user.Email</span></td>
+                            <td data-label="Designation">@(user.Designation ?? "—")</td>
+                            <td data-label="Department">@(user.Department ?? "—")</td>
+                            <td data-label="User Type">
                                 @if (!string.IsNullOrEmpty(user.UserType))
                                 {
-                                    <span class="badge bg-info">@user.UserType</span>
+                                    <span class="pms-pill pms-pill--info">@user.UserType</span>
                                 }
                                 else
                                 {
                                     <span class="text-muted">—</span>
                                 }
                             </td>
-                            <td>
+                            <td data-label="Role">
                                 @if (user.Role != null)
                                 {
-                                    <span class="badge bg-primary">
-                                        <i class="fas fa-shield-alt me-1"></i>@user.Role.RoleName
-                                    </span>
+                                    <span class="pms-pill pms-pill--info">@user.Role.RoleName</span>
                                 }
                                 else
                                 {
                                     <span class="text-muted">No Role</span>
                                 }
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 @if (user.IsActive)
                                 {
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check-circle me-1"></i>Active
-                                    </span>
+                                    <span class="pms-pill pms-pill--success">Active</span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-danger">
-                                        <i class="fas fa-ban me-1"></i>Inactive
-                                    </span>
+                                    <span class="pms-pill pms-pill--danger">Inactive</span>
                                 }
                             </td>
-                            <td>
-                                <span class="badge bg-success">
-                                    @(whitelistCounts.ContainsKey(user.UserID) ? whitelistCounts[user.UserID] : 0)
-                                </span>
+                            <td data-label="Whitelisted Certs">
+                                <span class="pms-pill pms-pill--success">@(whitelistCounts.ContainsKey(user.UserID) ? whitelistCounts[user.UserID] : 0)</span>
                             </td>
-                            <td>
-                                <span class="badge bg-warning text-dark">
-                                    @(blockedCounts.ContainsKey(user.UserID) ? blockedCounts[user.UserID] : 0)
-                                </span>
+                            <td data-label="Blocked Attempts">
+                                <span class="pms-pill pms-pill--warning">@(blockedCounts.ContainsKey(user.UserID) ? blockedCounts[user.UserID] : 0)</span>
                             </td>
-                            <td>
-                                <small class="text-muted">
-                                    <i class="far fa-calendar-alt me-1"></i>
-                                    @user.CreatedAt.ToString("MMM dd, yyyy")
-                                </small>
+                            <td data-label="Created Date">
+                                <span class="text-nowrap">@user.CreatedAt.ToString("MMM dd, yyyy")</span>
+                            </td>
+                            <td class="pms-saas-td-actions" data-label="Actions">
+                                <div class="pms-row-actions" role="group">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#userModal@(user.UserID)"
+                                            title="View Details">
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            onclick="editUser('@user.UserID')"
+                                            title="Edit User">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                            onclick="toggleUserStatus('@user.UserID', @user.IsActive.ToString().ToLower())"
+                                            title="@(user.IsActive ? "Deactivate" : "Activate")">
+                                        <i class="bi bi-@(user.IsActive ? "slash-circle" : "check-circle")" aria-hidden="true"></i>
+                                    </button>
+                                    <a class="btn btn-sm btn-outline-secondary"
+                                       asp-controller="UserMac"
+                                       asp-action="Index"
+                                       asp-route-userId="@user.UserID"
+                                       title="Manage mTLS certificates">
+                                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
 
@@ -277,37 +239,35 @@
         font-weight: 600;
     }
 
-    .stats-card {
+    .users-stats-compact .stats-card {
         background: var(--surface);
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: 10px;
+        padding: 0.65rem 0.75rem;
         text-align: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        transition: all 0.2s ease-in-out;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
         border: 1px solid var(--border);
+        min-height: 0;
     }
 
-    .stats-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    .stats-number {
+    .users-stats-compact .stats-number {
         font-family: 'Inter', sans-serif;
-        font-size: 2.2rem;
+        font-size: 1.35rem;
         font-weight: 700;
         color: var(--primary-light);
-        margin-bottom: 8px;
+        margin-bottom: 0.15rem;
+        line-height: 1.2;
     }
 
-    .stats-label {
-        font-size: 12px;
+    .users-stats-compact .stats-label {
+        font-size: 10px;
         color: var(--text-secondary);
-        font-weight: 500;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.35px;
+        margin: 0;
+        line-height: 1.2;
     }
 
-    /* Users Modals - No Backdrop */
     .modal-backdrop {
         display: none !important;
     }
@@ -316,13 +276,11 @@
         display: none !important;
     }
 
-    /* Disable global dim overlay from layout on this page */
     body.modal-open::before {
         display: none !important;
         background: transparent !important;
     }
 
-    /* Force transparent background for all modals on this page */
     .modal {
         background: transparent !important;
     }
@@ -336,35 +294,27 @@
     <script>
         $(document).ready(function() {
             $('#usersTable').DataTable({
-                "pageLength": 25,
-                "order": [[ 2, "asc" ]],
-                "columnDefs": [
-                    { "orderable": false, "targets": 0 }
-                ]
+                pageLength: 25,
+                order: [[1, 'asc']],
+                columnDefs: [{ orderable: false, targets: 11 }]
             });
 
-            // Remove any existing backdrops
             $('.modal-backdrop').remove();
 
-            // Ensure Bootstrap 5 modals have no backdrop and stay above UI
             $('.modal').on('show.bs.modal', function(e) {
-                // Remove any existing backdrops
                 $('.modal-backdrop').remove();
-                // Ensure instance exists and set backdrop to false
                 var modalInstance = bootstrap.Modal.getOrCreateInstance(this, { backdrop: false });
                 if (modalInstance && modalInstance._config) {
                     modalInstance._config.backdrop = false;
                 }
             });
 
-            // Remove backdrops on shown/hidden as a safeguard
             $('.modal').on('shown.bs.modal hidden.bs.modal', function() {
                 $('.modal-backdrop').remove();
             });
         });
 
         function editUser(userId) {
-            // Redirect to edit page
             window.location.href = '@Url.Action("EditUser", "Account")/' + userId;
         }
 
@@ -391,4 +341,3 @@
         }
     </script>
 }
-

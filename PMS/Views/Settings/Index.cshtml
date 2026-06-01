@@ -2,6 +2,7 @@
 @using System.Linq
 @{
     ViewData["Title"] = "Configuration Settings";
+    ViewData["HidePageBanner"] = true;
     var categories = Model.GroupBy(c => c.Category ?? "General").OrderBy(g => g.Key);
 }
 
@@ -17,48 +18,38 @@
     }
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-        <!-- <i class="fas fa-cogs me-2"></i>System Configuration -->
-    </h2>
-    <div class="d-flex gap-2">
-        <a asp-action="SiteConfig" asp-controller="Settings" class="btn btn-outline-primary">
-            <i class="fas fa-sliders-h me-2"></i>Site Configuration
-        </a>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
-            <i class="fas fa-plus me-2"></i>Add Configuration
-        </button>
-    </div>
+<div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+    <a asp-action="SiteConfig" asp-controller="Settings" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-sliders me-1" aria-hidden="true"></i>Site Configuration
+    </a>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add Configuration
+    </button>
 </div>
 
-<!-- Configuration Statistics -->
-<div class="row mb-4">
-    <div class="col-md-3">
+<div class="row g-2 mb-3 settings-stats-compact">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count()</div>
             <div class="stats-label">Total Configs</div>
-            <i class="fas fa-list fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@categories.Count()</div>
             <div class="stats-label">Categories</div>
-            <i class="fas fa-folder fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count(c => c.Category == "Cities")</div>
             <div class="stats-label">Cities</div>
-            <i class="fas fa-city fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="stats-card">
             <div class="stats-number">@Model.Count(c => c.Category == "Countries")</div>
             <div class="stats-label">Countries</div>
-            <i class="fas fa-globe fa-2x mt-2" style="color: var(--primary-light);"></i>
         </div>
     </div>
 </div>
@@ -66,67 +57,58 @@
 <!-- Configuration by Category -->
 @foreach (var categoryGroup in categories)
 {
-    <div class="card pms-search-card mb-4">
-        <div class="card-header">
-            <h6 class="mb-0">
-                <i class="fas fa-folder-open me-2"></i>@categoryGroup.Key
-                <span class="badge bg-primary ms-2">@categoryGroup.Count()</span>
-            </h6>
+    <div class="pms-settings-category pms-listing-page mb-4">
+        <div class="pms-settings-category-header d-flex align-items-center gap-2 mb-2 pb-2">
+            <h6 class="mb-0 fw-semibold">@categoryGroup.Key</h6>
+            <span class="badge rounded-pill pms-record-badge">@categoryGroup.Count()</span>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
+        <div class="table-responsive pms-saas-table-wrap">
+            <table class="table pms-saas-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                        <th>Description</th>
+                        <th>Updated</th>
+                        <th class="pms-saas-th-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var config in categoryGroup.OrderBy(c => c.ConfigKey))
+                    {
+                        var modalId = GetModalId(config.ConfigKey);
                         <tr>
-                            <th width="25%">Key</th>
-                            <th width="35%">Value</th>
-                            <th width="25%">Description</th>
-                            <th width="10%">Updated</th>
-                            <th width="5%">Actions</th>
+                            <td data-label="Key"><code>@config.ConfigKey</code></td>
+                            <td data-label="Value"><strong>@config.ConfigValue</strong></td>
+                            <td data-label="Description"><span class="text-muted small">@(config.Description ?? "N/A")</span></td>
+                            <td data-label="Updated">
+                                @if (config.UpdatedAt.HasValue)
+                                {
+                                    <span class="text-muted small text-nowrap">@config.UpdatedAt.Value.ToString("MMM dd, yyyy")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td class="pms-saas-td-actions" data-label="Actions">
+                                <div class="pms-row-actions" role="group">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#@modalId"
+                                            title="Edit">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="deleteConfig('@config.ConfigKey')"
+                                            title="Delete">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var config in categoryGroup.OrderBy(c => c.ConfigKey))
-                        {
-                            var modalId = GetModalId(config.ConfigKey);
-                            <tr>
-                                <td>
-                                    <code>@config.ConfigKey</code>
-                                </td>
-                                <td>
-                                    <strong>@config.ConfigValue</strong>
-                                </td>
-                                <td>
-                                    <small class="text-muted">@(config.Description ?? "N/A")</small>
-                                </td>
-                                <td>
-                                    @if (config.UpdatedAt.HasValue)
-                                    {
-                                        <small class="text-muted">@config.UpdatedAt.Value.ToString("MMM dd, yyyy")</small>
-                                    }
-                                    else
-                                    {
-                                        <small class="text-muted">-</small>
-                                    }
-                                </td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-primary" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#@modalId"
-                                                title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-danger" 
-                                                onclick="deleteConfig('@config.ConfigKey')"
-                                                title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
 
                             <!-- Edit Modal -->
                             <div class="modal fade" id="@modalId" tabindex="-1" data-bs-backdrop="false">
@@ -188,9 +170,8 @@
                                 </div>
                             </div>
                         }
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            </table>
         </div>
     </div>
 }
@@ -286,6 +267,57 @@
 </form>
 
 <style>
+    .settings-stats-compact .stats-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.65rem 0.75rem;
+        text-align: center;
+        min-height: 0;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+
+    html[data-theme="dark"] .settings-stats-compact .stats-card {
+        background: var(--surface, #1e293b);
+        border-color: var(--border, #334155);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .settings-stats-compact .stats-number {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--primary-light);
+        margin-bottom: 0.15rem;
+        line-height: 1.2;
+    }
+
+    .settings-stats-compact .stats-label {
+        font-size: 10px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .pms-settings-category {
+        background: transparent !important;
+    }
+
+    .pms-settings-category-header {
+        border-bottom: 1px solid #e2e8f0;
+        background: transparent !important;
+    }
+
+    html[data-theme="dark"] .pms-settings-category-header {
+        border-bottom-color: var(--border, #334155);
+    }
+
+    .pms-settings-category .pms-saas-table-wrap {
+        border: none;
+    }
+
     code {
         background: rgba(156, 106, 222, 0.1);
         color: var(--primary);

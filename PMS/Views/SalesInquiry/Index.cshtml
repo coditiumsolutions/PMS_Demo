@@ -3,31 +3,25 @@
 @{
     ViewData["Title"] = "Sales Inquiries";
     var selectedStatus = ViewBag.SelectedStatus as string ?? "All";
+    ViewData["ListingTitle"] = "Sales Inquiries";
+    ViewData["ListingDescription"] = "Website and property inquiries";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingShowAdd"] = false;
+    ViewData["ListingExtraActions"] =
+        "<div class=\"btn-group\">" +
+        "<button type=\"button\" class=\"btn btn-primary btn-sm dropdown-toggle\" data-bs-toggle=\"dropdown\">" +
+        "<i class=\"bi bi-plus-lg me-1\" aria-hidden=\"true\"></i>New Inquiry</button>" +
+        "<ul class=\"dropdown-menu dropdown-menu-end\">" +
+        "<li><a class=\"dropdown-item\" href=\"#\" onclick=\"showNewInquiryModal(); return false;\">" +
+        "<i class=\"bi bi-envelope me-2\" aria-hidden=\"true\"></i>Property Inquiry</a></li></ul></div>" +
+        "<a href=\"" + Url.Action("PerformanceReport") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+        "<i class=\"bi bi-graph-up me-1\" aria-hidden=\"true\"></i>Performance Report</a>";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex gap-2 align-items-center">
-        <div class="btn-group">
-            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="fas fa-plus me-2"></i>New Inquiry
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" onclick="showNewInquiryModal()">
-                    <i class="fas fa-envelope me-2"></i>Property Inquiry
-                </a></li>
-            </ul>
-        </div>
-        <a asp-action="PerformanceReport" class="btn btn-outline-primary">
-            <i class="fas fa-chart-line me-2"></i>Performance Report
-        </a>
-    </div>
-</div>
-
-<!-- Filter Buttons -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
+<div class="mb-4 pms-listing-page">
+    <div class="pms-listing-search-wrap">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label class="fw-bold me-2">Filter by Status:</label>
+            <label class="form-label mb-0 me-2">Filter by Status</label>
             <a asp-action="Index" asp-route-status="All" 
                class="btn btn-sm @(selectedStatus == "All" ? "btn-primary" : "btn-outline-primary")">
                 <i class="fas fa-list me-1"></i>All
@@ -128,21 +122,17 @@
     </div>
 </div>
 
-<!-- Inquiries Table -->
-<div class="card border-0 shadow-sm">
-    <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
-        <h5 class="mb-0 text-white">
-            <i class="fas fa-list me-2"></i>All Inquiries (@selectedStatus)
-        </h5>
-    </div>
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
+        <partial name="Listing/_GridToolbar" />
+
         @if (Model.Any())
         {
-            <div class="table-responsive">
-                <table id="inquiriesTable" class="table table-hover align-middle">
-                    <thead class="table-light">
+            <div class="table-responsive pms-saas-table-wrap">
+                <table id="inquiriesTable" class="table pms-saas-table">
+                    <thead>
                         <tr>
-                            <th>Manage</th>
+                            <th class="pms-saas-th-actions">Manage</th>
                             <th>Contact Actions</th>
                             <th>Status</th>
                             <th>ID</th>
@@ -158,9 +148,8 @@
                         @foreach (var inquiry in Model)
                         {
                             <tr class="@(inquiry.Status == "New" ? "table-warning" : "")">
-                                <!-- Manage Column -->
-                                <td>
-                                    <div class="btn-group" role="group">
+                                <td class="pms-saas-td-actions" data-label="Manage">
+                                    <div class="pms-row-actions" role="group">
                                         <button type="button" 
                                                 class="btn btn-sm btn-outline-info" 
                                                 data-bs-toggle="modal" 
@@ -753,9 +742,10 @@
     <script>
         $(document).ready(function () {
             $('#inquiriesTable').DataTable({
-                "order": [[4, "desc"]], // Sort by date descending (Date column is now at index 4)
-                "pageLength": 25,
-                "language": {
+                order: [[4, 'desc']],
+                pageLength: 25,
+                columnDefs: [{ orderable: false, targets: [0, 1] }],
+                language: {
                     "search": "Search inquiries:",
                     "lengthMenu": "Show _MENU_ inquiries per page",
                     "info": "Showing _START_ to _END_ of _TOTAL_ inquiries",

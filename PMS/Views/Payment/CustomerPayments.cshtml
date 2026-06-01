@@ -2,28 +2,23 @@
 
 @{
     ViewData["Title"] = "Customer Payments";
+    ViewData["ListingTitle"] = "Customer Payments";
+    ViewData["ListingDescription"] = "All payment transactions";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingShowAdd"] = false;
+    var paymentExtras = "<a href=\"" + Url.Action("Index", "PaymentAudit") + "\" class=\"btn btn-outline-primary btn-sm\">" +
+        "<i class=\"bi bi-clipboard-check me-1\" aria-hidden=\"true\"></i>Audit Payments</a>" +
+        "<a href=\"" + Url.Action("Index", "PaymentAudit", new { auditFilter = "Pending" }) + "\" class=\"btn btn-outline-warning btn-sm\">" +
+        "<i class=\"bi bi-clock me-1\" aria-hidden=\"true\"></i>Pending <span class=\"badge bg-warning text-dark ms-1\">" + (ViewBag.PendingAuditCount ?? 0) + "</span></a>";
+    if (ViewBag.CanCreate == true)
+    {
+        paymentExtras += "<a href=\"" + Url.Action("MultiplePayments") + "\" class=\"btn btn-outline-warning btn-sm\">" +
+            "<i class=\"bi bi-layers me-1\" aria-hidden=\"true\"></i>Multiple Payments</a>" +
+            "<a href=\"" + Url.Action("RecordPayment") + "\" class=\"btn btn-primary btn-sm\">" +
+            "<i class=\"bi bi-plus-lg me-1\" aria-hidden=\"true\"></i>Record Payment</a>";
+    }
+    ViewData["ListingExtraActions"] = paymentExtras;
 }
-
-<div class="custom-banner mb-4" style="margin-top: 20px;">
-    <div class="d-flex justify-content-end align-items-center gap-2">
-                <a asp-controller="PaymentAudit" asp-action="Index" class="btn btn-outline-primary">
-                    <i class="fas fa-clipboard-check me-2"></i>Audit Payments
-                </a>
-                <a asp-controller="PaymentAudit" asp-action="Index" asp-route-auditFilter="Pending" class="btn btn-outline-warning">
-                    <i class="fas fa-clock me-2"></i>Pending
-                    <span class="badge bg-warning text-dark ms-1">@ViewBag.PendingAuditCount</span>
-                </a>
-                @if (ViewBag.CanCreate == true)
-                {
-                <a asp-action="MultiplePayments" class="btn btn-warning">
-                    <i class="fas fa-layer-group me-2"></i>Multiple Payments
-                </a>
-                <a asp-action="RecordPayment" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Record Payment
-                </a>
-                }
-    </div>
-</div>
 
 <!-- Summary Cards -->
 <div class="row mb-4">
@@ -97,21 +92,17 @@
     </div>
 </div>
 
-<!-- Payments Table -->
-<div class="card border-0 shadow-sm">
-    <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);">
-        <h5 class="mb-0 text-white">
-            <i class="fas fa-list me-2"></i>All Payment Transactions
-        </h5>
-    </div>
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
+        <partial name="Listing/_GridToolbar" />
+
         @if (Model.Any())
         {
-            <div class="table-responsive">
-                <table id="paymentsTable" class="table table-hover align-middle">
-                    <thead class="table-light">
+            <div class="table-responsive pms-saas-table-wrap">
+                <table id="paymentsTable" class="table pms-saas-table">
+                    <thead>
                         <tr>
-                            <th>Actions</th>
+                            <th class="pms-saas-th-actions">Actions</th>
                             <th>Payment ID</th>
                             <th>Customer</th>
                             <th>Payment Plan</th>
@@ -130,8 +121,8 @@
                         @foreach (var payment in Model)
                         {
                             <tr>
-                                <td>
-                                    <div class="btn-group" role="group">
+                                <td class="pms-saas-td-actions" data-label="Actions">
+                                    <div class="pms-row-actions" role="group">
                                         <button type="button" 
                                                 class="btn btn-sm btn-outline-info" 
                                                 data-bs-toggle="modal" 
@@ -166,8 +157,8 @@
                                     </div>
                                     <small class="text-muted d-block mt-1">@payment.CustomerID</small>
                                 </td>
-                                <td><code>@payment.PaymentID</code></td>
-                                <td>
+                                <td data-label="Payment ID"><code>@payment.PaymentID</code></td>
+                                <td data-label="Customer">
                                     <div class="d-flex align-items-center">
                                         <div class="avatar-xs rounded-circle bg-primary bg-soft text-primary me-2">
                                             <i class="fas fa-user"></i>
@@ -541,9 +532,10 @@
     <script>
         $(document).ready(function () {
             $('#paymentsTable').DataTable({
-                "order": [[5, "desc"]], // Date column remains index 5
-                "pageLength": 25,
-                "language": {
+                order: [[5, 'desc']],
+                pageLength: 25,
+                columnDefs: [{ orderable: false, targets: 0 }],
+                language: {
                     "search": "Search payments:",
                     "lengthMenu": "Show _MENU_ payments per page",
                     "info": "Showing _START_ to _END_ of _TOTAL_ payments",

@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Dealers";
     ViewData["ListingTitle"] = "Dealers List";
+    ViewData["ListingDescription"] = "Registered dealers and incentives";
     ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
     ViewData["ListingShowAdd"] = false;
     ViewData["ListingExtraActions"] =
@@ -12,12 +13,12 @@
         "<i class=\"bi bi-plus-lg me-1\" aria-hidden=\"true\"></i>Create New Dealer</a>";
 }
 
-<div class="card pms-grid-card">
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
         <partial name="Listing/_GridToolbar" />
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle pms-enterprise-table" id="dealersTable">
+        <div class="table-responsive pms-saas-table-wrap">
+            <table class="table pms-saas-table" id="dealersTable">
                 <thead>
                     <tr>
                         <th>Dealer ID</th>
@@ -31,43 +32,30 @@
                         <th>Registration Date</th>
                         <th>Customers</th>
                         <th>Properties</th>
-                        <th>Actions</th>
+                        <th class="pms-saas-th-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var dealer in Model)
                     {
+                        var statusPill = dealer.Status == "Active" ? "pms-pill--success"
+                            : dealer.Status == "Inactive" ? "pms-pill--danger" : "pms-pill--warning";
                         <tr>
-                            <td>
-                                <span class="badge bg-secondary">@dealer.DealerID</span>
-                            </td>
-                            <td>
+                            <td data-label="Dealer ID"><span class="badge bg-secondary">@dealer.DealerID</span></td>
+                            <td data-label="Dealership Name">
                                 <strong class="pms-cell-truncate" title="@dealer.DealershipName">@dealer.DealershipName</strong>
                             </td>
-                            <td>@dealer.OwnerName</td>
-                            <td>@dealer.MobileNo</td>
-                            <td><span class="pms-cell-truncate" title="@dealer.Email">@dealer.Email</span></td>
-                            <td>
-                                @if (dealer.Status == "Active")
-                                { <span class="badge bg-success">@dealer.Status</span> }
-                                else if (dealer.Status == "Inactive")
-                                { <span class="badge bg-danger">@dealer.Status</span> }
-                                else
-                                { <span class="badge bg-warning text-dark">@dealer.Status</span> }
-                            </td>
-                            <td>
-                                <span class="badge bg-info">@dealer.MembershipType</span>
-                            </td>
-                            <td>@dealer.IncentivePercentage%</td>
-                            <td>@dealer.RegisterationDate.ToString("MMM dd, yyyy")</td>
-                            <td>
-                                <span class="badge bg-primary">@(dealer.Customers?.Count ?? 0) Customers</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-success">@(dealer.Properties?.Count ?? 0) Properties</span>
-                            </td>
-                            <td>
-                                <div class="btn-group pms-action-group" role="group">
+                            <td data-label="Owner Name">@dealer.OwnerName</td>
+                            <td data-label="Mobile No">@dealer.MobileNo</td>
+                            <td data-label="Email"><span class="pms-cell-truncate" title="@dealer.Email">@dealer.Email</span></td>
+                            <td data-label="Status"><span class="pms-pill @statusPill">@dealer.Status</span></td>
+                            <td data-label="Membership Type"><span class="pms-pill pms-pill--info">@dealer.MembershipType</span></td>
+                            <td data-label="Incentive %">@dealer.IncentivePercentage%</td>
+                            <td data-label="Registration Date"><span class="text-nowrap">@dealer.RegisterationDate.ToString("MMM dd, yyyy")</span></td>
+                            <td data-label="Customers"><span class="pms-pill pms-pill--info">@(dealer.Customers?.Count ?? 0) Customers</span></td>
+                            <td data-label="Properties"><span class="pms-pill pms-pill--success">@(dealer.Properties?.Count ?? 0) Properties</span></td>
+                            <td class="pms-saas-td-actions" data-label="Actions">
+                                <div class="pms-row-actions" role="group">
                                     <a asp-action="Edit" asp-route-id="@dealer.DealerID" class="btn btn-sm btn-outline-primary" title="Edit">
                                         <i class="bi bi-pencil-square" aria-hidden="true"></i>
                                     </a>
@@ -91,11 +79,9 @@
     <script>
         $(document).ready(function() {
             $('#dealersTable').DataTable({
-                "pageLength": 25,
-                "order": [[ 8, "desc" ]],
-                "columnDefs": [
-                    { "orderable": false, "targets": 11 }
-                ]
+                pageLength: 25,
+                order: [[8, 'desc']],
+                columnDefs: [{ orderable: false, targets: 11 }]
             });
         });
     </script>

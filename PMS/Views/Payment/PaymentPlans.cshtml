@@ -3,6 +3,11 @@
 
 @{
     ViewData["Title"] = "Payment Plans (Batches)";
+    ViewData["ListingTitle"] = "Payment Plans (Batches)";
+    ViewData["ListingDescription"] = "Installment batches and schedules";
+    ViewData["ListingRecordCount"] = Model?.Count() ?? 0;
+    ViewData["ListingAddUrl"] = ViewBag.CanCreate == true ? Url.Action("CreatePaymentPlan") : null;
+    ViewData["ListingAddText"] = "Create New Plan";
     var EnUs = CultureInfo.GetCultureInfo("en-US");
     var plansOrdered = Model.OrderBy(p => p.PlanName).ToList();
     var totalValueSsp = plansOrdered.Sum(p => p.TotalAmount);
@@ -23,18 +28,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-        <!-- <i class="fas fa-file-invoice-dollar me-2"></i>Payment Plans (Batches) -->
-    </h2>
-    @if (ViewBag.CanCreate == true)
-    {
-    <a asp-action="CreatePaymentPlan" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>Create New Plan
-    </a>
-    }
-</div>
 
 <!-- Statistics (compact typography — global .stats-number is 2.2rem) -->
 <div class="row mb-4 payment-plans-stats">
@@ -70,19 +63,15 @@
     </div>
 </div>
 
-<!-- Payment Plans Table -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="fas fa-list me-2"></i>All Payment Plans
-        </h5>
-    </div>
+<div class="card pms-grid-card pms-listing-flat pms-saas-grid pms-listing-page">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover" id="plansTable">
+        <partial name="Listing/_GridToolbar" />
+
+        <div class="table-responsive pms-saas-table-wrap">
+            <table class="table pms-saas-table" id="plansTable">
                 <thead>
                     <tr>
-                        <th>Actions</th>
+                        <th class="pms-saas-th-actions">Actions</th>
                         <th>Plan ID</th>
                         <th>Plan Name</th>
                         <th>Project</th>
@@ -102,17 +91,17 @@
                         var balancePkr = plan.TotalAmount - schedulesSumPkr;
                         var hasBalanceRemaining = balancePkr > 0.0000001m;
                         <tr class="@(hasBalanceRemaining ? "plan-balance-remaining" : null)">
-                            <td>
-                                <div class="btn-group" role="group">
+                            <td class="pms-saas-td-actions" data-label="Actions">
+                                <div class="pms-row-actions" role="group">
                                     <a asp-action="PaymentSchedule" asp-route-planId="@plan.PlanID" 
                                        class="btn btn-sm btn-outline-primary" title="View Schedules">
-                                        <i class="fas fa-calendar-check"></i>
+                                        <i class="bi bi-calendar-check" aria-hidden="true"></i>
                                     </a>
                                     <a asp-action="PaymentPlanDetails"
                                        asp-route-planId="@plan.PlanID"
-                                       class="btn btn-sm btn-outline-info"
+                                       class="btn btn-sm btn-outline-secondary"
                                        title="View Details">
-                                        <i class="fas fa-eye"></i>
+                                        <i class="bi bi-eye" aria-hidden="true"></i>
                                     </a>
                                     @if (ViewBag.CanDelete == true)
                                     {
@@ -121,57 +110,52 @@
                                                 title="Delete payment plan"
                                                 data-plan-id="@plan.PlanID"
                                                 data-plan-name="@plan.PlanName">
-                                            <i class="fas fa-trash-alt"></i>
+                                            <i class="bi bi-trash" aria-hidden="true"></i>
                                         </button>
                                     }
                                 </div>
                             </td>
-                            <td><code>@plan.PlanID</code></td>
-                            <td>
+                            <td data-label="Plan ID"><code>@plan.PlanID</code></td>
+                            <td data-label="Plan Name">
                                 <strong>@plan.PlanName</strong>
                                 @if (!string.IsNullOrEmpty(plan.Description))
                                 {
                                     <br><small class="text-muted">@(plan.Description.Length > 50 ? plan.Description.Substring(0, 50) + "..." : plan.Description)</small>
                                 }
                             </td>
-                            <td>
+                            <td data-label="Project">
                                 @if (plan.Project != null)
                                 {
-                                    <span class="badge bg-info">@plan.Project.ProjectName</span>
+                                    <span class="pms-pill pms-pill--info">@plan.Project.ProjectName</span>
                                 }
                                 else
                                 {
                                     <span class="text-muted">-</span>
                                 }
                             </td>
-                            <td>
+                            <td data-label="Total Amount">
                                 <strong style="color: var(--primary-green);">
                                     PKR @plan.TotalAmount.ToString("N0", EnUs)
                                 </strong>
                             </td>
-                            <td>
-                                <span class="badge bg-dark text-uppercase">@plan.Currency</span>
+                            <td data-label="Currency">
+                                <span class="pms-pill pms-pill--neutral text-uppercase">@plan.Currency</span>
                             </td>
-                            <td>
-                                <i class="far fa-calendar me-1"></i>
+                            <td data-label="Duration">
                                 @(plan.DurationMonths?.ToString() ?? "N/A") Months
                             </td>
-                            <td>
-                                <span class="badge bg-secondary">@plan.Frequency</span>
+                            <td data-label="Frequency">
+                                <span class="pms-pill pms-pill--neutral">@plan.Frequency</span>
                             </td>
-                            <td>
-                                <span class="badge bg-primary">
-                                    <i class="fas fa-users me-1"></i>
-                                    @(plan.Customers?.Count ?? 0)
-                                </span>
+                            <td data-label="Customers">
+                                <span class="pms-pill pms-pill--info">@(plan.Customers?.Count ?? 0)</span>
                             </td>
-                            <td>
-                                <span class="badge @(plan.PaymentSchedules?.Any() == true ? "bg-success" : "bg-warning")">
-                                    <i class="fas fa-calendar-alt me-1"></i>
+                            <td data-label="Schedules">
+                                <span class="pms-pill @(plan.PaymentSchedules?.Any() == true ? "pms-pill--success" : "pms-pill--warning")">
                                     @(plan.PaymentSchedules?.Count ?? 0)
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Balance (PKR)">
                                 <span class="fw-semibold @(hasBalanceRemaining ? "text-success" : balancePkr < -0.0000001m ? "text-danger" : "text-muted")">
                                     @balancePkr.ToString("N0", EnUs)
                                 </span>

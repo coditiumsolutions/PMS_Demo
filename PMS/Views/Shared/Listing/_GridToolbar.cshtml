@@ -13,14 +13,18 @@
 
 @{
     var description = ViewData["ListingDescription"] as string;
+    var hideTitle = ViewData["ListingHideTitle"] as bool? == true;
 }
 
 <div class="pms-grid-toolbar d-flex flex-wrap justify-content-between align-items-start gap-3">
     <div class="pms-grid-toolbar-start">
-        <h5 class="pms-grid-title mb-0">@title</h5>
-        @if (!string.IsNullOrEmpty(description))
+        @if (!hideTitle)
         {
-            <p class="pms-grid-subtitle mb-0">@description</p>
+            <h5 class="pms-grid-title mb-0">@title</h5>
+            @if (!string.IsNullOrEmpty(description))
+            {
+                <p class="pms-grid-subtitle mb-0">@description</p>
+            }
         }
         @if (!string.IsNullOrEmpty(countText))
         {

@@ -1,67 +1,80 @@
 @model PMS.Models.FloorPlanViewModel
 @{
     ViewData["Title"] = "Floor Plan";
+    ViewData["ListingTitle"] = "Floor Plan";
+    ViewData["ListingDescription"] = "Visual unit layout by floor";
+    ViewData["ListingShowAdd"] = false;
+    ViewData["ListingExtraActions"] =
+        "<a href=\"" + Url.Action("Index") + "\" class=\"btn btn-outline-secondary btn-sm\">" +
+        "<i class=\"bi bi-arrow-left me-1\" aria-hidden=\"true\"></i>Back to Projects</a>";
     var projects = ViewBag.Projects as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
     var subProjects = ViewBag.SubProjects as IList<string> ?? new List<string>();
 }
 
-<div class="d-flex justify-content-end mb-3">
-    <a asp-action="Index" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back to Projects
-    </a>
+<div class="mb-3 pms-listing-page">
+    <partial name="Listing/_GridToolbar" />
 </div>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="get" asp-action="FloorPlan" class="row g-3 align-items-end">
-            <div class="col-md-5">
-                <label for="projectId" class="form-label fw-semibold">Select Project</label>
-                <select name="projectId" id="projectId" class="form-select form-select-lg" onchange="this.form.submit()">
-                    <option value="">-- Select a project --</option>
-                    @if (projects != null)
-                    {
-                        @foreach (var item in projects)
+<form method="get" asp-action="FloorPlan" class="mb-4 pms-listing-page">
+    <div class="pms-listing-search-wrap">
+        <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="projectId" class="form-label">Select Project</label>
+                    <select name="projectId" id="projectId" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Select a project --</option>
+                        @if (projects != null)
                         {
-                            if (item.Value == Model.SelectedProjectID)
+                            @foreach (var item in projects)
                             {
-                                <option value="@item.Value" selected>@item.Text</option>
+                                if (item.Value == Model.SelectedProjectID)
+                                {
+                                    <option value="@item.Value" selected>@item.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="pms-compact-field pms-select-dropdown">
+                    <label for="subProject" class="form-label">SubProject</label>
+                    <select name="subProject" id="subProject" class="form-select" @(string.IsNullOrWhiteSpace(Model.SelectedProjectID) ? "disabled" : null)>
+                        <option value="">-- All SubProjects --</option>
+                        @foreach (var sub in subProjects)
+                        {
+                            if (string.Equals(sub, Model.SelectedSubProject, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="@sub" selected>@sub</option>
                             }
                             else
                             {
-                                <option value="@item.Value">@item.Text</option>
+                                <option value="@sub">@sub</option>
                             }
                         }
-                    }
-                </select>
+                    </select>
+                </div>
             </div>
-            <div class="col-md-5">
-                <label for="subProject" class="form-label fw-semibold">SubProject</label>
-                <select name="subProject" id="subProject" class="form-select form-select-lg" @(string.IsNullOrWhiteSpace(Model.SelectedProjectID) ? "disabled" : null)>
-                    <option value="">-- All SubProjects --</option>
-                    @foreach (var sub in subProjects)
-                    {
-                        if (string.Equals(sub, Model.SelectedSubProject, StringComparison.OrdinalIgnoreCase))
-                        {
-                            <option value="@sub" selected>@sub</option>
-                        }
-                        else
-                        {
-                            <option value="@sub">@sub</option>
-                        }
-                    }
-                </select>
+            <div class="col-12 col-lg-4">
+                <div class="d-flex flex-wrap gap-2 pms-listing-search-actions">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1" aria-hidden="true"></i>View Floor Plan
+                    </button>
+                    <a asp-action="FloorPlan" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear
+                    </a>
+                </div>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-search me-2"></i>View Floor Plan
-                </button>
-            </div>
-            <div class="col-12 pt-0">
+            <div class="col-12">
                 <small class="text-muted">Select a project first, then optionally narrow units by subproject.</small>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+</form>
 
 @if (Model.Project != null && Model.Floors.Any())
 {
